@@ -1,0 +1,8 @@
+#gridWrap .generator-date-head{display:flex;align-items:center;gap:4px;flex:none;width:100%}
+#gridWrap .generator-date-head>.sticky-date{position:static!important;flex:1;min-width:0;width:auto!important;height:auto!important;margin:0!important;white-space:nowrap!important}
+#gridWrap .date-fixed-focus{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;min-height:26px;padding:0;border:1px solid #9bafbd;border-radius:6px;background:#fff;color:#18314b;font:16px/1 system-ui;cursor:pointer}
+#gridWrap .date-fixed-focus[aria-pressed="true"]{background:#fef3c7;border-color:#b7791f;box-shadow:inset 0 0 0 1px #b7791f}
+#gridWrap .date-fixed-focus:disabled{opacity:.5;cursor:wait}
+#gridWrap .date-fixed-focus:focus-visible{outline:3px solid #e09116;outline-offset:2px}
+#gridWrap .lesson.fixed-focus-muted{opacity:.25!important;filter:grayscale(.7);cursor:default!important}
+#gridWrap .lesson.fixed-focus-muted,#gridWrap .lesson.fixed-focus-muted *{pointer-events:none!important;user-select:none}

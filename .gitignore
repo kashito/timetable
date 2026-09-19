@@ -1,0 +1,124 @@
+# Production data: keep files on disk, never version their contents.
+# The access-control file is source configuration, as in the brain repository.
+/data/*
+!/data/.htaccess
+/api/data/*
+!/api/data/.htaccess
+
+# Original timetable workbook (contains the student roster).
+/schedule*.xlsx
+/schedule*.xls
+
+# Uploaded files / generated imports and exports (also covered inside data/).
+uploads/
+student_uploads/
+calendar_images/
+board_guide_images/
+codex_memo_images/
+/imports/
+/exports/
+
+# Server-specific authentication, credentials and local environment settings.
+/staff_setup_key.php
+password-config.php
+*.local.php
+.secrets/
+.ssh/
+secrets/
+credentials/
+.env
+.env.*
+!.env.example
+!.env.template
+.htpasswd
+.netrc
+.npmrc
+.pypirc
+credentials*.json
+service-account*.json
+service_account*.json
+*.pem
+*.key
+*.ppk
+*.p12
+*.pfx
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+lolipop_github_actions*
+lolipop_known_hosts
+
+# Session files, runtime caches, logs and temporary files.
+sessions/
+cache/
+/api/_auth_recovery/
+logs/
+*.log
+*.log.*
+error_log
+error_log.*
+access_log
+access_log.*
+sess_*
+cookies.txt
+cookies*.json
+.write.lock
+*.lock.php
+*.pid
+*.pid.lock
+*.tmp
+*.tmp.*
+*.temp
+*.swp
+*.swo
+*~
+
+# Database files and database dumps, not schema / migration source files.
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+*.dump
+*.dump.sql
+*.sql.gz
+/dump*.sql
+/backup*.sql
+
+# Backups / recovery quarantine and one-off recovery tools.
+backup/
+backups/
+_backup/
+_system_backups/
+/recovery_hold_*/
+/cleanup_20*.php
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*.orig
+/*.zip
+/*.7z
+/*.rar
+/*.tar
+/*.tar.gz
+/*.tgz
+/*.tar.bz2
+/*.tar.xz
+
+# Local working notes / tools and OS-generated files.
+/snippet[0-9]*.txt
+/.tools/
+/_deploy/
+/.codex/
+/.vscode/
+/.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Do not blanket-ignore JSON, PHP, images, assets/, water-data/ or vendor/.
+# Dependency lockfiles (package-lock.json, composer.lock, etc.) remain versionable.
+# Git ignore rules are separate from deployment exclusions.

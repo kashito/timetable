@@ -1,0 +1,21 @@
+(()=>{
+const slots=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪'];
+const ends=['14:10','15:00','15:50','16:40','17:30','18:20','19:10','20:00','20:50','21:40','22:30'];
+let rows=[],state={},pending=[],limit=8,busy=false;
+const key=r=>[Workspace.iso(r['日付']),r['時間番号'],r['クラス'],r['担当講師'],r['種別'],String(r['科目']||'').split(/[,、，]/).map(s=>s.trim()).filter(Boolean).join('+')].join('|');
+const roster=r=>Workspace.roster(r['クラス'],r['日付']).filter(s=>!Workspace.hiddenStudent(s['生徒名']));
+function missing(r){const attendance=state[key(r)]?.attendance||{};return roster(r).filter(s=>(!attendance[s['生徒名']]||attendance[s['生徒名']]==='---')&&!Workspace.exempt(s['生徒名'],r['クラス'],r['日付'],state[key(r)]||{}));}
+function box(){let b=document.getElementById('attendanceNotices');if(!b){b=document.createElement('section');b.id='attendanceNotices';b.className='ws-panel';document.querySelector('main').prepend(b);}return b;}
+function render(){
+ const b=box(),esc=Workspace.esc;const me=StaffAuth.user,now=Date.now();
+ pending=rows.filter(r=>{const teacher=r['担当講師']||'',end=r['終了']||ends[slots.indexOf(r['時間番号'])];return !r['日区分']&&end&&(teacher===me.name||(!teacher&&me.role==='admin'))&&Date.parse(Workspace.iso(r['日付'])+'T'+end+':00')<now&&missing(r).length;}).sort((a,b)=>(b['日付']+b['終了']).localeCompare(a['日付']+a['終了']));
+ b.hidden=!pending.length;if(!pending.length)return;
+ b.innerHTML=`<details><summary style="cursor:pointer;font-weight:700;color:#9a4f16">出席未入力 ${pending.length}コマ — 開いて入力</summary><p class="ws-muted">終了した自分の担当授業です。担当講師未設定の授業は管理者に表示します。</p>`+pending.slice(0,limit).map((r,i)=>`<div class="ws-card" data-notice-key="${esc(key(r))}"><b>${esc(r['日付'])} ${esc(r['時間番号'])} ${esc(r['クラス'])}</b><div class="attendance-bulk-actions"><button type="button" data-all-present='[data-att-row="${i}"]'>全員出席にする</button><button type="button" class="ce-copy-previous" data-previous-mode="notice" data-previous-key="${esc(key(r))}" data-copy-previous='[data-att-row="${i}"]'>前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div><p class="ws-muted">未入力の生徒だけに反映します。記録済みの出欠は変更しません。</p><div class="ws-controls" style="margin:10px 0">${missing(r).map(s=>`<label>${esc(s['生徒名'])} <select data-att-row="${i}" data-att-name="${esc(s['生徒名'])}">${['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'].map(v=>`<option>${v}</option>`).join('')}</select></label>`).join('')}<button data-att-save="${i}">この授業の出席を保存</button></div><span role="status" data-att-msg="${i}"></span><div data-sc-missing-key="${esc(key(r))}"></div></div>`).join('')+(pending.length>limit?'<button class="ws-button" data-att-more>さらに8コマ表示</button>':'')+'</details>';
+ if(window.StaffContacts)b.querySelectorAll('[data-sc-missing-key]').forEach(root=>StaffContacts.mount(root,{keys:[root.dataset.scMissingKey]}));
+}
+async function refresh(){if(busy||!StaffAuth.user)return;busy=true;try{await Workspace.refresh();const [data,states]=await Promise.all([Workspace.api('data_api.php'),Workspace.api('state_api.php')]);rows=data.schedule||[];state=states.state||{};render();}catch(e){box().textContent='出席通知を読み込めません：'+e.message;}finally{busy=false;}}
+document.addEventListener('click',async e=>{const more=e.target.closest('[data-att-more]');if(more){limit+=8;render();box().querySelector('details').open=true;return;}const btn=e.target.closest('[data-att-save]');if(!btn)return;const i=Number(btn.dataset.attSave),r=pending[i];btn.disabled=true;try{const latest=await Workspace.api('state_api.php');const attendance={...(latest.state?.[key(r)]?.attendance||{})};let count=0;box().querySelectorAll(`[data-att-row="${i}"]`).forEach(s=>{if(s.value!=='---'){attendance[s.dataset.attName]=s.value;count++;}});if(!count)throw new Error('出席状況を選んでください。');await Workspace.api('state_api.php',{eventKey:key(r),attendance,attendanceTouched:true});await refresh();if(box().querySelector('details'))box().querySelector('details').open=true;}catch(err){const msg=box().querySelector(`[data-att-msg="${i}"]`);if(msg)msg.textContent=err.message;}finally{btn.disabled=false;}});
+StaffAuth.ready.then(async()=>{await Workspace.ready;await refresh();});
+document.addEventListener('roster-updated',refresh);document.addEventListener('student-contact-confirmed',refresh);
+window.AttendanceNotices={refresh};
+})();

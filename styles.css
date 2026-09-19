@@ -1,0 +1,273 @@
+:root{--bg:#f5f7fb;--card:#fff;--ink:#162033;--muted:#6b7280;--line:#dfe5ee;--accent:#2354d8;--lesson:#dbeafe;--support:#fef3c7;--exercise:#dcfce7;--test:#fce7f3;--special:#ede9fe}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.topbar{position:sticky;top:0;z-index:20;padding:16px 24px;background:#fff;border-bottom:1px solid var(--line)}h1{font-size:22px;margin:2px 0 0}.eyebrow{font-size:12px;color:var(--muted);font-weight:700}.page-badge{display:inline-block;font-size:12px;padding:4px 9px;border-radius:999px;background:#e8efff;color:var(--accent);vertical-align:middle}.page-badge.teacher{background:#e8f7ee;color:#167342}main{padding:18px 24px 48px}.panel{background:var(--card);border:1px solid var(--line);border-radius:16px}.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:14px}.control{min-width:130px;flex:1}.control label{display:block;font-size:11px;font-weight:800;color:var(--muted);margin:0 0 5px}.control select,.ghost{width:100%;border:1px solid #cfd7e4;border-radius:10px;background:#fff;padding:9px 10px;font-size:14px}.ghost{width:auto;cursor:pointer;color:var(--accent);font-weight:700}.statusbar{padding:10px 4px;color:var(--muted);font-size:13px}.legend{display:flex;flex-wrap:wrap;gap:16px;padding:10px 14px;margin-bottom:14px;font-size:12px}.dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px}.dot.lesson{background:var(--lesson)}.dot.support{background:var(--support)}.dot.exercise{background:var(--exercise)}.dot.test{background:var(--test)}.dot.special{background:var(--special)}.schedule{overflow:auto}.calendar{display:grid;grid-template-columns:120px repeat(11,minmax(150px,1fr));min-width:1770px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}.cell{min-height:82px;padding:7px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff}.head{position:sticky;top:74px;z-index:8;min-height:66px;background:#f8fafc;font-weight:800;text-align:center}.date-head{left:0;z-index:10;display:grid;place-items:center}.slot-head small{display:block;color:var(--muted);font-weight:500;font-size:11px;margin-top:4px}.date-cell{position:sticky;left:0;z-index:5;background:#f8fafc;text-align:center;display:flex;flex-direction:column;justify-content:center}.date-cell small{color:var(--muted);margin-top:3px}.slot-cell{min-height:96px}.special-span{grid-column:span 11;display:flex;align-items:center;justify-content:center;background:#faf9ff}.event{border-radius:10px;padding:7px 8px;margin-bottom:6px;font-size:12px;cursor:pointer;border:1px solid transparent;transition:.15s}.event:hover{transform:translateY(-1px);box-shadow:0 4px 12px #0002}.event.lesson{background:var(--lesson)}.event.support{background:var(--support)}.event.exercise{background:var(--exercise)}.event.test{background:var(--test)}.event.special{background:var(--special)}.event-title{font-weight:900}.event-meta{margin-top:3px;color:#475569}.special-day{font-weight:900;text-align:center;min-width:260px}.list-wrap{display:grid;gap:10px}.list-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer}.special-row{background:var(--special);cursor:default}.list-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f7}.modal{position:fixed;inset:0;background:#0f172a99;display:grid;place-items:center;padding:20px;z-index:50}.modal.hidden{display:none}.modal-card{position:relative;width:min(720px,96vw);max-height:86vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 60px #0005}.modal-close{position:absolute;right:12px;top:10px;border:0;background:#eef2f7;width:34px;height:34px;border-radius:50%;font-size:22px;cursor:pointer}.detail-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}.detail-table th,.detail-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left}.detail-table th{color:var(--muted);width:110px}.portal{min-height:100vh;display:grid;place-items:center;padding:20px}.portal-card{width:min(520px,96vw);background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 12px 40px #0001}.portal-links{display:grid;gap:12px;margin-top:22px}.portal-links a{display:block;text-align:center;padding:16px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-weight:800}.portal-links a:last-child{background:#167342}@media(max-width:760px){.topbar{padding:12px 14px}.topbar h1{font-size:19px}main{padding:12px}.head{top:67px}.controls{gap:8px}.control{min-width:45%}.calendar{grid-template-columns:92px repeat(11,minmax(135px,1fr));min-width:1577px}.date-cell{font-size:12px}}
+.memo-box{margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.memo-box h3{margin:0 0 10px}.memo-box textarea{width:100%;min-height:120px;resize:vertical;border:1px solid #cfd7e4;border-radius:10px;padding:10px 12px;font:inherit;background:#fff;color:var(--ink)}.memo-actions{display:flex;align-items:center;gap:10px;margin-top:10px}.memo-save{border:0;border-radius:10px;padding:9px 14px;background:#167342;color:#fff;font-weight:800;cursor:pointer}.memo-status{font-size:12px;color:#167342;font-weight:700}.memo-note{margin:8px 0 0;color:var(--muted);font-size:11px}
+
+
+/* Room override visual */
+.event.room-white,.event-card.room-white{box-shadow:inset 4px 0 0 #cbd5e1}
+.event.room-blue,.event-card.room-blue{box-shadow:inset 4px 0 0 #60a5fa}
+.event.room-yellow,.event-card.room-yellow{box-shadow:inset 4px 0 0 #facc15}
+.event.room-glass,.event-card.room-glass{box-shadow:inset 4px 0 0 #22d3ee}
+.event.room-pc,.event-card.room-pc{box-shadow:inset 4px 0 0 #a78bfa}
+.event.room-home,.event-card.room-home{box-shadow:inset 4px 0 0 #fb923c}
+.room-override-badge{white-space:nowrap}
+
+/* Hide ready cards */
+.hide-ready-card{display:none!important}
+.hide-ready-control{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin:6px 10px 8px;
+  padding:6px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  background:#fff;
+  font-weight:700;
+  font-size:13px;
+}
+
+
+/* Fixed room lanes for teacher calendar */
+.teacher-room-calendar{
+  grid-template-columns:140px repeat(11,minmax(145px,1fr))!important;
+}
+.teacher-room-calendar .room-date-cell{
+  min-height:92px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  background:#f8fafc;
+  position:sticky;
+  left:0;
+  z-index:4;
+}
+.teacher-room-calendar .room-lane-label{
+  display:inline-block;
+  min-width:72px;
+  padding:5px 8px;
+  border-radius:999px;
+  background:#e2e8f0;
+  font-weight:800;
+  text-align:center;
+}
+.teacher-room-calendar .room-lane-slot{
+  min-height:92px;
+  position:relative;
+  padding:5px;
+}
+.teacher-room-calendar .event[data-key]{
+  min-height:76px;
+  height:auto!important;
+  margin-bottom:5px;
+}
+.add-lesson-cell{
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  width:27px;
+  height:27px;
+  border:1px dashed #94a3b8;
+  border-radius:50%;
+  background:rgba(255,255,255,.88);
+  color:#475569;
+  font-size:20px;
+  line-height:22px;
+  font-weight:700;
+  cursor:pointer;
+  opacity:.62;
+}
+.add-lesson-cell:hover{
+  opacity:1;
+  color:#fff;
+  background:#2563eb;
+  border-color:#2563eb;
+}
+.room-special-span{
+  grid-column:span 11!important;
+}
+@media(max-width:700px){
+  .teacher-room-calendar{
+    grid-template-columns:105px repeat(11,minmax(135px,1fr))!important;
+  }
+}
+
+
+/* Fixed room rows V2 */
+.teacher-room-calendar{
+  grid-template-columns:140px repeat(11,minmax(145px,1fr))!important;
+}
+.teacher-room-calendar .room-lane-slot{
+  min-height:92px!important;
+  position:relative!important;
+}
+.teacher-room-calendar .add-lesson-cell{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  position:absolute!important;
+  right:7px!important;
+  bottom:7px!important;
+  width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  border:1px solid #94a3b8!important;
+  border-radius:50%!important;
+  background:#ffffff!important;
+  color:#2563eb!important;
+  font-size:21px!important;
+  font-weight:800!important;
+  cursor:pointer!important;
+  opacity:1!important;
+  z-index:5!important;
+  box-shadow:0 1px 4px rgba(15,23,42,.18)!important;
+}
+.teacher-room-calendar .add-lesson-cell:hover{
+  background:#2563eb!important;
+  color:#fff!important;
+}
+
+/* v7: generator-like wide calendar + daily notes */
+.calendar{grid-template-columns:210px repeat(11,minmax(165px,1fr))!important;min-width:2025px!important}
+.date-cell{min-height:118px!important;justify-content:flex-start!important;padding-top:10px!important}
+.slot-cell{min-height:118px!important;padding:6px!important}
+.event{border-left:4px solid rgba(37,99,235,.55)!important;padding:7px 8px!important;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.day-note-box{width:100%;margin-top:7px;display:flex;flex-direction:column;gap:2px}
+.day-note-text{width:100%;min-height:58px;resize:vertical;border:1px solid #cbd5e1;border-radius:7px;padding:6px;font-size:11px;line-height:1.35;background:#fff}
+.day-note-status{font-size:10px;color:#64748b;min-height:12px;text-align:right}
+@media(max-width:760px){.calendar{grid-template-columns:175px repeat(11,minmax(150px,1fr))!important;min-width:1825px!important}}
+
+/* v10: full schedule = compact koma-style grid */
+.calendar{grid-template-columns:240px repeat(11,minmax(145px,1fr))!important;min-width:1835px!important;align-items:stretch}
+.date-cell{min-height:112px!important;padding:8px!important;justify-content:flex-start!important}
+.slot-cell{min-height:112px!important;padding:5px!important;vertical-align:top}
+.event{padding:6px 7px!important;margin:0 0 4px!important;border-radius:8px!important;font-size:11px!important;line-height:1.25!important;min-height:0!important;height:auto!important}
+.event-title{font-size:12px!important;line-height:1.25!important}
+.event-meta{font-size:10px!important;line-height:1.25!important;margin-top:2px!important}
+.event-badges{display:flex!important;gap:3px!important;flex-wrap:wrap!important;margin-top:3px!important}
+.event-badge{font-size:9px!important;padding:1px 4px!important;border-radius:999px!important}
+.day-note-text{min-height:62px!important}
+@media(max-width:760px){.calendar{grid-template-columns:210px repeat(11,minmax(140px,1fr))!important;min-width:1750px!important}}
+
+
+/* v11 teacher overall schedule: same room-lane layout as generator */
+.teacher-room-calendar{
+  grid-template-columns:240px repeat(11,minmax(142px,1fr))!important;
+  min-width:1802px!important;
+  align-items:stretch;
+}
+.teacher-room-calendar .cell{min-height:54px!important;padding:4px!important;position:relative}
+.teacher-room-calendar .head{min-height:72px!important}
+.teacher-room-calendar .room-date-cell{
+  min-height:54px!important;
+  padding:4px!important;
+  position:sticky!important;
+  left:0!important;
+  z-index:8!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  box-shadow:2px 0 4px rgba(15,23,42,.04);
+}
+.teacher-room-calendar .room-date-cell.date-start,
+.teacher-room-calendar .room-lane-slot.date-start{border-top:6px solid #334155!important}
+.teacher-room-calendar .sticky-date-box{width:100%;text-align:center}
+.teacher-room-calendar .sticky-date-box>strong{display:block;font-size:12px;margin-bottom:4px}
+.teacher-room-calendar .room-lane-label{
+  display:inline-block;min-width:72px;padding:4px 9px;border-radius:999px;background:#e2e8f0;
+  font-weight:800;text-align:center;font-size:11px;
+}
+.teacher-room-calendar .room-lane-slot{min-height:54px!important;padding:4px!important;position:relative!important}
+.teacher-room-calendar .day-note-box{margin-top:4px!important}
+.teacher-room-calendar .day-note-text{min-height:48px!important;max-height:90px!important;font-size:10px!important;padding:5px!important}
+.teacher-room-calendar .event{
+  width:100%;text-align:left;border:1px solid #c9d4e3!important;border-left-width:5px!important;
+  border-radius:8px!important;padding:6px!important;margin:0 0 4px!important;background:#eef5ff!important;
+  min-height:0!important;height:auto!important;box-shadow:none!important;
+}
+.teacher-room-calendar .event-title{font-size:12px!important;font-weight:900}
+.teacher-room-calendar .event-meta{font-size:9px!important;color:#64748b!important;margin-top:2px!important}
+.teacher-room-calendar .event-badges{display:flex!important;gap:3px!important;flex-wrap:wrap!important;margin-top:3px!important}
+.teacher-room-calendar .event-badge{font-size:8px!important;padding:1px 4px!important}
+.teacher-room-calendar .room-unset{background:#f7f8fa!important}
+.teacher-room-calendar .room-blue{background:#eaf4ff!important}
+.teacher-room-calendar .room-yellow{background:#fff8d8!important}
+.teacher-room-calendar .room-white{background:#ffffff!important}
+.teacher-room-calendar .room-glass{background:#e8fbff!important}
+.teacher-room-calendar .room-pc{background:#f1eaff!important}
+.teacher-room-calendar .room-home{background:#fff0df!important}
+.teacher-room-calendar .room-other{background:#f8f1e6!important}
+.teacher-room-calendar .room-unset .room-lane-label{background:#e5e7eb}
+.teacher-room-calendar .room-blue .room-lane-label{background:#bfdbfe}
+.teacher-room-calendar .room-yellow .room-lane-label{background:#fde68a}
+.teacher-room-calendar .room-white .room-lane-label{background:#f8fafc;border:1px solid #cbd5e1}
+.teacher-room-calendar .room-glass .room-lane-label{background:#cffafe}
+.teacher-room-calendar .room-pc .room-lane-label{background:#ddd6fe}
+.teacher-room-calendar .room-home .room-lane-label{background:#fed7aa}
+.teacher-room-calendar .room-other .room-lane-label{background:#ead7b7}
+.teacher-room-calendar .room-unset .event{border-left-color:#9ca3af!important}
+.teacher-room-calendar .room-blue .event{border-left-color:#3b82f6!important}
+.teacher-room-calendar .room-yellow .event{border-left-color:#eab308!important}
+.teacher-room-calendar .room-white .event{border-left-color:#cbd5e1!important}
+.teacher-room-calendar .room-glass .event{border-left-color:#06b6d4!important}
+.teacher-room-calendar .room-pc .event{border-left-color:#8b5cf6!important}
+.teacher-room-calendar .room-home .event{border-left-color:#f97316!important}
+.teacher-room-calendar .room-other .event{border-left-color:#a16207!important}
+@media(max-width:760px){.teacher-room-calendar{grid-template-columns:210px repeat(11,minmax(140px,1fr))!important;min-width:1750px!important}}
+
+
+/* v12: compact overall schedule + drag/drop */
+.teacher-room-calendar .cell{min-height:38px!important;padding:2px!important}
+.teacher-room-calendar .room-lane-slot{min-height:38px!important;padding:2px!important}
+.teacher-room-calendar .room-date-cell{min-height:38px!important;padding:2px 3px!important}
+.teacher-room-calendar .room-lane-label{font-size:10px!important;line-height:1.05!important;padding:2px 5px!important;min-width:42px!important}
+.teacher-room-calendar .sticky-date-box>strong{font-size:11px!important;margin-bottom:2px!important}
+.teacher-room-calendar .day-note-box{margin-top:2px!important;gap:1px!important}
+.teacher-room-calendar .day-note-text{min-height:30px!important;max-height:48px!important;font-size:9px!important;line-height:1.15!important;padding:3px 4px!important}
+.teacher-room-calendar .day-note-status{font-size:8px!important;min-height:8px!important}
+.teacher-room-calendar .event{padding:3px 4px!important;margin:0 0 2px!important;border-radius:6px!important;border-left-width:4px!important;line-height:1.12!important}
+.teacher-room-calendar .event-title{font-size:11px!important;line-height:1.1!important}
+.teacher-room-calendar .event-meta{font-size:8px!important;line-height:1.1!important;margin-top:1px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.teacher-room-calendar .event-badges{gap:2px!important;margin-top:1px!important;flex-wrap:nowrap!important;overflow:hidden!important}
+.teacher-room-calendar .event-badge{font-size:7px!important;padding:0 3px!important;white-space:nowrap!important}
+.teacher-room-calendar .event[draggable="true"]{cursor:grab!important;user-select:none}
+.teacher-room-calendar .event.dragging{opacity:.38!important;cursor:grabbing!important}
+.teacher-room-calendar .teacher-drop-slot.drop-target{outline:3px solid #22c55e!important;outline-offset:-3px!important;background:#ecfdf5!important}
+
+
+/* v13: compact room lanes + clearer teacher name */
+.teacher-room-calendar .cell{min-height:30px!important;padding:1px!important}
+.teacher-room-calendar .room-lane-slot{min-height:30px!important;padding:1px!important}
+.teacher-room-calendar .room-date-cell{min-height:30px!important;padding:1px 2px!important}
+.teacher-room-calendar .room-lane-label{font-size:9px!important;line-height:1!important;padding:1px 4px!important;min-width:38px!important}
+.teacher-room-calendar .sticky-date-box>strong{font-size:11px!important;margin-bottom:1px!important}
+.teacher-room-calendar .day-note-box{margin-top:1px!important;gap:0!important}
+.teacher-room-calendar .day-note-text{min-height:24px!important;max-height:38px!important;font-size:8px!important;line-height:1.05!important;padding:2px 3px!important}
+.teacher-room-calendar .day-note-status{font-size:7px!important;min-height:6px!important;line-height:1!important}
+.teacher-room-calendar .event{padding:2px 4px!important;margin:0!important;border-radius:5px!important;line-height:1.02!important}
+.teacher-room-calendar .event-title{font-size:10px!important;line-height:1.02!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.teacher-room-calendar .event-teacher{font-size:10px!important;line-height:1.05!important;font-weight:900!important;color:#0f172a!important;margin-top:1px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.teacher-room-calendar .event-meta{font-size:7px!important;line-height:1!important;margin-top:1px!important;color:#64748b!important}
+.teacher-room-calendar .event-badges{display:none!important}
+.teacher-room-calendar .room-date-cell.date-start,
+.teacher-room-calendar .room-lane-slot.date-start{border-top-width:4px!important}
+.hidden-past-day{display:none!important}
+
+/* v15: overall schedule room rows compact like koma generator */
+.teacher-room-calendar .cell,
+.teacher-room-calendar .room-lane-slot,
+.teacher-room-calendar .room-date-cell{min-height:38px!important;height:38px!important;max-height:38px!important;padding:2px!important;overflow:hidden!important}
+.teacher-room-calendar .room-lane-label{font-size:10px!important;line-height:18px!important;height:18px!important;min-width:42px!important;padding:0 5px!important;margin:0!important;border-radius:9px!important}
+.teacher-room-calendar .sticky-date-box{display:flex!important;align-items:center!important;gap:4px!important;width:100%!important;min-width:0!important;height:16px!important;margin:0!important}
+.teacher-room-calendar .sticky-date-box>strong{flex:0 0 auto!important;font-size:10px!important;line-height:16px!important;margin:0!important;white-space:nowrap!important}
+.teacher-room-calendar .day-note-box{flex:1 1 auto!important;display:block!important;min-width:0!important;margin:0!important;height:16px!important}
+.teacher-room-calendar .day-note-text{display:block!important;width:100%!important;min-height:16px!important;height:16px!important;max-height:16px!important;resize:none!important;overflow:hidden!important;padding:1px 3px!important;border-radius:4px!important;font-size:8px!important;line-height:12px!important}
+.teacher-room-calendar .day-note-status{display:none!important}
+.teacher-room-calendar .event{box-sizing:border-box!important;min-height:32px!important;height:32px!important;max-height:32px!important;padding:2px 4px!important;margin:0!important;overflow:hidden!important;border-radius:5px!important;line-height:1!important}
+.teacher-room-calendar .event-title{font-size:10px!important;line-height:13px!important;height:13px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.teacher-room-calendar .event-teacher{font-size:10px!important;line-height:13px!important;height:13px!important;font-weight:900!important;color:#0f172a!important;margin:1px 0 0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.teacher-room-calendar .event-meta,.teacher-room-calendar .event-badges{display:none!important}
+.teacher-room-calendar .room-date-cell.date-start,.teacher-room-calendar .room-lane-slot.date-start{border-top-width:3px!important}

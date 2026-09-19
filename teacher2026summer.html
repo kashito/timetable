@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="ja">
+<head><script src="staff-auth.js?v=20260917-r56-ready" data-staff="required"></script><script src="workspace-ui.js?v=20260916-r54-ready"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全体スケ2026</title>
+<link rel="stylesheet" href="styles.css?v=20260910-r1">
+<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1">
+<link rel="stylesheet" href="teacher-generator-match-v17.css?v=20260910-r1">
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="student-attachments.js?v=20260910-r5"></script>
+
+<script>
+window.SharedClassState=(()=>{
+  const API='state_api.php'; let cache={},loadFailed=false;
+  async function loadAll(){
+    try{const r=await fetch(API+'?v='+Date.now(),{cache:'no-store'});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'出席読込失敗');cache=j.state||{};loadFailed=false;}
+    catch(e){console.warn(e);loadFailed=true;}
+    return cache;
+  }
+  function get(k){return cache[k]||{};}
+  async function save(k,patch){
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({eventKey:k},patch))});
+    const j=await r.json(); if(!j.ok) throw new Error(j.error||'save failed'); cache[k]=j.state||{}; window.LessonFixed?.stateSaved(k,cache[k]); return cache[k];
+  }
+  function all(){return cache;}
+  return {loadAll,get,save,all};
+})();
+</script>
+
+
+<script>
+(function(){
+  const nativeFetch = window.fetch.bind(window);
+
+  function aoaSheet(rows, headers){
+    const data=[headers].concat(rows.map(r=>headers.map(h=>r[h] ?? '')));
+    return XLSX.utils.aoa_to_sheet(data);
+  }
+
+  window.fetch = async function(input, init){
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if(url.includes('schedule.xlsx')){
+      try{
+        const apiRes = await nativeFetch('data_api.php?v='+Date.now(), {cache:'no-store'});
+        const api = await apiRes.json();
+        if(api && api.ok && api.initialized){
+          const scheduleHeaders=['日付','日区分','授業ID','クラス','種別','給与区分','担当講師','教室','時間番号','開始','終了','科目','備考'];
+          const studentHeaders=['生徒名','クラス','優先度'];
+
+          const wb=XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, aoaSheet(api.schedule||[], scheduleHeaders), '時間割データ');
+          XLSX.utils.book_append_sheet(wb, aoaSheet(api.students||[], studentHeaders), '生徒マスタ');
+
+          const arr=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+          return new Response(arr,{
+            status:200,
+            headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+          });
+        }
+      }catch(e){
+        console.warn('WEB編集データ読込失敗。Excelへフォールバックします。',e);
+      }
+    }
+    return nativeFetch(input,init);
+  };
+})();
+</script>
+
+
+<style>
+/* v39 save-before-close confirmation */
+.ops-save-confirm{
+  position:fixed;
+  inset:0;
+  z-index:50000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(15,23,42,.55);
+}
+.ops-save-confirm.hidden{display:none!important}
+.ops-save-confirm{pointer-events:auto}
+.ops-save-confirm-box{position:relative;z-index:50001;pointer-events:auto}
+.ops-save-confirm-box{
+  width:min(100%,380px);
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 18px 50px rgba(0,0,0,.28);
+}
+.ops-save-confirm-title{
+  font-size:18px;
+  font-weight:800;
+  text-align:center;
+  margin-bottom:16px;
+}
+.ops-save-confirm-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+#opsConfirmYes,
+#opsConfirmNo{
+  height:44px;
+  border:0;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:800;
+}
+#opsConfirmYes{
+  background:#16a34a;
+  color:#fff;
+}
+#opsConfirmNo{
+  background:#e2e8f0;
+  color:#0f172a;
+}
+
+/* v60 attendance exemption: isolated */
+.att-row.is-exempt{background:#fff3bf!important;border:2px solid #f59e0b!important;border-radius:8px;padding:6px 8px}
+.att-row.is-exempt>span{font-weight:900;color:#92400e}
+</style>
+
+<style>
+.memo-save-success{font-weight:700;color:#166534!important;background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:4px 8px}
+</style>
+<style>
+.hidden-past-day{display:none!important}
+</style>
+
+<style>
+/* native teacher filter details */
+.teacher-filter-details{
+  margin:8px 12px 10px;
+  border:1px solid #d7dee8;
+  border-radius:10px;
+  background:#fff;
+  overflow:hidden;
+}
+.teacher-filter-details > summary{
+  cursor:pointer;
+  list-style:none;
+  padding:11px 14px;
+  font-weight:800;
+  color:#0f172a;
+  background:#f8fafc;
+  user-select:none;
+}
+.teacher-filter-details > summary::-webkit-details-marker{display:none}
+.teacher-filter-details > summary::after{
+  content:"▼";
+  float:right;
+  font-size:12px;
+}
+.teacher-filter-details:not([open]) > summary::after{content:"▶"}
+.teacher-filter-details .controls.panel{
+  margin:0!important;
+  border:0!important;
+  border-top:1px solid #e2e8f0!important;
+  border-radius:0!important;
+}
+</style>
+
+<style>.data-generator-link{display:inline-block;margin:4px 10px;padding:6px 10px;border-radius:8px;background:#334155;color:#fff;text-decoration:none;font-weight:700}</style>
+
+
+
+
+
+
+
+<link rel="stylesheet" href="teacher-availability.css?v=20260912-r25">
+
+<style>
+/* v36: 全体スケジュール授業詳細モーダル */
+.teacher-ops-modal{
+  position:fixed;inset:0;z-index:30000;
+  display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(15,23,42,.62);
+}
+.teacher-ops-modal.hidden{display:none!important}
+.teacher-ops-panel{
+  position:relative;width:min(820px,96vw);max-height:92vh;overflow:auto;
+  background:#fff;border-radius:18px;padding:20px;
+  box-shadow:0 24px 70px rgba(0,0,0,.35);
+}
+.teacher-ops-head{
+  position:sticky;top:-20px;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:-20px -20px 16px;padding:16px 18px;background:#fff;border-bottom:1px solid #e2e8f0;
+}
+.teacher-ops-head h2{margin:0;font-size:20px}
+.teacher-ops-head button{
+  position:relative;z-index:10;pointer-events:auto;
+  border:0;background:#eef2f7;width:36px;height:36px;border-radius:50%;font-size:24px;line-height:1;cursor:pointer;
+}
+.teacher-ops-panel .ops-sec{margin:0 0 16px;padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+.teacher-ops-panel .ops-sec h3{margin:0 0 8px;font-size:15px}
+.teacher-ops-panel textarea{width:100%;min-height:80px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+.homework-carry{margin:8px 0 10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;line-height:1.55}.homework-carry strong{display:block;margin-bottom:3px}.homework-input{background:#fffdf5}
+@media(max-width:640px){.teacher-ops-modal{padding:8px}.teacher-ops-panel{width:100%;max-height:96vh;padding:14px;border-radius:14px}.teacher-ops-head{top:-14px;margin:-14px -14px 12px;padding:12px 14px}}
+</style>
+
+<style>
+/* v39: editable detail close button must remain clickable */
+#teacherOpsModal .teacher-ops-head{position:sticky;z-index:5}
+#teacherOpsModal #opsClose{position:relative;z-index:10;pointer-events:auto;cursor:pointer}
+</style>
+
+<style id="v43-ops-modern-style">
+/* v43: 授業詳細を見やすいカルテ型デザインに刷新 */
+.topbar-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.record-list-link{background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
+#teacherOpsModal.teacher-ops-modal{backdrop-filter:blur(3px);background:rgba(15,23,42,.58)}
+#teacherOpsModal .teacher-ops-panel{width:min(900px,96vw);padding:0;border-radius:22px;overflow:auto;background:#f8fafc;border:1px solid rgba(255,255,255,.55)}
+#teacherOpsModal .teacher-ops-head{top:0;margin:0;padding:18px 22px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-bottom:0;box-shadow:0 4px 16px rgba(15,23,42,.15)}
+#teacherOpsModal .teacher-ops-head h2{font-size:22px;letter-spacing:.02em}
+#teacherOpsModal #opsClose{width:40px;height:40px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);font-size:26px;font-weight:400}
+#teacherOpsModal #opsClose:hover{background:rgba(255,255,255,.28)}
+#teacherOpsModal #opsBody{padding:18px 20px 22px}
+#teacherOpsModal .ops-summary{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+#teacherOpsModal .ops-chip{display:inline-flex;align-items:center;min-height:30px;padding:5px 10px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:13px;font-weight:800}
+#teacherOpsModal .ops-sec{margin:0 0 14px;padding:16px 17px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 3px 12px rgba(15,23,42,.045)}
+#teacherOpsModal .ops-sec h3{display:flex;align-items:center;gap:7px;margin:0 0 9px;font-size:16px;color:#0f172a}
+#teacherOpsModal .ops-sec small{color:#64748b;line-height:1.55}
+#teacherOpsModal textarea{min-height:92px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;font-size:15px;line-height:1.6;resize:vertical;transition:.15s}
+#teacherOpsModal textarea:focus{outline:0;border-color:#64748b;background:#fff;box-shadow:0 0 0 3px rgba(100,116,139,.13)}
+#teacherOpsModal .record-sec{border-color:#fed7aa;background:#fffaf5}
+#teacherOpsModal .record-sec textarea{background:#fff}
+#teacherOpsModal .record-headline{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#teacherOpsModal .record-list-mini-link{font-size:13px;font-weight:800;text-decoration:none;padding:6px 10px;border-radius:9px;background:#ffedd5;color:#9a3412}
+#teacherOpsModal .ops-save{position:sticky;bottom:0;width:100%;min-height:50px;border:0;border-radius:13px;background:#2563eb;color:#fff;font-size:16px;font-weight:900;box-shadow:0 8px 24px rgba(37,99,235,.23);cursor:pointer}
+#teacherOpsModal .ops-save:hover{filter:brightness(.97)}
+#teacherOpsModal .ready-line{font-size:15px;font-weight:800}
+#teacherOpsModal .room-change-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#teacherOpsModal .room-change-row select{min-width:150px}
+#teacherOpsModal .att-row{padding:7px 0;border-bottom:1px dashed #e2e8f0}
+#teacherOpsModal .att-row:last-child{border-bottom:0}
+#teacherOpsModal .next-schedule-row{border-radius:9px}
+@media(max-width:640px){#teacherOpsModal .teacher-ops-panel{width:100%;max-height:97vh;border-radius:16px}#teacherOpsModal .teacher-ops-head{padding:14px 16px}#teacherOpsModal .teacher-ops-head h2{font-size:19px}#teacherOpsModal #opsBody{padding:12px}#teacherOpsModal .ops-sec{padding:13px}#teacherOpsModal textarea{font-size:16px}}
+</style>
+<style id="v43-detail-control-style">
+/* v43: 詳細画面の操作系を以前のコンパクトで見やすいカードUIへ */
+#teacherOpsModal .ops-sec:has(.room-change-row),
+#teacherOpsModal .ops-sec:has(.att-row){padding:14px 16px;background:#fff;border:1px solid #dbe4ee;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+#teacherOpsModal .ops-sec:has(.room-change-row) h3,
+#teacherOpsModal .ops-sec:has(.att-row) h3{margin-bottom:12px;font-size:16px;font-weight:900}
+#teacherOpsModal .room-change-row{display:grid;grid-template-columns:minmax(160px,1fr) auto;gap:10px;align-items:center}
+#teacherOpsModal .room-change-row select,
+#teacherOpsModal .att-row select{appearance:auto;min-height:42px;padding:8px 34px 8px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#0f172a;font-size:15px;font-weight:700}
+#teacherOpsModal .room-change-row select:focus,
+#teacherOpsModal .att-row select:focus{outline:0;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:#fff}
+#teacherOpsModal #roomChangeSave{min-height:42px;padding:0 16px;border:0;border-radius:10px;background:#0f766e;color:#fff;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap}
+#teacherOpsModal #roomChangeMsg{grid-column:1/-1;font-size:13px;font-weight:800;color:#166534}
+#teacherOpsModal .att-row{display:grid;grid-template-columns:minmax(120px,1fr) 150px;gap:12px;align-items:center;padding:9px 2px;border-bottom:1px solid #edf2f7}
+#teacherOpsModal .att-row>span{font-size:15px;font-weight:800;color:#1e293b}
+#teacherOpsModal .att-row:last-child{border-bottom:0}
+#teacherOpsModal .att-row.is-exempt{padding:8px 10px!important}
+@media(max-width:640px){
+ #teacherOpsModal .room-change-row{grid-template-columns:1fr}
+ #teacherOpsModal #roomChangeSave{width:100%}
+ #teacherOpsModal .att-row{grid-template-columns:1fr 135px;gap:8px}
+ #teacherOpsModal .room-change-row select,#teacherOpsModal .att-row select{font-size:16px}
+}
+
+</style>
+
+<style id="student-attachment-style-v44">
+.student-file-tools{margin-top:10px;padding:11px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc}
+.student-file-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.student-file-row input[type=file]{flex:1;min-width:220px}
+.student-file-upload{border:0;border-radius:10px;padding:9px 14px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}
+.student-file-list{display:grid;gap:7px;margin-top:9px}.student-file-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;background:#fff;border:1px solid #e2e8f0}
+.student-file-item a{flex:1;color:#1d4ed8;font-weight:800;text-decoration:none;overflow-wrap:anywhere}.student-file-delete{border:0;border-radius:8px;padding:5px 8px;background:#fee2e2;color:#991b1b;font-weight:800;cursor:pointer}
+.student-file-msg{display:block;margin-top:7px;font-weight:800}.attachment-indicator{font-size:14px}
+</style>
+
+<style id="school-holiday-full-v63">
+.school-holiday-toggle{display:inline-flex;align-items:center;gap:4px;margin:4px 0 2px;font-size:12px;font-weight:800;color:#9f1239;cursor:pointer}.school-holiday-toggle input{accent-color:#ec4899}.school-holiday-cell{background:#fce7f3!important}.school-holiday-cell .sticky-date-line,.school-holiday-cell .sticky-date,.school-holiday-cell .sticky-weekday{color:#9d174d!important}
+</style>
+<style>.public-warning{display:inline-block;margin-left:8px;color:#dc2626!important;font-weight:950;font-size:12px}</style>
+<style id="confirmed-date-v67">.confirmed-date-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:8px 0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:800}.confirmed-date-bar input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}.confirmed-date-status{color:#64748b;font-size:12px}</style>
+<style>.ops-loading{position:fixed;bottom:20px;right:20px;z-index:50002;max-width:90vw;padding:12px 18px;border-radius:10px;background:#18314b;color:#fff;box-shadow:0 4px 18px #0003;pointer-events:none}</style><style id="modal-sticky-head-v67">.teacher-ops-head{position:sticky!important;top:0!important;z-index:60!important;padding-top:10px!important}</style><link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="quick-controls.css?v=20260917-r55-ready"><script defer src="attendance-actions.js?v=20260912-r17"></script><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="whole-now-line.css?v=20260910-r6"><link rel="stylesheet" href="calendar-events.css?v=20260912-r17"><link rel="stylesheet" href="shared-notes.css?v=20260916-r54-ready"><script defer src="shared-notes.js?v=20260916-r54-ready"></script><style id="whole-menu-sticky-r18">
+/* Keep page navigation available while the timetable scrolls. */
+body.compact-whole-schedule > .workspace-nav{position:sticky;top:0;z-index:40;box-shadow:0 2px 7px #18314b30}
+@media(max-width:900px){
+  body.compact-whole-schedule > .workspace-nav{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+  body.compact-whole-schedule > .workspace-nav > *{flex-shrink:0;white-space:nowrap}
+  body.compact-whole-schedule > .workspace-nav .nav-user{width:auto}
+}
+</style>
+<script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20260913-r31"></script><link rel="stylesheet" href="whole-day-info.css?v=20260917-r55-ready"><script defer src="whole-day-info.js?v=20260917-r55-ready"></script></head>
+<body data-mode="teacher" class="compact-whole-schedule">
+
+
+<header class="topbar">
+  <div><div class="eyebrow">進学教室 志学館</div><h1>2026 時間割 <span class="page-badge teacher">講師用</span></h1></div>
+<div class="topbar-links"><a href="lesson_records.html" class="data-generator-link record-list-link">授業カルテ一覧</a><a href="schedule_generator.html" class="data-generator-link" data-admin>データ生成ページ</a></div></header>
+<main>
+<div class="confirmed-date-bar">確定日 <input id="scheduleConfirmedDate" type="date"><span id="scheduleConfirmedStatus" class="confirmed-date-status"></span></div>
+<details class="teacher-filter-details">
+  <summary>絞り込み条件</summary>
+  <section class="controls panel">
+  <div class="control"><label>表示</label><select id="viewSelect"><option value="all">時間割表示</option><option value="list">一覧表示</option></select></div>
+  <div class="control"><label>クラス</label><select id="classFilter"><option value="">すべて</option></select></div>
+  <div class="control"><label>担当講師</label><select id="teacherFilter"><option value="">すべて</option></select></div>
+  <div class="control"><label>教室</label><select id="roomFilter"><option value="">すべて</option></select></div>
+  <div class="control"><label>種別</label><select id="typeFilter"><option value="">すべて</option></select></div>
+  <div class="control"><label>科目</label><select id="subjectFilter"><option value="">すべて</option></select></div>
+  <button id="clearFilters" class="ghost">絞り込み解除</button>
+</section>
+</details>
+<style>.legend[hidden]{display:none!important}#statusBar:empty{display:none}</style><section id="statusBar" class="statusbar">Excelデータを読み込んでいます…</section>
+<section class="legend panel" hidden><span><i class="dot lesson"></i>授業</span><span><i class="dot exercise"></i>演習</span><span><i class="dot support"></i>補習</span><span><i class="dot test"></i>テスト</span><span><i class="dot special"></i>休み・キャンプ・OFF</span></section>
+<section id="schedule" class="schedule"></section>
+</main>
+<div id="modal" class="modal hidden" aria-hidden="true"><div class="modal-card"><button id="modalClose" class="modal-close">×</button><div id="modalBody"></div></div></div>
+<script src="teacher-ng-guard.js?v=20260910-r1"></script>
+<script src="school-holidays.js?v=20260912-r23"></script>
+<script src="timetable-app.js?v=20260917-r55-ready" onerror="document.getElementById('statusBar').textContent='時間割の表示用ファイルを読み込めません。更新ZIPの timetable-app.js をアップロードしてから、Ctrl＋F5で再読み込みしてください。'"></script>
+
+
+
+
+
+
+
+
+<script>
+(function(){
+  let showPast=false;
+
+  function parseMD(text){
+    const m=(text||'').match(/(\d{1,2})\/(\d{1,2})/);
+    if(!m) return null;
+    return new Date(2026, Number(m[1])-1, Number(m[2]));
+  }
+
+  function getDateGroups(){
+    return Array.from(document.querySelectorAll('.date-cell')).map(dc=>{
+      const d=parseMD(dc.textContent);
+      if(!d) return null;
+      const cells=[dc];
+      let n=dc.nextElementSibling;
+      for(let i=0;i<11 && n;i++,n=n.nextElementSibling) cells.push(n);
+      return {date:d,cells};
+    }).filter(Boolean);
+  }
+
+  function applyPastVisibility(){
+    const today=new Date();
+    today.setHours(0,0,0,0);
+    getDateGroups().forEach(g=>{
+      const hide=g.date<today && !showPast;
+      g.cells.forEach(c=>c.classList.toggle('hidden-past-day',hide));
+    });
+  }
+
+  function setupPastToggle(){
+    if(document.getElementById('pastDayToggle')) return;
+    const main=document.querySelector('main') || document.body;
+    const wrap=document.createElement('div');
+    wrap.className='past-toggle-wrap';
+    wrap.innerHTML='<label class="past-toggle-label"><input id="pastDayToggle" type="checkbox"><span>終了した日も表示</span></label>';
+    main.insertBefore(wrap, main.firstChild);
+    wrap.querySelector('input').addEventListener('change',e=>{
+      showPast=e.target.checked;
+      applyPastVisibility();
+      drawNowLine();
+    });
+  }
+
+  function drawNowLine(){window.WholeNowLine?.draw();}
+
+  function initLocalClock(){
+    setupPastToggle();
+    applyPastVisibility();
+    drawNowLine();
+
+
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>setTimeout(initLocalClock,800));
+  }else{
+    setTimeout(initLocalClock,800);
+  }
+window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;document.addEventListener('history-window-change',()=>{applyPastVisibility();drawNowLine();});
+})();
+</script>
+
+
+<script>
+(function(){
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const norm=v=>String(v??'').trim();
+
+  function makeAutoSeries(r){
+    const subs=String(r['科目']||'').split(/[,、，]/).map(x=>x.trim()).filter(Boolean).join('+');
+    return [norm(r['クラス']),norm(r['種別']),norm(r['担当講師']),subs].filter(Boolean).join('|');
+  }
+  function occurrenceKey(r){
+    const subs=String(r['科目']||'').split(/[,、，]/).map(x=>x.trim()).filter(Boolean).join('+');
+    return [normalizeDate(r['日付']),norm(r['時間番号']),norm(r['クラス']),norm(r['担当講師']),norm(r['種別']),subs].join('|');
+  }
+  function normalizeDate(v){
+    if(typeof v==='number'){
+      const p=XLSX.SSF.parse_date_code(v);
+      return p?`${p.y}-${String(p.m).padStart(2,'0')}-${String(p.d).padStart(2,'0')}`:'';
+    }
+    const s=String(v||'').trim();
+    const m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:s.slice(0,10);
+  }
+  
+  let classMemoCache={};
+  async function loadAllClassMemos(){
+    try{
+      const r=await fetch('state_api.php?action=getAllClassMemos&v='+Date.now(),{cache:'no-store'});
+      const j=await r.json();
+      if(!r.ok||!j.ok) throw new Error(j.error||'共有コメントの読込に失敗しました');
+      classMemoCache=(j.classMemos&&typeof j.classMemos==='object')?j.classMemos:{};
+    }catch(e){
+      console.warn('共有コメント一覧読込失敗',e);
+      classMemoCache=classMemoCache||{};
+    }
+    return classMemoCache;
+  }
+  async function loadClassMemo(cls){
+    const className=String(cls||'').trim();
+    if(!className) return '';
+    try{
+      const r=await fetch('state_api.php?action=getClassMemo&classKey='+encodeURIComponent(className)+'&v='+Date.now(),{cache:'no-store'});
+      const j=await r.json();
+      if(!r.ok||!j.ok) throw new Error(j.error||'共有コメントの読込に失敗しました');
+      classMemoCache[className]=String(j.classMemo||'');
+      return classMemoCache[className];
+    }catch(e){
+      console.warn('共有コメント読込失敗',e);
+      return String(classMemoCache[className]||'');
+    }
+  }
+
+  async function saveClassMemo(cls,memo){
+    return SharedNotes.post(cls,document.querySelector('#teacherMemo'));
+  }
+
+async function workbookData(){
+    const response=await fetch('data_api.php?v='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('最新の時間割を読み込めません');
+    const current=await response.json();
+    if(!current.ok)throw new Error(current.error||'時間割読込失敗');
+    if(current.initialized)return {rows:current.schedule||[],members:current.students||[]};
+    const r=await fetch('schedule.xlsx?v='+Date.now(),{cache:'no-store'});
+    if(!r.ok) return {rows:[],members:[]};
+    const b=await r.arrayBuffer();
+    const wb=XLSX.read(b,{type:'array'});
+    const ws=wb.Sheets['時間割データ']||wb.Sheets[wb.SheetNames[0]];
+    const sws=wb.Sheets['生徒マスタ'];
+    return {
+      rows:XLSX.utils.sheet_to_json(ws,{defval:''}),
+      members:sws?XLSX.utils.sheet_to_json(sws,{defval:''}):[]
+    };
+  }
+  
+  function stateForCard(card){
+    const exact=SharedClassState.get(card.dataset.key)||{};
+    if(Object.keys(exact).length) return exact;
+    const all=typeof SharedClassState.all==='function'?SharedClassState.all():{};
+    const date=String(card.dataset.date||'');
+    const slot=String(card.dataset.slot||'');
+    const cls=String(card.dataset.class||card.querySelector('.event-title')?.textContent||'').trim();
+    for(const [k,v] of Object.entries(all||{})){
+      const ks=String(k);
+      if(date && slot && cls && ks.includes(date) && ks.includes(slot) && ks.includes(cls)) return v||{};
+    }
+    return {};
+  }
+
+  async function applyCommentIndicators(){
+    await loadAllClassMemos();
+    document.querySelectorAll('.event[data-key]').forEach(card=>{
+      const st=stateForCard(card);
+      const cardClass=String(card.dataset.class||card.querySelector('.event-title')?.textContent||'').trim();
+      const host=card.querySelector('.event-badges')||card;
+      let teacherIcon=card.querySelector('.teacher-comment-indicator');
+      let publicIcon=card.querySelector('.public-comment-indicator');
+      const hasTeacher=!!String(classMemoCache[cardClass]||'').trim()||!!window.SharedNotes?.hasNotes(cardClass);
+      const hasPublic=!!String(st.publicNote||'').trim();
+      if(hasTeacher && !teacherIcon){
+        teacherIcon=document.createElement('span'); teacherIcon.className='event-badge comment-indicator teacher-comment-indicator'; teacherIcon.title='先生同士の共有コメントあり'; teacherIcon.textContent='💬'; host.appendChild(teacherIcon);
+      } else if(!hasTeacher && teacherIcon) teacherIcon.remove();
+      if(hasPublic && !publicIcon){
+        publicIcon=document.createElement('span'); publicIcon.className='event-badge comment-indicator public-comment-indicator'; publicIcon.title='先生から生徒へのメッセージあり'; publicIcon.textContent='📢'; host.appendChild(publicIcon);
+      } else if(!hasPublic && publicIcon) publicIcon.remove();
+    });
+  }
+
+async function applyAttachmentIndicators(){
+    try{
+      await StudentAttachments.loadAll();
+      document.querySelectorAll('.event[data-key],.event-card[data-key]').forEach(card=>{
+        const items=StudentAttachments.get(card.dataset.key)||[];
+        const host=card.querySelector('.event-badges')||card;
+        let icon=card.querySelector('.attachment-indicator');
+        if(items.length && !icon){
+          icon=document.createElement('span'); icon.className='event-badge attachment-indicator'; icon.title='このコマに添付ファイルあり'; icon.textContent='📎 '+items.length; host.appendChild(icon);
+        }else if(items.length && icon){ icon.textContent='📎 '+items.length; }else if(!items.length && icon){ icon.remove(); }
+      });
+    }catch(e){ console.warn('添付アイコン更新失敗',e); }
+  }
+
+async function applyReadyOnce(){
+    await SharedClassState.loadAll();
+    document.querySelectorAll('.event[data-key]').forEach(card=>{
+      const st={...(SharedClassState.get(card.dataset.key)||{}),ready:LinkedSchedule.cardReady(card,k=>!!SharedClassState.get(k)?.ready)};
+      card.classList.toggle('is-ready',!!st.ready);
+      let b=card.querySelector('.ready-badge');
+      if(st.ready&&!b){
+        b=document.createElement('span');b.className='ready-badge';b.textContent='✓ 準備完了';
+        (card.querySelector('.event-badges')||card).appendChild(b);
+      }else if(!st.ready&&b){b.remove();}
+    });
+    if(typeof applyCommentIndicators==='function') await applyCommentIndicators();
+    if(typeof applyAttachmentIndicators==='function') await applyAttachmentIndicators();
+  }
+
+  async function loadLessonRecord(eventKey){
+    try{
+      const r=await fetch('lesson_record_api.php?key='+encodeURIComponent(eventKey)+'&v='+Date.now(),{cache:'no-store'});
+      const j=await r.json();
+      if(!r.ok||!j.ok) throw new Error(j.error||'カルテ読込失敗'); return j.record||{};
+    }catch(e){ console.warn('授業カルテ読込失敗',e); return {_loadFailed:true}; }
+  }
+  async function saveLessonRecord(payload){
+    const r=await fetch('lesson_record_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json(); if(!j.ok) throw new Error(j.error||'授業カルテの保存に失敗しました'); return j.record||{};
+  }
+
+  async function openOps(card){
+    if(window.LessonGroups){try{await LessonGroups.ready;}catch(e){alert(e.message+'。再読み込みしてください。');return;}const group=LessonGroups.forKey(card.dataset.key);if(group){location.assign(LessonGroups.url(group.id));return;}}
+    const savedPosition=window.HistoryWindow?.capture();
+    const key=card.dataset.key;
+    const seriesId=card.dataset.seriesId||'';
+    const cls=card.dataset.class||card.querySelector('.event-title')?.textContent?.trim()||'';
+    if(!key)return;
+
+    // 詳細画面は補助データの読込に失敗しても必ず開く。
+    // 以前は workbook / 教室上書き等の一時的な読込失敗で fallback 詳細に落ち、
+    // 保存ボタンや閉じる前確認が消えていた。
+    try{ await SharedClassState.loadAll(); }catch(e){ console.warn('状態読込失敗',e); }
+    let detailLoadFailed=SharedClassState.loadFailed;
+    try{if(window.Workspace)await Workspace.refresh();}catch(e){detailLoadFailed=true;console.warn('生徒の表示設定読込失敗',e);}
+    let data={rows:[],members:[]};
+    let classMemo='';
+    let lessonRecord={};
+    try{ data=await workbookData(); }catch(e){detailLoadFailed=true; console.warn('時間割詳細読込失敗',e); }
+    try{ classMemo=await loadClassMemo(cls); }catch(e){detailLoadFailed=true; console.warn('共有コメント読込失敗',e); }
+    try{ lessonRecord=await loadLessonRecord(key); }catch(e){ console.warn('授業カルテ読込失敗',e); }
+    if(!data || !Array.isArray(data.rows) || !Array.isArray(data.members)) data={rows:[],members:[]};
+    if(window.RoomOverrides){ try{ await RoomOverrides.load(); }catch(e){ console.warn('教室変更読込失敗',e); } }
+    const st=stateForCard(card);
+    const roster=[...new Set(data.members.filter(x=>norm(x['クラス'])===cls&&(!window.Workspace||(!Workspace.hiddenStudent(norm(x['生徒名']))&&Workspace.enrolled(x,card.dataset.date||key.split('|')[0])))).map(x=>norm(x['生徒名'])).filter(Boolean))];
+
+    const seriesRows=data.rows.filter(r=>{
+      const manual=norm(r['授業ID']);
+      const sid=manual||makeAutoSeries(r);
+      return sid===seriesId;
+    }).sort((a,b)=>normalizeDate(a['日付']).localeCompare(normalizeDate(b['日付'])));
+
+    let modal=document.getElementById('teacherOpsModal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='teacherOpsModal';modal.className='teacher-ops-modal hidden';
+      modal.innerHTML='<div class="teacher-ops-panel"><div class="teacher-ops-head"><h2 id="opsTitle"></h2><button id="opsClose" type="button">×</button></div><div id="opsBody"></div></div>';
+      document.body.appendChild(modal);
+      
+      // v39: close/save behavior is bound after the detail body is rendered.
+
+
+    }
+
+    // Always bind save/close actions to the occurrence currently being edited.
+    modal.dataset.currentKey = key;
+    modal.dataset.currentClass = cls;
+
+    const exactAttendanceState=(window.SharedClassState&&typeof SharedClassState.get==='function')?(SharedClassState.get(key)||{}):{};
+    const rawAtt=(exactAttendanceState.attendance&&typeof exactAttendanceState.attendance==='object')?exactAttendanceState.attendance:{};
+    // 旧版で自動的に全員『出席』として保存された状態はデフォルト扱いに戻す。
+    // v73以降、利用者が保存した出席情報には attendanceTouched=true が付く。
+    const legacyAutoPresent=exactAttendanceState.attendanceTouched!==true && roster.length>0 && roster.every(n=>rawAtt[n]==='出席');
+    const att={...rawAtt},autoExempt=new Set();
+    if(window.Workspace)for(const n of roster)if((!att[n]||att[n]==='---')&&Workspace.exempt(n,cls,card.dataset.date||key.split('|')[0],exactAttendanceState)){att[n]='免除';autoExempt.add(n);}
+    detailLoadFailed=detailLoadFailed||SharedClassState.loadFailed||lessonRecord._loadFailed;
+    modal.querySelector('#opsTitle').textContent=cls||'授業';
+    const cardDate=card.dataset.date||key.split('|')[0]||'';
+    const cardSlot=card.dataset.slot||key.split('|')[1]||'';
+    const cardTeacher=card.dataset.teacher||card.querySelector('.event-teacher')?.textContent?.trim()||'';
+    const cardRoom=card.dataset.room||'';
+    const cardSubject=card.dataset.subject||'';
+    modal.querySelector('#opsBody').innerHTML=`
+      <div class="ops-summary"><span class="ops-chip">📅 ${esc(cardDate)}</span><span class="ops-chip">🕒 ${esc(cardSlot)}</span>${cardTeacher?`<span class="ops-chip">👤 ${esc(cardTeacher)}</span>`:''}${cardRoom?`<span class="ops-chip">🏫 ${esc(cardRoom)}</span>`:''}</div>
+      <section class="ops-sec record-sec">
+        <div class="record-headline"><h3>🗂 この授業の記録・カルテ</h3><a class="record-list-mini-link" href="lesson_records.html?class=${encodeURIComponent(cls)}">この授業のカルテ一覧を見る</a></div>
+        <textarea id="lessonRecordMemo" placeholder="例：理解度、つまずき、次回の対応、保護者共有事項など">${esc(lessonRecord.memo||'')}</textarea>
+        <div data-recording-key="${esc(key)}"></div>
+        <label style="display:block;margin-top:10px;font-weight:900">📚 次回までの宿題</label><textarea id="lessonHomework" class="homework-input" placeholder="次回の同じ授業コマに表示する宿題">${esc(lessonRecord.homework||'')}</textarea><div><button type="button" class="ws-button" data-homework-none="#lessonHomework">宿題なしを入力</button><small>入力後、保存してください。空欄は未記入として通知します。</small></div>
+        <small>カルテと宿題はこの日・このコマに保存され、宿題は次回の同じ授業に引き継いで表示されます。</small>
+      </section>
+      <section class="ops-sec">
+        <h3>💬 先生から生徒へのメッセージ（このコマのみ） <span class="public-warning">公開されます</span></h3>
+        <textarea id="publicNote" placeholder="この日・このコマだけ、生徒に表示するメッセージ">${esc(st.publicNote||'')}</textarea>
+        <small>保存すると、このコマの生徒画面に表示されます。</small>
+        <div class="student-file-tools">
+          <div class="student-file-row"><input id="studentFileInput" type="file" multiple><button id="studentFileUpload" class="student-file-upload" type="button">📎 ファイルを追加</button></div>
+          <small>生徒画面に表示され、生徒がダウンロードできます（1ファイル20MBまで）。</small>
+          <div id="studentFileList" class="student-file-list"></div><span id="studentFileMsg" class="student-file-msg"></span>
+        </div>
+      </section>
+      <section class="ops-sec">
+        <h3>👥 先生同士の共有コメント</h3>
+        <textarea id="teacherMemo" placeholder="講師間だけで共有するコメント"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <button id="teacherMemoSave" type="button" class="secondary">共有メモを投稿</button>
+          <small id="teacherMemoMsg">同じクラスの全日程で共有されます。</small>
+        </div>
+      </section>
+      <section class="ops-sec">
+        <label class="ready-line"><input id="readyCheck" type="checkbox" ${st.ready?'checked':''}> 準備完了</label>
+      </section>
+
+      <section class="ops-sec">
+        <h3>🏫 教室変更</h3>
+        <div class="room-change-row">
+          <select id="roomChangeSelect">
+            ${(()=>{
+              const current=(window.RoomOverrides&&RoomOverrides.get(key)&&RoomOverrides.get(key).room!==undefined)
+                ? String(RoomOverrides.get(key).room||'')
+                : String(card.dataset.room||'');
+              return ['','白','青','黄','ガラス','PC','自宅可']
+                .map(v=>`<option value="${esc(v)}" ${current===v?'selected':''}>${v||'未設定'}</option>`)
+                .join('');
+            })()}
+          </select>
+          <button id="roomChangeSave" type="button">教室を保存</button>
+          <span id="roomChangeMsg"></span>
+        </div>
+      </section>
+
+      <section class="ops-sec">
+        <h3>✅ 出席者確認</h3><div id="scOpsContacts"></div><div class="attendance-bulk-actions"><button type="button" id="opsAllPresent" data-all-present="#teacherOpsModal .attSel">全員出席にする</button><button type="button" class="ce-copy-previous" data-previous-mode="teacher" data-copy-previous="#teacherOpsModal .attSel">前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div>
+        ${roster.map(n=>`<div class="att-row ${att[n]==='免除'?'is-exempt':''}"><span>${esc(n)}</span><select class="attSel" data-name="${esc(n)}" data-auto-exempt="${autoExempt.has(n)}" onchange="this.closest('.att-row').classList.toggle('is-exempt',this.value==='免除')">${['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'].map(v=>`<option ${(att[n]||'---')===v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')||'<small>対象生徒なし</small>'}
+      </section>
+      <section class="ops-sec">
+        <h3>📆 次回以降の日程一覧</h3>
+        <div class="next-schedule-list">
+          ${seriesRows.map(r=>{
+            const d=normalizeDate(r['日付']);
+            const slot=norm(r['時間番号']);
+            const endMap={'①':'14:10','②':'15:00','③':'15:50','④':'16:40','⑤':'17:30','⑥':'18:20','⑦':'19:10','⑧':'20:00','⑨':'20:50','⑩':'21:40','⑪':'22:30'};
+            const endTime=norm(r['終了'])||endMap[slot]||'23:59';
+            const dt=new Date(d+'T'+endTime+':00');
+            const past=!isNaN(dt.getTime()) && dt < new Date();
+            const nextSubs=String(r['科目']||'').split(/[,、，]/).map(x=>x.trim()).filter(Boolean).join('+');
+            const nextKey=[d,slot,norm(r['クラス']),norm(r['担当講師']),norm(r['種別']),nextSubs].join('|');
+            let nextRoom=norm(r['教室']);
+            if(window.RoomOverrides){
+              const override=RoomOverrides.get(nextKey);
+              if(override && override.room!==undefined){
+                nextRoom=String(override.room||'').trim();
+              }
+            }
+            const dateParts=String(d||'').match(/^(?:(\d{4})[-\/])?(\d{1,2})[-\/](\d{1,2})$/);
+            const yy=dateParts?Number(dateParts[1]||2026):2026;
+            const mm=dateParts?Number(dateParts[2]):1;
+            const dd=dateParts?Number(dateParts[3]):1;
+
+            const weekday=dateParts
+              ? ['日','月','火','水','木','金','土'][new Date(yy,mm-1,dd,12,0,0).getDay()]
+              : '';
+
+            const startMap={
+              '①':'13:30','②':'14:20','③':'15:10','④':'16:00','⑤':'16:50','⑥':'17:40',
+              '⑦':'18:30','⑧':'19:20','⑨':'20:10','⑩':'21:00','⑪':'21:50'
+            };
+
+            const toClock=value=>{
+              if(typeof value==='number' && value>=0 && value<1){
+                const mins=Math.round(value*24*60);
+                return `${String(Math.floor(mins/60)%24).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`;
+              }
+              const s=String(value??'').trim();
+              if(/^\d*\.?\d+$/.test(s)){
+                const n=Number(s);
+                if(n>=0 && n<1){
+                  const mins=Math.round(n*24*60);
+                  return `${String(Math.floor(mins/60)%24).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`;
+                }
+              }
+              const tm=s.match(/(\d{1,2}):(\d{2})/);
+              return tm?`${String(Number(tm[1])).padStart(2,'0')}:${tm[2]}`:'';
+            };
+
+            const startClock=toClock(r['開始']) || startMap[slot] || '';
+            if(!dateParts || !startClock) return '';
+
+            const startParts=startClock.match(/^(\d{2}):(\d{2})$/);
+            const targetDate=new Date(
+              yy,mm-1,dd,
+              Number(startParts[1]),
+              Number(startParts[2]),
+              0,0
+            );
+
+            const diff=targetDate.getTime()-Date.now();
+            if(!Number.isFinite(diff) || diff<=0) return '';
+
+            const totalMinutes=Math.max(0,Math.floor(diff/60000));
+            const days=Math.floor(totalMinutes/1440);
+            const hours=Math.floor((totalMinutes%1440)/60);
+            const minutes=totalMinutes%60;
+
+            const remaining=days>0
+              ? `あと${days}日${hours}時間${minutes}分`
+              : `あと${hours}時間${minutes}分`;
+            return `<div class="next-schedule-row ${past?'past-schedule':''}">
+              <span>${esc(d)}${weekday?`（${weekday}）`:''}</span>
+              <span>${esc(slot)}</span>
+              <span>${esc(nextRoom)}</span>
+              <span class="next-schedule-remaining">${esc(remaining)}</span>
+            </div>`;
+          }).filter(Boolean).join('')||'<small>今後の日程はありません</small>'}
+        </div>
+      </section>
+      <button id="opsSave" class="ops-save" type="button">保存</button>
+      <div id="opsMsg"></div>`;
+
+    if(window.StaffContacts)StaffContacts.mount(modal.querySelector('#scOpsContacts'),{keys:[key],onConfirmed:async item=>{
+      await SharedClassState.loadAll();if(modal.dataset.currentKey!==key)return;
+      const a=item.attendance[key];if(a){const initial=JSON.parse(initialOpsFormState);initial.forEach(pair=>{if(pair[0]===item.student)pair[1]=a.value;});initialOpsFormState=JSON.stringify(initial);}if(a)modal.querySelectorAll('.attSel').forEach(sel=>{if(sel.dataset.name===item.student){sel.value=a.value;sel.dataset.autoExempt='false';sel.closest('.att-row')?.classList.toggle('is-exempt',a.value==='免除');}});
+    }});
+    modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
+    async function renderStudentFiles(){
+      const list=modal.querySelector('#studentFileList');
+      const msg=modal.querySelector('#studentFileMsg');
+      if(!list) return;
+      try{
+        const items=await StudentAttachments.list(key,true);
+        list.innerHTML=items.length?items.map(a=>`<div class="student-file-item"><span>${a.sender==='student'?'📤':'📎'}</span><a href="${StudentAttachments.rawUrl(a)}">${a.sender==='student'?'<b>生徒から：</b>':'<b>先生から：</b>'}${esc(a.name)}${a.senderName?' <small>('+esc(a.senderName)+')</small>':''}</a><button type="button" class="student-file-delete" data-id="${esc(a.id)}">削除</button></div>`).join(''):'<small>添付ファイルはありません。</small>';
+        list.querySelectorAll('.student-file-delete').forEach(btn=>{
+          btn.onclick=async()=>{
+            if(!confirm('この添付ファイルを削除しますか？')) return;
+            btn.disabled=true;
+            try{ await StudentAttachments.remove(key,btn.dataset.id); await renderStudentFiles(); await applyAttachmentIndicators(); }
+            catch(e){ if(msg) msg.textContent='削除失敗：'+(e.message||e); }
+          };
+        });
+      }catch(e){ if(msg) msg.textContent='添付読込失敗：'+(e.message||e); }
+    }
+    const fileInput=modal.querySelector('#studentFileInput');
+    const fileUpload=modal.querySelector('#studentFileUpload');
+    if(fileUpload && fileInput){
+      fileUpload.onclick=async()=>{
+        const files=[...fileInput.files];
+        const msg=modal.querySelector('#studentFileMsg');
+        if(!files.length){ if(msg) msg.textContent='ファイルを選択してください。'; return; }
+        fileUpload.disabled=true; fileUpload.textContent='アップロード中…'; if(msg) msg.textContent='';
+        try{
+          for(const f of files) await StudentAttachments.upload(key,f,{sender:'teacher'});
+          fileInput.value=''; if(msg) msg.textContent='✓ アップロードしました';
+          await renderStudentFiles(); await applyAttachmentIndicators();
+        }catch(e){ if(msg) msg.textContent='アップロード失敗：'+(e.message||e); }
+        finally{ fileUpload.disabled=false; fileUpload.textContent='📎 ファイルを追加'; }
+      };
+    }
+    renderStudentFiles();
+
+
+    const memoSaveBtn=modal.querySelector('#teacherMemoSave');
+    const memoMsg=modal.querySelector('#teacherMemoMsg');
+    const memoInput=modal.querySelector('#teacherMemo');
+    SharedNotes.mount(memoInput,cls);
+
+    if(memoInput){
+      memoInput.oninput=()=>{
+        if(memoMsg){
+          memoMsg.textContent='未保存の変更があります';
+          memoMsg.classList.remove('memo-save-success');
+        }
+      };
+    }
+
+    if(memoSaveBtn){
+      memoSaveBtn.onclick=async()=>{
+        memoSaveBtn.disabled=true;
+        memoSaveBtn.textContent='保存中…';
+        if(memoMsg){
+          memoMsg.textContent='保存中…';
+          memoMsg.classList.remove('memo-save-success');
+        }
+        try{
+          await saveClassMemo(cls,memoInput?.value||'');
+          await SharedClassState.loadAll();
+          if(typeof applyCommentIndicators==='function') await applyCommentIndicators();
+          memoSaveBtn.textContent='✓ 保存済み';
+          if(memoMsg){
+            memoMsg.textContent='✓ 保存しました（同じクラスに共有済み）';
+            memoMsg.classList.add('memo-save-success');
+          }
+        }catch(e){
+          memoSaveBtn.textContent='保存失敗';
+          if(memoMsg) memoMsg.textContent='保存失敗：'+(e.message||e);
+        }finally{
+          memoSaveBtn.disabled=false;
+          setTimeout(()=>{
+            if(memoSaveBtn.textContent==='✓ 保存済み') memoSaveBtn.textContent='共有メモを投稿';
+          },2000);
+        }
+      };
+    }
+
+    
+    const roomChangeSave=modal.querySelector('#roomChangeSave');
+    if(roomChangeSave){
+      roomChangeSave.onclick=async()=>{
+        const msg=modal.querySelector('#roomChangeMsg');
+        const room=modal.querySelector('#roomChangeSelect')?.value||'';
+
+        roomChangeSave.disabled=true;
+        roomChangeSave.textContent='保存中…';
+        if(msg) msg.textContent='';
+
+        try{
+          const r=await fetch('room_override_api.php',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({key:key,room:room})
+          });
+          const j=await r.json();
+          if(!r.ok||!j.ok) throw new Error(j.error||'教室変更の保存に失敗しました');
+
+          if(window.RoomOverrides){
+            await RoomOverrides.refresh();
+          }
+
+          roomChangeSave.textContent='✓ 保存済み';
+          if(msg){
+            msg.textContent='✓ 教室を変更しました';
+            msg.classList.add('room-save-success');
+          }
+
+          setTimeout(()=>{
+            roomChangeSave.textContent='教室を保存';
+          },1800);
+
+        }catch(e){
+          roomChangeSave.textContent='保存失敗';
+          if(msg) msg.textContent='保存失敗：'+(e.message||e);
+        }finally{
+          roomChangeSave.disabled=false;
+        }
+      };
+    }
+
+async function saveOpsAndClose(){
+      const msg=modal.querySelector('#opsMsg');
+      const confirmBox=document.getElementById('opsSaveConfirm');
+      if(confirmBox) confirmBox.classList.add('hidden');
+      try{
+        if(detailLoadFailed)throw new Error('読込に失敗した項目があります。詳細を開き直してください。');
+        if(msg) msg.textContent='保存中…';
+        const attendance={};
+        modal.querySelectorAll('.attSel').forEach(x=>{ if(x.value&&x.value!=='---'&&!(x.dataset.autoExempt==='true'&&x.value==='免除')) attendance[x.dataset.name]=x.value; });
+        const saveKey=modal.dataset.currentKey||key;
+        await SharedClassState.save(saveKey,{
+          publicNote:modal.querySelector('#publicNote')?.value||'',
+          ready:!!modal.querySelector('#readyCheck')?.checked,
+          attendance,
+          attendanceTouched:true
+        });
+        // 講師共有メモも通常の保存ボタンで保存する
+        await saveClassMemo(modal.dataset.currentClass||cls, modal.querySelector('#teacherMemo')?.value||'');
+        // この日・このコマ固有のカルテを別データとして保存する
+        if(!lessonRecord._loadFailed) await saveLessonRecord({
+          eventKey:saveKey,
+          memo:modal.querySelector('#lessonRecordMemo')?.value||'',
+          homework:modal.querySelector('#lessonHomework')?.value||'',
+          date:cardDate,
+          slot:cardSlot,
+          className:modal.dataset.currentClass||cls,
+          teacher:cardTeacher,
+          room:modal.querySelector('#roomChangeSelect')?.value||cardRoom,
+          subject:cardSubject
+        });
+        if(msg) msg.textContent='保存しました。';
+        try{
+          if(typeof applyReadyOnce==='function') await applyReadyOnce();
+          else if(typeof applyReady==='function') await applyReady();
+          if(typeof applyCommentIndicators==='function') await applyCommentIndicators();
+        }catch(uiError){ console.warn('保存後の画面更新に失敗',uiError); }
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden','true');window.HistoryWindow?.restore(savedPosition);
+        return true;
+      }catch(saveError){
+        if(msg) msg.textContent='保存に失敗しました：'+(saveError.message||saveError);
+        return false;
+      }
+    }
+
+    function hideOpsWithoutSave(){
+      const confirmBox=document.getElementById('opsSaveConfirm');
+      if(confirmBox) confirmBox.classList.add('hidden');
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden','true');window.HistoryWindow?.restore(savedPosition);
+    }
+
+    const opsFormState=()=>JSON.stringify([...modal.querySelectorAll('#opsBody textarea,#opsBody select,#opsBody input[type=checkbox]')].filter(e=>!e.closest('.shared-notes-list,.sc-inbox')).map(e=>[e.id||e.dataset.name,e.type==='checkbox'?e.checked:e.value]));
+    let initialOpsFormState=opsFormState();
+    function requestOpsClose(){
+      if(SharedNotes.busy(memoInput)){memoMsg.textContent='共有メモを保存中です。完了後に閉じてください。';return;}
+      if(opsFormState()===initialOpsFormState){hideOpsWithoutSave();return;}
+      let box=document.getElementById('opsSaveConfirm');
+      if(!box){
+        box=document.createElement('div');
+        box.id='opsSaveConfirm';
+        box.className='ops-save-confirm hidden';
+        box.innerHTML=`<div class="ops-save-confirm-box">
+          <div class="ops-save-confirm-title">変更内容を保存して閉じますか？</div>
+          <div class="ops-save-confirm-actions">
+            <button id="opsConfirmYes" type="button">保存して閉じる</button>
+            <button id="opsConfirmNo" type="button">保存せず閉じる</button>
+          </div>
+        </div>`;
+        document.body.appendChild(box);
+      }
+      box.classList.remove('hidden');
+      const yes=box.querySelector('#opsConfirmYes');
+      const no=box.querySelector('#opsConfirmNo');
+      yes.onclick=async e=>{
+        e.preventDefault();e.stopPropagation();
+        yes.disabled=true; no.disabled=true; yes.textContent='保存中…';
+        const ok=await saveOpsAndClose();
+        if(!ok){ box.classList.add('hidden'); }
+        yes.disabled=false; no.disabled=false; yes.textContent='保存して閉じる';
+      };
+      no.onclick=e=>{ e.preventDefault();e.stopPropagation(); hideOpsWithoutSave(); };
+    }
+
+    const shortcuts=document.createElement('div');shortcuts.className='detail-shortcuts';shortcuts.innerHTML=`<a href="class_schedule.html?class=${encodeURIComponent(cls)}">この授業の全予定</a><a href="lesson_records.html?class=${encodeURIComponent(cls)}">カルテ一覧</a><button type="button" data-manage-class="${esc(cls)}">参加生徒</button>`;modal.querySelector('#opsBody').prepend(shortcuts);
+    let footer=modal.querySelector('.ops-footer');if(!footer){footer=document.createElement('div');footer.className='ops-footer';modal.querySelector('.teacher-ops-panel').appendChild(footer);}footer.replaceChildren();if(StaffAuth.user?.role==='admin'&&card.dataset.sourceKey){const remove=document.createElement('button');remove.type='button';remove.className='ws-button';remove.textContent='この授業を削除';remove.style.color='#a12323';remove.onclick=async()=>{if(!confirm(card.dataset.date+' '+card.dataset.slot+' '+cls+' の予定を削除しますか？カルテ・出席記録は保持します。'))return;remove.disabled=true;try{await Workspace.api('lesson_add_api.php',{action:'delete',sourceKey:card.dataset.sourceKey});hideOpsWithoutSave();await WholeSchedule.reload();window.HistoryWindow?.restore(savedPosition);}catch(err){remove.disabled=false;modal.querySelector('#opsMsg').textContent=err.message;}};footer.append(remove);}const fixedSave=modal.querySelector('#opsSave');if(fixedSave)footer.appendChild(fixedSave);const fixedMsg=modal.querySelector('#opsMsg');if(fixedMsg)footer.appendChild(fixedMsg);
+    if(detailLoadFailed){modal.querySelector('#opsMsg').textContent='読込失敗：データ保護のため保存できません。詳細を開き直してください。';for(const id of ['teacherMemoSave','lessonRecordSave']){const button=modal.querySelector('#'+id);if(button)button.disabled=true;}}
+    if(window.LessonFixed)LessonFixed.editor(key,modal.querySelector('.ops-summary'));
+    const saveBtn=modal.querySelector('#opsSave');
+    if(saveBtn) saveBtn.onclick=async e=>{ e.preventDefault();e.stopPropagation(); await saveOpsAndClose(); };
+    const closeBtn=modal.querySelector('#opsClose');
+    if(closeBtn) closeBtn.onclick=e=>{ e.preventDefault();e.stopPropagation(); requestOpsClose(); };
+    modal.onclick=e=>{if(e.target.closest('[data-back-notices]')&&opsFormState()!==initialOpsFormState&&!confirm('未保存の変更があります。保存せずお知らせに戻りますか？')){e.preventDefault();return;} if(e.target===modal){ e.preventDefault(); requestOpsClose(); } };
+  }
+
+  function fallbackDetail(card,err){
+    console.error('詳細表示エラー',err);
+    const modal=document.getElementById('modal');
+    const body=document.getElementById('modalBody');
+    if(!modal||!body) return;
+    const title=card.querySelector('.event-title')?.textContent?.trim()||'授業詳細';
+    const teacher=card.querySelector('.event-teacher')?.textContent?.trim()||'';
+    const meta=card.querySelector('.event-meta')?.textContent?.trim()||'';
+    body.innerHTML='<h2>'+title.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</h2>'+
+      (teacher?'<p>'+teacher+'</p>':'')+(meta?'<p>'+meta+'</p>':'')+'<p style="color:#b91c1c;font-weight:700">詳細データを読み込めませんでした。ページを再読み込みしてください。</p>';
+    modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false'); modal.setAttribute('aria-hidden','false');
+  }
+
+  let detailOpening=false;
+  function bindCards(){
+    const root=document.getElementById('schedule');
+    if(!root || root.dataset.opsClickBound==='1') return;
+    root.dataset.opsClickBound='1';
+    // The schedule element survives every render. Handle clicks here immediately,
+    // without waiting for the observer to attach a listener to each new card.
+    root.addEventListener('click',async e=>{
+      const card=e.target.closest('.event[data-key],.list-item[data-key]');
+      if(!card || !root.contains(card) || e.target.closest('button,input,select,textarea,a,[data-lesson-action]')) return;
+      e.preventDefault();e.stopImmediatePropagation();
+      if((typeof teacherDragJustFinished!=='undefined' && teacherDragJustFinished) || detailOpening) return;
+      detailOpening=true;root.setAttribute('aria-busy','true');
+      const loading=document.createElement('div');loading.id='teacherOpsLoading';loading.className='ops-loading';loading.setAttribute('role','status');loading.textContent='授業の詳細を読み込み中…';document.body.appendChild(loading);
+      try{ await openOps(card); }
+      catch(err){ fallbackDetail(card,err); }
+      finally{detailOpening=false;root.removeAttribute('aria-busy');loading.remove();}
+    },true);
+  }
+
+  function bind(){
+    bindCards();
+    if(document.documentElement.dataset.teacherOpsObserver==='1') return;
+    document.documentElement.dataset.teacherOpsObserver='1';
+    const root=document.getElementById('schedule');
+    if(root){
+      let uiTimer=null, uiRunning=false;
+      new MutationObserver((mutations)=>{
+        // アイコン自身の追加・削除では再描画しない（赤アイコンのちらつき防止）
+        const structural=mutations.some(m=>{
+          const t=m.target&&m.target.nodeType===1?m.target:null;
+          if(t && (t.closest('.event-badges') || t.classList.contains('event-badges'))) return false;
+          return [...m.addedNodes,...m.removedNodes].some(n=>n.nodeType===1 && (n.matches?.('.event,.day-block,.teacher-generator-layout') || n.querySelector?.('.event')));
+        });
+        if(!structural) return;
+        clearTimeout(uiTimer);
+        uiTimer=setTimeout(async()=>{ if(uiRunning)return; uiRunning=true; try{bindCards();await applyReadyOnce();}catch(e){console.error(e)}finally{uiRunning=false;} },120);
+      }).observe(root,{childList:true,subtree:true});
+    }
+  }
+
+  function reapplyTeacherUiAfterRender(){
+    setTimeout(()=>{bind();applyReadyOnce();applyPastVisibility();drawNowLine()},250);
+  }
+
+  // 初回表示でも詳細クリック・コメントアイコン・準備完了表示を有効化
+  bind();
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{bind();applyReadyOnce();applyPastVisibility();drawNowLine()},500);
+  });
+
+  // 絞り込み・表示切替後も「過去日非表示」を維持
+  ['classFilter','teacherFilter','roomFilter','typeFilter','subjectFilter','viewSelect'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change',reapplyTeacherUiAfterRender);
+  });
+  const clearBtn=document.getElementById('clearFilters');
+  if(clearBtn) clearBtn.addEventListener('click',reapplyTeacherUiAfterRender);
+})();
+</script>
+
+<script src="teacher-reflect-fix.js?v=20260912-r21"></script>
+<script src="teacher-past-filter-fix.js?v=20260910-r1"></script>
+<script src="teacher-memo-autosize.js?v=20260910-r1"></script>
+<script src="teacher-shortcut.js?v=20260910-r1"></script>
+<script src="room-overrides.js?v=20260910-r1"></script>
+<script src="teacher-hide-ready.js?v=20260917-r55-ready"></script>
+
+
+
+<script defer src="whole-now-line.js?v=20260910-r6"></script>
+
+<script src="teacher-availability.js?v=20260912-r25"></script>
+
+
+
+<script id="attachment-icons-v46">
+(function(){
+  let running=false, timer=null;
+  async function paint(){
+    if(running || !window.StudentAttachments) return;
+    running=true;
+    try{
+      await StudentAttachments.loadAll();
+      document.querySelectorAll('.event[data-key],.event-card[data-key],[data-key].list-item').forEach(card=>{
+        const key=card.getAttribute('data-key')||'';
+        const items=StudentAttachments.get(key)||[];
+        let b=card.querySelector('.attachment-indicator-v46');
+        if(items.length){
+          if(!b){
+            b=document.createElement('span');
+            b.className='event-badge attachment-indicator attachment-indicator-v46';
+            b.title='生徒向け添付ファイルあり';
+            const host=card.querySelector('.event-badges,.tags')||card;
+            host.appendChild(b);
+          }
+          const label='📎 '+items.length;if(b.textContent!==label)b.textContent=label;
+        }else if(b){ b.remove(); }
+      });
+    }catch(e){ console.warn('添付アイコン表示エラー',e); }
+    finally{ running=false; }
+  }
+  function schedule(mutations){
+    const changed=mutations.some(m=>[...m.addedNodes,...m.removedNodes].some(n=>n.nodeType===1&&(n.matches?.('.event[data-key],.event-card[data-key],[data-key].list-item')||n.querySelector?.('.event[data-key],.event-card[data-key],[data-key].list-item'))));
+    if(changed){clearTimeout(timer);timer=setTimeout(paint,80);}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>{paint();new MutationObserver(schedule).observe(document.getElementById('schedule')||document.body,{childList:true,subtree:true});});
+  else {paint();new MutationObserver(schedule).observe(document.getElementById('schedule')||document.body,{childList:true,subtree:true});}
+  window.addEventListener('focus',paint);
+  window.addEventListener('student-attachments-changed',paint);
+})();
+</script>
+
+<script src="schedule-confirmed.js?v=20260910-r1"></script><script>(async()=>{const i=document.getElementById('scheduleConfirmedDate'),m=document.getElementById('scheduleConfirmedStatus');if(!i)return;try{i.value=await ScheduleConfirmed.load();m.textContent=i.value?'ここまで確定':'未設定';}catch(e){m.textContent='読込失敗';}i.addEventListener('change',async()=>{i.disabled=true;try{await ScheduleConfirmed.set(i.value);m.textContent=i.value?'✓ '+ScheduleConfirmed.label(i.value)+'まで確定':'✓ 確定日を解除';}catch(e){alert(e.message||e);}finally{i.disabled=false;}});})();</script>
+<script defer src="calendar-view.js?v=20260917-r55-ready"></script></body>
+</html>
+<style id="school-holiday-layout-v63">
+/* v63: 休講チェックを日付と重ねず、メモ行の上に独立表示 */
+.teacher-room-calendar .room-date-cell,.teacher-room-calendar .teacher-day-note-cell{height:auto!important;max-height:none!important;min-height:62px!important;overflow:visible!important}
+.teacher-room-calendar .sticky-date-box{height:auto!important;min-height:56px!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:2px!important;overflow:visible!important}
+.teacher-room-calendar .sticky-date-box>.sticky-date,.teacher-room-calendar .sticky-date-box>.sticky-date-line,.teacher-room-calendar .sticky-date-box>strong{position:static!important;display:block!important;flex:none!important;width:100%!important;height:auto!important;line-height:1.2!important;margin:0!important;white-space:nowrap!important}
+.teacher-room-calendar .school-holiday-toggle{position:static!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;width:100%!important;height:18px!important;line-height:18px!important;margin:0!important;padding:0!important;flex:none!important}
+.teacher-room-calendar .school-holiday-toggle input{margin:0 3px 0 0!important}
+.teacher-room-calendar .day-note-box{position:static!important;flex:none!important;width:100%!important;height:22px!important;margin:0!important}
+.teacher-room-calendar .day-note-text{height:22px!important;min-height:22px!important;max-height:22px!important}
+</style>

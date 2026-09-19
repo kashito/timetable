@@ -1,0 +1,79 @@
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id),esc=Workspace.esc,dialog=$('incidentDialog');
+const categories={trouble:'トラブル',visitor:'来客',parent:'保護者対応',facility:'設備・備品',other:'その他',tuition:'月謝預かり'};
+const statuses={open:'未対応',in_progress:'対応中',resolved:'対応済み',information:'記録のみ'};
+const visibility={staff:'先生全員',private:'管理者と投稿者だけ'},priorities={normal:'通常',important:'重要'};
+const fieldNames={title:'件名',category:'種類',occurredAt:'発生日時',location:'場所',people:'関係者・来客者',description:'報告内容',initialAction:'対応したこと',priority:'重要度',status:'対応状況',visibility:'閲覧範囲',hidden:'非表示'};
+let items=[],nextOffset=0,hasMore=false,listSeq=0,detailSeq=0,current=null,busy=false,dirty=false,mode='',createToken='',commentToken='';
+const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');
+function nowLocal(){const p=Object.fromEntries(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(p=>[p.type,p.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;}
+function time(value){if(!value)return '';const d=new Date(value.length===16?value+':00+09:00':value);return Number.isNaN(d.getTime())?String(value):new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d);}
+const options=(map,selected)=>Object.entries(map).map(([value,label])=>`<option value="${value}" ${value===selected?'selected':''}>${label}</option>`).join('');
+function listMessage(text,error=false){$('incidentListMessage').textContent=text;$('incidentListMessage').classList.toggle('error',error);}
+function msg(text,error=false){const el=$('incidentDialogMessage');if(el){el.textContent=text;el.classList.toggle('error',error);}}
+function lock(value){busy=value;dialog.querySelectorAll('button,input,select,textarea').forEach(el=>el.disabled=value);}
+function badges(r){return `<span class="incident-badge">${esc(categories[r.category]||r.category)}</span><span class="incident-badge status-${esc(r.status)}">${esc(statuses[r.status]||r.status)}</span>${r.priority==='important'?'<span class="incident-badge is-important">重要</span>':''}<span class="incident-badge">${esc(visibility[r.visibility]||'閲覧範囲未設定')}</span>`;}
+function renderList(){
+ $('incidentList').innerHTML=items.map(r=>`<article class="incident-card ${r.priority==='important'?'is-important':''}" data-incident-card="${esc(r.id)}"><div class="incident-card-meta">${r.read?'':'<span class="notice-count" aria-label="未読">未読</span>'}${r.hidden?'<span class="incident-badge">非表示中</span>':''}${badges(r)}<time>${esc(time(r.occurredAt))}</time></div><h2><button type="button" data-incident-open="${esc(r.id)}">${esc(r.title)}</button></h2><p class="incident-card-preview">${esc(r.preview)}</p><div class="incident-card-footer"><span>報告：${esc(r.author)}${r.location?' ／ '+esc(r.location):''} ／ 追記 ${r.commentCount}件</span><button type="button" class="ws-button" data-incident-open="${esc(r.id)}">詳細・対応を記録</button>${StaffAuth.user?.role==='admin'?`<button type="button" class="ws-button" data-incident-visible="${esc(r.id)}">${r.hidden?'再表示':'非表示にする'}</button>`:''}</div></article>`).join('')||'<p class="incident-empty">閲覧できる報告のうち、条件に合うものはありません。</p>';
+ $('incidentMore').hidden=!hasMore;
+}
+async function load(append=false){
+ const seq=++listSeq,query=new URLSearchParams({q:$('incidentSearch').value,category:$('incidentCategory').value,status:$('incidentStatus').value,from:$('incidentFrom').value,to:$('incidentTo').value,offset:String(append?nextOffset:0),includeHidden:$('incidentShowHidden').checked?'1':'0'});
+ $('incidentMore').disabled=true;listMessage('読み込み中…');
+ try{const j=await Workspace.api('incident_reports_api.php?'+query);if(seq!==listSeq)return;items=append?[...new Map([...items,...j.items].map(r=>[r.id,r])).values()]:j.items;nextOffset=j.nextOffset;hasMore=j.hasMore;renderList();$('incidentCounts').innerHTML=`<span>閲覧できる報告 <b>${j.counts.total}</b>件</span><span>未対応・対応中 <b>${j.counts.open}</b>件</span><span>うち重要 <b>${j.counts.important}</b>件</span>`;listMessage(`${j.total}件中 ${items.length}件を表示 ／ 未読 ${j.unread}件`);Workspace.refreshRequestNotices?.();}
+ catch(e){if(seq===listSeq)listMessage(e.message,true);}finally{if(seq===listSeq)$('incidentMore').disabled=false;}
+}
+function setUrl(id){const u=new URL(location.href);id?u.searchParams.set('id',id):u.searchParams.delete('id');history.replaceState(null,'',u);}
+function mayLeave(){return !busy&&(!dirty||confirm('入力中の内容を保存せずに閉じますか？'));}
+function close(){if(!mayLeave())return;detailSeq++;dialog.close();dirty=false;current=null;setUrl('');}
+function shell(title,footer=''){
+ dialog.innerHTML=`<div class="incident-dialog-layout"><div class="incident-dialog-head"><h2 id="incidentDialogTitle">${esc(title)}</h2><button id="incidentClose" type="button" class="ws-button">閉じる</button></div><div id="incidentBody" class="incident-dialog-body"></div><div class="incident-dialog-foot"><span id="incidentDialogMessage" class="ws-message" role="status"></span>${footer}</div></div>`;
+ $('incidentClose').onclick=close;if(!dialog.open)dialog.showModal();
+}
+function historyHtml(r){return `<details class="incident-history"><summary>変更履歴（${(r.history||[]).length}件）</summary>${(r.history||[]).slice().reverse().map(h=>`<div class="incident-history-entry"><b>${esc(h.by)}</b> ／ ${esc(time(h.at))}<p>${h.kind==='created'?'報告を作成':h.kind==='status'?'対応状況を変更':'報告内容を編集'}</p>${h.changes?`<details><summary>変更内容</summary><dl>${Object.entries(h.changes).map(([field,v])=>{const map=field==='status'?statuses:field==='visibility'?visibility:field==='category'?categories:field==='priority'?priorities:null;return `<dt>${esc(fieldNames[field]||field)}</dt><dd>変更前：${esc(map?.[v.before]||v.before||'（空欄）')}</dd><dd>変更後：${esc(map?.[v.after]||v.after||'（空欄）')}</dd>`;}).join('')}</dl></details>`:''}</div>`).join('')}</details>`;}
+function showDetail(report,draft=''){
+ current=report;mode='detail';dirty=!!draft;commentToken=token();
+ shell(report.title,`${report.canEdit?'<button id="incidentEdit" class="ws-button" type="button">本文・閲覧範囲を編集</button>':''}<button id="incidentDetailReload" class="ws-button" type="button">再読み込み</button>`);
+ $('incidentBody').innerHTML=`<div class="incident-card-meta">${badges(report)}</div><p class="incident-private-note">この報告・追記・変更履歴は「${esc(visibility[report.visibility])}」が閲覧できます。</p><dl class="incident-details"><dt>発生日時</dt><dd>${esc(time(report.occurredAt))}</dd><dt>場所</dt><dd>${esc(report.location||'未記入')}</dd><dt>関係者・来客者</dt><dd>${esc(report.people||'未記入')}</dd><dt>報告者</dt><dd>${esc(report.author)} ／ ${esc(time(report.createdAt))}</dd></dl><section class="incident-section"><h3>報告内容</h3><div class="incident-text">${esc(report.description)}</div></section><section class="incident-section"><h3>対応したこと</h3><div class="incident-text">${esc(report.initialAction||'未記入')}</div></section><section class="incident-section"><form id="incidentStatusForm" class="incident-status-form"><label for="incidentDetailStatus">対応状況</label><select id="incidentDetailStatus">${options(statuses,report.status)}</select><button type="submit" class="ws-button">状況を更新</button></form><p class="ws-muted">閲覧できる先生は、対応状況の更新と追記ができます。</p></section><section class="incident-section"><h3>追記・対応の記録</h3>${report.comments.map(c=>`<article class="incident-comment"><div class="incident-comment-meta"><b>${esc(c.author)}</b> ／ ${esc(time(c.createdAt))}</div><p>${esc(c.text)}</p></article>`).join('')||'<p class="ws-muted">追記はまだありません。</p>'}<form id="incidentCommentForm" class="incident-followup"><label>追記する<textarea id="incidentComment" maxlength="6000" required placeholder="その後の状況、対応したことなど">${esc(draft)}</textarea></label><button type="submit" class="ws-button primary">自分の名前で追記</button></form></section><section class="incident-section">${historyHtml(report)}</section>`;
+ $('incidentDetailReload').onclick=()=>{if(mayLeave())openDetail(report.id);};
+ if($('incidentEdit'))$('incidentEdit').onclick=()=>{if(mayLeave())editor(report);};
+ const checkDirty=()=>{dirty=!!$('incidentComment').value.trim()||$('incidentDetailStatus').value!==current.status;};$('incidentComment').oninput=checkDirty;$('incidentDetailStatus').onchange=checkDirty;
+ $('incidentStatusForm').onsubmit=async e=>{e.preventDefault();if(busy)return;const draft=$('incidentComment').value,status=$('incidentDetailStatus').value;lock(true);msg('保存中…');try{const j=await Workspace.api('incident_reports_api.php',{action:'status',id:current.id,version:current.version,status});showDetail(j.report,draft);msg('対応状況を更新しました。');await load();}catch(err){msg(err.message,true);}finally{lock(false);}};
+ $('incidentCommentForm').onsubmit=async e=>{e.preventDefault();if(busy)return;const statusDraft=$('incidentDetailStatus').value;lock(true);msg('保存中…');try{const j=await Workspace.api('incident_reports_api.php',{action:'comment',id:current.id,text:$('incidentComment').value,requestId:commentToken});showDetail(j.report);$('incidentDetailStatus').value=statusDraft;checkDirty();msg('追記しました。');await load();}catch(err){msg(err.message,true);}finally{lock(false);}};
+ if(report.category==='tuition'&&StaffAuth.user?.role!=='admin'){$('incidentStatusForm').hidden=true;$('incidentStatusForm').nextElementSibling.textContent='月謝の預かり報告は管理者が確認します。';}setUrl(report.id);if(busy)lock(true);
+}
+async function openDetail(id){
+ const seq=++detailSeq;dirty=false;current=null;mode='loading';shell('報告を読み込み中…');lock(true);msg('読み込み中…');
+ try{const j=await Workspace.api('incident_reports_api.php?id='+encodeURIComponent(id));if(seq===detailSeq){showDetail(j.report);if(!j.report.read){try{await Workspace.api('incident_reports_api.php',{action:'read',id,version:j.report.version});await load();}catch(err){msg('本文は表示しましたが、既読を記録できませんでした。'+err.message,true);}}}}catch(e){if(seq===detailSeq){$('incidentDialogTitle').textContent='報告を開けません';msg(e.message,true);}}finally{if(seq===detailSeq)lock(false);}
+}
+async function tuition(){
+ if(dialog.open&&!mayLeave())return;dirty=false;mode='tuition';createToken=token();shell('月謝の預かりを報告','<button type="submit" form="tuitionForm" class="ws-button primary">預かりを報告</button>');lock(true);
+ try{await Workspace.ready;await Workspace.refresh();const names=[...new Set(Workspace.students.map(r=>r['生徒名']).filter(n=>n&&!Workspace.hiddenStudent(n)))].sort((a,b)=>a.localeCompare(b,'ja'));
+ $('incidentBody').innerHTML=`<form id="tuitionForm" class="incident-form"><p>生徒を選ぶだけで報告できます。報告者と日時を記録し、管理者と投稿者だけに表示します。</p><label>生徒を検索<input id="tuitionSearch" type="search" placeholder="氏名で絞り込み"></label><label>月謝を預かった生徒<select id="tuitionStudent" required size="7"><option value="">生徒を選択してください</option>${names.map(n=>`<option>${esc(n)}</option>`).join('')}</select></label></form>`;
+ $('tuitionSearch').oninput=()=>{const q=$('tuitionSearch').value;$('tuitionStudent').value='';[...$('tuitionStudent').options].forEach(o=>o.hidden=!!o.value&&!o.value.includes(q));};$('tuitionStudent').onchange=()=>dirty=true;
+ $('tuitionForm').onsubmit=async e=>{e.preventDefault();if(busy||!$('tuitionForm').reportValidity())return;const student=$('tuitionStudent').value;lock(true);msg('報告中…');try{const j=await Workspace.api('incident_reports_api.php',{action:'tuition',student,requestId:createToken});dirty=false;showDetail(j.report);msg('月謝の預かりを報告しました。');await load();}catch(err){msg(err.message,true);}finally{lock(false);}};
+ }catch(err){msg(err.message,true);}finally{lock(false);}
+}
+function editor(report=null){
+ current=report;mode='editor';dirty=false;createToken=token();
+ const r=report||{title:'',category:'trouble',occurredAt:nowLocal(),location:'',people:'',description:'',initialAction:'',priority:'normal',status:'open',visibility:''};
+ shell(report?'報告を編集':'新しい報告',`<button id="incidentEditorCancel" class="ws-button" type="button">キャンセル</button><button id="incidentEditorSave" class="ws-button primary" type="submit" form="incidentEditor">${report?'変更を保存':'報告を投稿'}</button>`);
+ $('incidentBody').innerHTML=`<form id="incidentEditor" class="incident-form"><label>件名（必須）<input name="title" maxlength="120" required value="${esc(r.title)}" placeholder="例：保護者の来訪、教室の設備トラブル"></label><div class="incident-form-grid"><label>種類<select name="category">${options(categories,r.category)}</select></label><label>発生日時（必須）<input name="occurredAt" type="datetime-local" required value="${esc(r.occurredAt)}"></label></div><label>閲覧範囲（必須）<select name="visibility" required><option value="">投稿者が選択してください</option>${options(visibility,r.visibility)}</select><small>本文・追記・変更履歴すべてに適用します。「管理者と投稿者だけ」の報告は、ほかの先生の一覧・検索にも表示されません。</small></label><div class="incident-form-grid"><label>場所<input name="location" maxlength="200" value="${esc(r.location)}" placeholder="例：受付、PC教室"></label><label>関係者・来客者<input name="people" maxlength="400" value="${esc(r.people)}" placeholder="氏名・所属など（任意）"></label></div><label>報告内容（必須）<textarea name="description" class="incident-description" maxlength="10000" required placeholder="何が起きたか、来訪の目的など">${esc(r.description)}</textarea></label><label>対応したこと<textarea name="initialAction" maxlength="6000" placeholder="その場で行った対応、引き継ぎたいこと">${esc(r.initialAction)}</textarea></label><div class="incident-form-grid"><label>重要度<select name="priority">${options(priorities,r.priority)}</select></label><label>対応状況<select name="status">${options(statuses,r.status)}</select><small>共有だけの場合は「記録のみ」を選べます。</small></label></div><p class="ws-muted">報告者は、ログインしている${esc(StaffAuth.user?.name||'先生')}です。</p></form>`;
+ const form=$('incidentEditor');form.oninput=form.onchange=()=>{dirty=true;};
+ $('incidentEditorCancel').onclick=()=>{if(!mayLeave())return;dirty=false;if(report)showDetail(report);else close();};
+ form.onsubmit=async e=>{e.preventDefault();if(busy||!form.reportValidity())return;const fields=Object.fromEntries(new FormData(form));lock(true);msg('保存中…');
+  try{const j=await Workspace.api('incident_reports_api.php',{action:report?'update':'create',...fields,...(report?{id:report.id,version:report.version}:{requestId:createToken})});dirty=false;showDetail(j.report);msg(report?'変更を保存しました。':'報告を投稿しました。');await load();}catch(err){msg(err.message,true);}finally{lock(false);}
+ };
+ form.elements.title.focus();
+}
+dialog.addEventListener('cancel',e=>{e.preventDefault();close();});dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();});
+window.addEventListener('beforeunload',e=>{if(dirty||busy){e.preventDefault();e.returnValue='';}});
+$('incidentNew').onclick=()=>{if(!dialog.open||mayLeave())editor();};
+$('incidentList').onclick=async e=>{const vis=e.target.closest('[data-incident-visible]');if(vis){const r=items.find(r=>r.id===vis.dataset.incidentVisible);if(!r)return;vis.disabled=true;try{await Workspace.api('incident_reports_api.php',{action:'visibility',id:r.id,version:r.version,hidden:!r.hidden});await load();}catch(err){listMessage(err.message,true);vis.disabled=false;}return;}const b=e.target.closest('[data-incident-open]');if(b)openDetail(b.dataset.incidentOpen);};
+$('incidentReload').onclick=()=>load();$('incidentMore').onclick=()=>load(true);let searchTimer;$('incidentSearch').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(),250);};
+$('incidentShowHidden').onchange=()=>load();
+$('tuitionNew').onclick=tuition;
+for(const id of ['incidentCategory','incidentStatus','incidentFrom','incidentTo'])$(id).onchange=()=>load();
+StaffAuth.ready.then(async({user})=>{$('incidentHiddenLabel').hidden=user?.role!=='admin';await load();const id=new URLSearchParams(location.search).get('id');if(id)await openDetail(id);}).catch(e=>listMessage(e.message,true));
+})();

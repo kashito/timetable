@@ -1,0 +1,24 @@
+#generatorViewBar{flex-wrap:wrap}
+#generatorDateNavigation{flex:0 0 100%;min-width:0}
+#generatorDateNavigation .history-controls{margin:0;padding:0;border:0;border-radius:0;background:transparent;color:#fff;gap:6px}
+#generatorDateNavigation .history-controls button{flex:none;white-space:nowrap;min-height:34px;padding:6px 9px}
+#generatorDateNavigation .history-controls label{display:flex;align-items:center;gap:6px;min-width:0}
+#generatorDateNavigation .history-controls input{min-width:0;height:34px;padding:5px 8px;font:inherit}
+#generatorDateNavigation .history-label{color:#d5e8f5;font-size:12px}
+#generatorDateNavigation :is(button,input):focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
+@media(max-width:640px){
+ #generatorDateNavigation .history-controls{font-size:12px}
+ #generatorDateNavigation .history-controls label{order:1;flex:1 0 100%}
+ #generatorDateNavigation .history-controls input{flex:1}
+ #generatorDateNavigation .history-label{width:auto;flex:1 1 110px;text-align:right;font-size:11px}
+}
+
+
+#gridWrap .generator-grid>.lane-label{min-width:0;overflow:hidden;box-sizing:border-box}
+#gridWrap .sticky-date-box{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+#gridWrap .sticky-date-box :is(button,textarea,.ce-day-events,.date-fixed-status){max-width:100%;min-width:0;box-sizing:border-box;overflow-wrap:anywhere}
+#gridWrap .sticky-date-box>button,#gridWrap .date-fixed-controls button{width:100%;white-space:normal;font-size:11px;padding:5px 3px}
+#gridWrap .sticky-date-box .ce-day-events a{white-space:normal;display:block;overflow-wrap:anywhere}
+#gridWrap .generator-date-head{width:100%;min-width:0}#gridWrap .generator-date-head>.sticky-date{text-align:left;padding:4px 2px;font-size:13px}
+#dayCompare .dc-weekday{font-size:13px;font-weight:700;color:#28577a}
+

@@ -1,0 +1,23 @@
+/* Date information spans the unused timetable width without changing lesson lanes. */
+body[data-mode="teacher"] #schedule .teacher-day-info{grid-column:2/-1;display:grid!important;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:20px;padding:10px 16px;background:#f0f6fa;min-width:0;align-content:start;color:#354c60;border-top:3px solid #35495c}
+body[data-mode="teacher"] #schedule .teacher-day-note-cell.whole-day-collapsed{min-height:56px!important;height:56px!important;padding:6px 10px!important}
+body[data-mode="teacher"] #schedule .teacher-day-note-cell.whole-day-collapsed .sticky-date-box{min-height:0!important;height:auto!important;gap:4px!important}
+.teacher-day-note-cell.whole-day-collapsed :is(.school-holiday-toggle,.day-note-box,.date-fixed-button,.date-fixed-status){display:none!important}
+body[data-mode="teacher"] #schedule .teacher-day-info.whole-day-collapsed{height:56px;min-height:56px;padding-top:5px;padding-bottom:5px;overflow:hidden}
+.whole-day-toggle{font:12px system-ui,sans-serif;color:#315b76;border:1px solid #a8c0d0;border-radius:5px;padding:3px 10px;background:#fff;cursor:pointer;align-self:flex-start}
+.whole-day-events-label{font-size:11px;color:#556c7c;display:block;margin-bottom:3px}
+body[data-mode="teacher"] #schedule .teacher-day-info .ce-day-events{display:flex;flex-wrap:wrap;gap:5px 12px;padding:0;margin:0;max-height:none;min-width:0}
+body[data-mode="teacher"] #schedule .teacher-day-info .ce-day-events a{display:block;font:13px/1.6 system-ui;white-space:normal;overflow-wrap:anywhere;max-width:100%;padding:0;background:transparent;text-overflow:clip}
+body[data-mode="teacher"] #schedule .teacher-day-info.whole-day-collapsed .ce-day-events{height:22px;overflow:hidden;flex-wrap:nowrap}
+body[data-mode="teacher"] #schedule .teacher-day-info.whole-day-collapsed .ce-day-events a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.whole-day-contacts{font:12px/1.6 system-ui;min-width:0}.whole-day-contact-button{font:inherit;font-weight:700;background:#fff;border:1px solid #c4d5df;border-radius:6px;padding:3px 9px;color:#375c70;cursor:pointer}
+.whole-day-contact-names{display:grid;gap:4px;margin-top:6px}.whole-day-collapsed .whole-day-contact-names{display:none}.whole-day-contact-error{color:#9c4430}
+body[data-mode="teacher"] #schedule .teacher-day-note-cell:not(.whole-day-collapsed) .day-note-box,body[data-mode="teacher"] #schedule .teacher-day-note-cell:not(.whole-day-collapsed) .day-note-text{height:auto!important;min-height:50px!important;max-height:none!important}
+.whole-day-contact-dialog{width:min(850px,94vw);max-height:90dvh;padding:0;border:0;border-radius:12px;background:#fff;color:#243b4c}.whole-day-contact-dialog::backdrop{background:#122c4666}.whole-day-contact-dialog>header{display:flex;gap:12px;align-items:center;padding:14px 18px;background:#edf5fb;position:sticky;top:0;z-index:2}.whole-day-contact-dialog h2{font-size:18px;flex:1;margin:0}.whole-day-contact-body{padding:18px}.whole-day-contact-dialog .sc-inbox{margin:0}
+
+/* Keep information inside the visible part of the wide timetable. */
+body[data-mode="teacher"] #schedule .teacher-day-info{display:flex!important;flex-direction:column;gap:6px}
+.teacher-day-info>.whole-day-events,.teacher-day-info>.whole-day-contacts{width:min(100%,max(280px,calc(100vw - 295px)));box-sizing:border-box}
+.teacher-day-info.whole-day-collapsed .whole-day-events-label{display:none}
+body[data-mode="teacher"] #schedule .teacher-day-info.whole-day-collapsed{gap:2px}
+body[data-mode="teacher"] #schedule .teacher-day-info:not(.whole-day-collapsed) .ce-day-events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 16px}

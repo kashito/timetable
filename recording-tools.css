@@ -1,0 +1,12 @@
+.recording-tbd{justify-self:start;align-self:start;font-size:12px;margin:4px 0 8px}.recording-pending{background:#fff7dd!important;border-color:#d2ad49!important}.recording-previous{padding:14px;background:#edf4ff;border:1px solid #aac4e2;border-radius:9px;margin-bottom:18px;font-size:14px}.recording-previous p{white-space:pre-wrap;margin:8px 0}.recording-previous small{color:#526982}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status]{border-radius:8px;padding:9px!important;transition:background-color .15s}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status=absent]{background:#fee7e7!important;border:1px solid #e6a0a0!important}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status=late]{background:#ffefd7!important;border:1px solid #e4b775!important}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status=exempt]{background:#eee8fa!important;border:1px solid #b9a4d9!important}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status=unknown]{background:#eaf0f4!important;border:1px solid #adbfc9!important}
+:is(.att-row,.generator-att-row,.group-att-row,.recording-attendance-row)[data-attendance-status=pending]{background:#fff7dd!important;border:1px solid #d2ad49!important}
+#groupDelete{border-color:#ce9292;color:#932b2b} .group-page-actions{align-items:center;flex-wrap:wrap}
+
+.recording-elapsed{display:block;margin-top:3px}.recording-tests{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 14px}.recording-tests [role=status]{font-size:13px;color:#5d6f80}.recording-test-warning{display:block;padding:9px 12px;background:#fff3d7;border:1px solid #ddbe7b;border-radius:7px;color:#79501b;font-weight:600;text-decoration:underline}.group-savebar #groupDelete[hidden]{display:none}
+
+.record-test-previews{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}.record-test-link{color:#126780;text-decoration:underline;overflow-wrap:anywhere}

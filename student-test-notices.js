@@ -1,0 +1,10 @@
+(()=>{'use strict';let selected='',generation=0,last=0;
+function area(){let box=document.getElementById('studentTestNotices');if(!box){const schedule=document.getElementById('schedule');if(!schedule)return null;box=document.createElement('section');box.id='studentTestNotices';box.className='student-test-notices';box.hidden=true;schedule.before(box);}return box;}
+async function show(name,force=false){const box=area();if(!box)return;if(selected===name&&!force&&Date.now()-last<60000)return;const changed=selected!==name;selected=name;last=Date.now();const ticket=++generation;if(changed||!name){box.hidden=true;box.replaceChildren();}if(!name)return;
+ try{const r=await fetch('student_test_notices_api.php?name='+encodeURIComponent(name),{cache:'no-store',credentials:'same-origin'}),j=await r.json();if(ticket!==generation)return;if(!r.ok||!j.ok)throw Error();const open=box.querySelector('details')?.open;box.replaceChildren();box.hidden=!j.items.length;if(!j.items.length)return;
+ const detail=document.createElement('details');detail.open=!!open;const summary=document.createElement('summary');summary.textContent='テスト結果が未報告 '+j.items.length+'件';detail.append(summary);const help=document.createElement('p');help.textContent='下のテストについて、先生に確認・報告してください。';detail.append(help);const list=document.createElement('ul');for(const row of j.items){const li=document.createElement('li');li.textContent=row.date+' ／ '+row.className+' ／ '+row.testName;list.append(li);}detail.append(list);box.append(detail);
+ }catch(e){if(ticket===generation){box.hidden=false;box.textContent='テストの未報告を確認できませんでした。';const b=document.createElement('button');b.type='button';b.textContent='再読み込み';b.onclick=()=>show(selected,true);box.append(b);}}
+}
+document.addEventListener('student-schedule-selected',e=>show(e.detail.name));window.addEventListener('focus',()=>show(selected,true));window.addEventListener('pageshow',()=>show(selected,true));document.addEventListener('visibilitychange',()=>{if(!document.hidden)show(selected,true);});setInterval(()=>{if(!document.hidden)show(selected,true);},60000);
+show(window.StudentSchedule?.getStudentName()||'');
+})();

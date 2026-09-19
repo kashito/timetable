@@ -1,0 +1,884 @@
+
+/* Teacher layout v16 */
+body[data-mode="teacher"]{
+  overflow-x:hidden;
+}
+
+body[data-mode="teacher"] .topbar{
+  position:relative;
+  top:auto;
+  padding:12px 18px;
+}
+
+body[data-mode="teacher"] .topbar h1{
+  font-size:22px;
+  line-height:1.25;
+}
+
+body[data-mode="teacher"] main{
+  width:100%;
+  max-width:none;
+  padding:14px 18px 40px;
+  overflow:hidden;
+}
+
+/* Filters: no overflowing/cropping */
+body[data-mode="teacher"] .controls{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(180px,1fr));
+  gap:10px 12px;
+  align-items:end;
+  padding:12px;
+}
+
+body[data-mode="teacher"] .control{
+  min-width:0;
+  width:100%;
+}
+
+body[data-mode="teacher"] .control select{
+  width:100%;
+  min-width:0;
+  height:44px;
+  font-size:15px;
+}
+
+body[data-mode="teacher"] #clearFilters{
+  height:44px;
+  align-self:end;
+}
+
+/* Calendar is intentionally wider than viewport and scrolls inside this box */
+body[data-mode="teacher"] .schedule{
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:visible;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:12px;
+  scrollbar-gutter:stable;
+}
+
+body[data-mode="teacher"] .calendar{
+  display:grid;
+  grid-template-columns:112px repeat(11,158px);
+  width:max-content;
+  min-width:1850px;
+  overflow:visible;
+  border-radius:12px;
+}
+
+/* Header: separate period number and time vertically */
+body[data-mode="teacher"] .calendar .head{
+  position:sticky;
+  top:0;
+  z-index:12;
+  height:88px;
+  min-height:88px;
+  padding:9px 6px 7px;
+  background:#f8fafc;
+}
+
+body[data-mode="teacher"] .calendar .slot-head{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:5px;
+  line-height:1;
+  white-space:nowrap;
+}
+
+body[data-mode="teacher"] .calendar .slot-head strong{
+  display:block;
+  height:26px;
+  line-height:26px;
+  font-size:21px;
+  font-weight:900;
+}
+
+body[data-mode="teacher"] .calendar .slot-head small{
+  display:block;
+  margin:0;
+  font-size:12px;
+  line-height:1.35;
+  color:#64748b;
+  font-weight:600;
+}
+
+body[data-mode="teacher"] .calendar .date-head{
+  position:sticky;
+  left:0;
+  top:0;
+  z-index:16;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+}
+
+/* Date column stays visible while horizontally scrolling */
+body[data-mode="teacher"] .calendar .date-cell{
+  position:sticky;
+  left:0;
+  z-index:9;
+  width:112px;
+  min-width:112px;
+  background:#f8fafc;
+  box-shadow:2px 0 0 #dfe5ee;
+}
+
+body[data-mode="teacher"] .calendar .slot-cell{
+  width:158px;
+  min-width:158px;
+  min-height:100px;
+  padding:6px;
+}
+
+/* Event appearance */
+body[data-mode="teacher"] .event{
+  width:100%;
+  margin:0 0 6px;
+  padding:7px 8px;
+  overflow:hidden;
+}
+
+body[data-mode="teacher"] .event-title{
+  font-size:12px;
+  line-height:1.3;
+  overflow-wrap:anywhere;
+}
+
+body[data-mode="teacher"] .event-meta{
+  font-size:11px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+
+body[data-mode="teacher"] .event.room-白{background:#fff;border-left:6px solid #cbd5e1}
+body[data-mode="teacher"] .event.room-青{background:#dbeafe;border-left:6px solid #60a5fa}
+body[data-mode="teacher"] .event.room-黄{background:#fef9c3;border-left:6px solid #facc15}
+body[data-mode="teacher"] .event.room-ガラス{background:#ecfeff;border-left:6px solid #67e8f9}
+body[data-mode="teacher"] .event.room-PC{background:#ede9fe;border-left:6px solid #a78bfa}
+body[data-mode="teacher"] .event.room-自宅可{background:#dcfce7;border-left:6px solid #4ade80}
+
+body[data-mode="teacher"] .event-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:5px;
+}
+
+body[data-mode="teacher"] .event-badge{
+  display:inline-flex;
+  align-items:center;
+  max-width:100%;
+  padding:3px 5px;
+  border-radius:999px;
+  font-size:10px;
+  line-height:1.1;
+  font-weight:800;
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(15,23,42,.14);
+  white-space:nowrap;
+}
+
+@media(max-width:900px){
+  body[data-mode="teacher"] .controls{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:560px){
+  body[data-mode="teacher"] main{
+    padding:10px 8px 30px;
+  }
+  body[data-mode="teacher"] .controls{
+    grid-template-columns:1fr;
+  }
+  body[data-mode="teacher"] .calendar{
+    grid-template-columns:92px repeat(11,142px);
+    min-width:1654px;
+  }
+  body[data-mode="teacher"] .calendar .date-cell{
+    width:92px;
+    min-width:92px;
+  }
+  body[data-mode="teacher"] .calendar .slot-cell{
+    width:142px;
+    min-width:142px;
+  }
+}
+
+
+/* Teacher compact header + collapsible filters v17 */
+body[data-mode="teacher"] .topbar{
+  min-height:0 !important;
+  padding:5px 12px !important;
+  margin:0 !important;
+}
+
+body[data-mode="teacher"] .topbar h1{
+  margin:0 !important;
+  font-size:18px !important;
+  line-height:1.2 !important;
+}
+
+body[data-mode="teacher"] .badge{
+  font-size:11px !important;
+  padding:4px 7px !important;
+}
+
+body[data-mode="teacher"] main{
+  padding-top:7px !important;
+}
+
+body[data-mode="teacher"] .teacher-filter-wrap{
+  width:100%;
+  margin:0 0 8px;
+}
+
+body[data-mode="teacher"] #teacherFilterToggle{
+  width:100%;
+  height:40px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  background:#fff;
+  padding:0 12px;
+  text-align:left;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+body[data-mode="teacher"] #teacherFilterToggle span{
+  float:right;
+}
+
+body[data-mode="teacher"] #teacherFilterBody{
+  display:none;
+}
+
+body[data-mode="teacher"] #teacherFilterBody.open{
+  display:block;
+}
+
+body[data-mode="teacher"] #teacherFilterBody .controls{
+  margin-top:0;
+  border-top:0;
+  border-radius:0 0 10px 10px;
+}
+
+body[data-mode="teacher"] .status{
+  margin-top:5px !important;
+  margin-bottom:5px !important;
+  font-size:12px !important;
+}
+
+body[data-mode="teacher"] .legend{
+  margin-top:4px !important;
+  margin-bottom:8px !important;
+}
+
+/* v19 irregular time marker */
+body[data-mode="teacher"] .event-badge.irregular-time{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fda4af;
+}
+body[data-mode="teacher"] .irregular-inline{
+  display:inline-block;
+  margin-left:4px;
+  padding:2px 5px;
+  border-radius:999px;
+  background:#fff1f2;
+  color:#be123c;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.teacher-ops-modal{position:fixed;inset:0;z-index:999;background:rgba(15,23,42,.55);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.teacher-ops-modal.hidden{display:none}.teacher-ops-panel{width:min(100%,760px);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:14px}
+.teacher-ops-head{display:flex;justify-content:space-between;align-items:center}.teacher-ops-head h2{margin:0}.teacher-ops-head button{width:42px;height:42px;border:0;border-radius:10px;font-size:24px}
+.ops-sec{margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.ops-sec h3{margin:0 0 8px}.ops-sec textarea{width:100%;min-height:90px}
+.ready-line{font-size:17px;font-weight:800}.ready-line input{width:22px;height:22px}.att-row{display:grid;grid-template-columns:1fr 130px;gap:8px;padding:6px 0}.att-row select{height:38px}
+.pri-row{display:block;padding:5px 0}.ops-save{width:100%;height:46px;margin-top:14px;border:0;border-radius:10px;background:#15803d;color:#fff;font-weight:800;font-size:16px}
+.ready-badge{display:inline-flex;padding:3px 6px;border-radius:999px;background:#dcfce7;color:#166534;border:1px solid #86efac;font-size:10px;font-weight:900}.event.is-ready,.event-card.is-ready{outline:3px solid #22c55e;outline-offset:-3px}
+
+/* v26 current-time / past-day controls */
+.past-toggle-wrap{display:flex;justify-content:flex-end;padding:4px 18px 8px}
+.past-toggle-label{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#334155;cursor:pointer}
+.past-toggle-label input{width:18px;height:18px}
+.hidden-past-day{display:none!important}
+body[data-mode="teacher"] .calendar{position:relative}
+.current-time-line{position:absolute;width:3px;background:#ef4444;z-index:30;pointer-events:none}
+.current-time-label{position:absolute;top:2px;left:5px;background:#ef4444;color:#fff;padding:2px 5px;border-radius:6px;font-size:10px;font-weight:900;white-space:nowrap}
+
+
+/* v27 sticky slot header while vertical scrolling */
+body[data-mode="teacher"] .schedule{
+  position:relative;
+  overflow-x:auto;
+  overflow-y:visible;
+}
+
+body[data-mode="teacher"] .calendar .head{
+  position:sticky !important;
+  top:0 !important;
+  z-index:40 !important;
+  background:#f8fafc !important;
+  box-shadow:0 2px 0 #dfe5ee;
+}
+
+body[data-mode="teacher"] .calendar .date-head{
+  position:sticky !important;
+  top:0 !important;
+  left:0 !important;
+  z-index:50 !important;
+  background:#f8fafc !important;
+}
+
+body[data-mode="teacher"] .calendar .slot-head{
+  position:relative;
+  z-index:41;
+}
+
+/* Keep current-time marker below sticky header text */
+.current-time-line{
+  z-index:35 !important;
+}
+
+
+/* v29: truly sticky slot header inside teacher timetable scroll area */
+body[data-mode="teacher"] .schedule{
+  position:relative !important;
+  width:100% !important;
+  max-width:100% !important;
+
+  /* Vertical AND horizontal scrolling happen in this container.
+     Sticky headers now have an actual scrolling ancestor to stick within. */
+  overflow:auto !important;
+  max-height:calc(100vh - 125px) !important;
+
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable both-edges;
+  overscroll-behavior:contain;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#fff;
+}
+
+body[data-mode="teacher"] .calendar{
+  position:relative !important;
+  overflow:visible !important;
+}
+
+/* Entire first/header row stays visible during vertical scrolling */
+body[data-mode="teacher"] .calendar .head{
+  position:sticky !important;
+  top:0 !important;
+  z-index:80 !important;
+  background:#f8fafc !important;
+  box-shadow:0 2px 0 #cbd5e1 !important;
+}
+
+/* Top-left date/header intersection remains fixed both directions */
+body[data-mode="teacher"] .calendar .date-head{
+  position:sticky !important;
+  top:0 !important;
+  left:0 !important;
+  z-index:100 !important;
+  background:#f8fafc !important;
+  box-shadow:2px 2px 0 #cbd5e1 !important;
+}
+
+/* Date cells remain fixed during horizontal scrolling */
+body[data-mode="teacher"] .calendar .date-cell{
+  position:sticky !important;
+  left:0 !important;
+  z-index:60 !important;
+  background:#f8fafc !important;
+  box-shadow:2px 0 0 #dfe5ee !important;
+}
+
+/* Slot headers: keep period number and time visibly above all cards */
+body[data-mode="teacher"] .calendar .slot-head{
+  position:sticky !important;
+  top:0 !important;
+  z-index:85 !important;
+  background:#f8fafc !important;
+}
+
+/* Current-time marker stays below sticky headers */
+body[data-mode="teacher"] .current-time-line{
+  z-index:50 !important;
+}
+
+@media (max-height:700px){
+  body[data-mode="teacher"] .schedule{
+    max-height:calc(100vh - 105px) !important;
+  }
+}
+
+/* v37 modal layering */
+body[data-mode="teacher"] .calendar .head,body[data-mode="teacher"] .calendar .slot-head{z-index:30!important}
+body[data-mode="teacher"] .calendar .date-head{z-index:35!important}
+body[data-mode="teacher"] .calendar .date-cell{z-index:20!important}
+.teacher-ops-modal,.teacher-enhanced-modal,.modal{z-index:10000!important}
+.teacher-ops-panel,.teacher-enhanced-panel,.modal-panel{position:relative;z-index:10001!important}
+
+.teacher-ops-modal{position:fixed;inset:0;z-index:10000!important;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px}.teacher-ops-modal.hidden{display:none}.teacher-ops-panel{width:min(100%,760px);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:14px;position:relative;z-index:10001!important}.teacher-ops-head{display:flex;justify-content:space-between;align-items:center}.teacher-ops-head h2{margin:0}.teacher-ops-head button{width:42px;height:42px;border:0;border-radius:10px;font-size:24px}.ops-sec{margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.ops-sec textarea{width:100%;min-height:110px}.att-row{display:grid;grid-template-columns:1fr 130px;gap:8px;padding:6px 0}.pri-row{display:block;padding:5px 0}.ops-save{width:100%;height:46px;margin-top:14px;border:0;border-radius:10px;background:#15803d;color:#fff;font-weight:800}.ready-badge{display:inline-flex;padding:3px 6px;border-radius:999px;background:#dcfce7;color:#166534;border:1px solid #86efac;font-size:10px;font-weight:900}.event.is-ready,.event-card.is-ready{outline:3px solid #22c55e;outline-offset:-3px}
+
+/* v38 restored teacher notes + schedules */
+.next-schedule-list{display:grid;gap:4px}
+.next-schedule-row{display:grid;grid-template-columns:1fr 70px 80px;gap:8px;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:13px}
+.ops-sec textarea{width:100%;min-height:100px;resize:vertical}
+.teacher-ops-modal{z-index:10000!important}
+.teacher-ops-panel{z-index:10001!important}
+
+
+/* v45 compact comment indicators */
+body[data-mode="teacher"] .comment-indicator{
+  min-width:22px;
+  justify-content:center;
+  padding:3px 5px !important;
+  font-size:12px !important;
+  line-height:1 !important;
+  background:rgba(255,255,255,.86) !important;
+}
+body[data-mode="teacher"] .teacher-comment-indicator{
+  border-color:#94a3b8 !important;
+}
+body[data-mode="teacher"] .public-comment-indicator{
+  border-color:#fdba74 !important;
+  background:#fff7ed !important;
+}
+
+/* v46 past schedule styling */
+.next-schedule-row.past-schedule{
+  opacity:.55;
+  text-decoration:line-through;
+  color:#64748b;
+}
+
+/* Teacher memo readability fix */
+#teacherMemo{
+  min-height:180px !important;
+  max-height:420px !important;
+  line-height:1.6 !important;
+  resize:vertical !important;
+  overflow-y:auto !important;
+  white-space:pre-wrap !important;
+}
+#teacherMemoMsg{
+  display:inline-block;
+  margin-top:6px;
+}
+
+/* Safe room-change UI */
+.room-change-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+#roomChangeSelect{
+  min-width:150px;
+  height:38px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:0 8px;
+  background:#fff;
+}
+#roomChangeSave{
+  height:38px;
+  border:0;
+  border-radius:8px;
+  padding:0 12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:800;
+}
+.room-save-success{
+  color:#166534;
+  font-weight:700;
+}
+
+
+/* Room override visual */
+.event.room-white,.event-card.room-white{box-shadow:inset 4px 0 0 #cbd5e1}
+.event.room-blue,.event-card.room-blue{box-shadow:inset 4px 0 0 #60a5fa}
+.event.room-yellow,.event-card.room-yellow{box-shadow:inset 4px 0 0 #facc15}
+.event.room-glass,.event-card.room-glass{box-shadow:inset 4px 0 0 #22d3ee}
+.event.room-pc,.event-card.room-pc{box-shadow:inset 4px 0 0 #a78bfa}
+.event.room-home,.event-card.room-home{box-shadow:inset 4px 0 0 #fb923c}
+.room-override-badge{white-space:nowrap}
+
+/* Hide ready cards */
+.hide-ready-card{display:none!important}
+.hide-ready-control{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin:6px 10px 8px;
+  padding:6px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  background:#fff;
+  font-weight:700;
+  font-size:13px;
+}
+
+/* Next schedule weekday / remaining time */
+.next-schedule-remaining{
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+  color:#475569;
+}
+
+.teacher-filter-toggle{
+  margin:6px 10px;padding:7px 11px;border:0;border-radius:8px;
+  background:#334155;color:#fff;font-weight:800;cursor:pointer
+}
+.teacher-filters-collapsed{display:none!important}
+
+/* Equal-height teacher cards */
+.event[data-key],.event-card[data-key]{
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
+
+/* Fixed room lanes for teacher calendar */
+.teacher-room-calendar{
+  grid-template-columns:140px repeat(11,minmax(145px,1fr))!important;
+}
+.teacher-room-calendar .room-date-cell{
+  min-height:92px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  background:#f8fafc;
+  position:sticky;
+  left:0;
+  z-index:4;
+}
+.teacher-room-calendar .room-lane-label{
+  display:inline-block;
+  min-width:72px;
+  padding:5px 8px;
+  border-radius:999px;
+  background:#e2e8f0;
+  font-weight:800;
+  text-align:center;
+}
+.teacher-room-calendar .room-lane-slot{
+  min-height:92px;
+  position:relative;
+  padding:5px;
+}
+.teacher-room-calendar .event[data-key]{
+  min-height:76px;
+  height:auto!important;
+  margin-bottom:5px;
+}
+.add-lesson-cell{
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  width:27px;
+  height:27px;
+  border:1px dashed #94a3b8;
+  border-radius:50%;
+  background:rgba(255,255,255,.88);
+  color:#475569;
+  font-size:20px;
+  line-height:22px;
+  font-weight:700;
+  cursor:pointer;
+  opacity:.62;
+}
+.add-lesson-cell:hover{
+  opacity:1;
+  color:#fff;
+  background:#2563eb;
+  border-color:#2563eb;
+}
+.room-special-span{
+  grid-column:span 11!important;
+}
+@media(max-width:700px){
+  .teacher-room-calendar{
+    grid-template-columns:105px repeat(11,minmax(135px,1fr))!important;
+  }
+}
+
+
+/* Fixed room rows V2 */
+.teacher-room-calendar{
+  grid-template-columns:140px repeat(11,minmax(145px,1fr))!important;
+}
+.teacher-room-calendar .room-lane-slot{
+  min-height:92px!important;
+  position:relative!important;
+}
+.teacher-room-calendar .add-lesson-cell{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  position:absolute!important;
+  right:7px!important;
+  bottom:7px!important;
+  width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  border:1px solid #94a3b8!important;
+  border-radius:50%!important;
+  background:#ffffff!important;
+  color:#2563eb!important;
+  font-size:21px!important;
+  font-weight:800!important;
+  cursor:pointer!important;
+  opacity:1!important;
+  z-index:5!important;
+  box-shadow:0 1px 4px rgba(15,23,42,.18)!important;
+}
+.teacher-room-calendar .add-lesson-cell:hover{
+  background:#2563eb!important;
+  color:#fff!important;
+}
+
+/* v16: overall schedule mirrors the koma-generator layout */
+body[data-mode="teacher"] .teacher-generator-layout{
+  display:grid!important;
+  grid-template-columns:170px repeat(11,minmax(145px,1fr))!important;
+  min-width:1765px!important;
+  width:max-content!important;
+  align-items:stretch!important;
+  border:1px solid #dce3ee!important;
+  border-radius:10px!important;
+  overflow:visible!important;
+  background:#fff!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.cell{
+  border-right:1px solid #dce3ee!important;
+  border-bottom:1px solid #dce3ee!important;
+  padding:6px!important;
+  min-height:54px!important;
+  height:auto!important;
+  max-height:none!important;
+  background:#fff!important;
+  position:relative!important;
+  overflow:visible!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.head{
+  position:sticky!important;
+  top:0!important;
+  z-index:40!important;
+  min-height:72px!important;
+  height:72px!important;
+  padding:6px!important;
+  background:#f8fafc!important;
+  text-align:center!important;
+  box-shadow:0 2px 4px rgba(15,23,42,.08)!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.head:first-child{
+  left:0!important;
+  z-index:45!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .slot-head{
+  display:block!important;
+  white-space:nowrap!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .slot-head strong{
+  display:block!important;
+  height:auto!important;
+  line-height:1.15!important;
+  font-size:16px!important;
+  font-weight:900!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .slot-head small{
+  display:block!important;
+  margin-top:4px!important;
+  font-size:11px!important;
+  line-height:1.35!important;
+  color:#64748b!important;
+  font-weight:600!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.lane-label{
+  position:sticky!important;
+  left:0!important;
+  z-index:25!important;
+  min-height:54px!important;
+  padding:3px!important;
+  background:#f8fafc!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  font-weight:800!important;
+  box-shadow:2px 0 4px rgba(15,23,42,.04)!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .sticky-date-box{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  gap:2px!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0 0 1px!important;
+  line-height:1.15!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .sticky-date{
+  display:block!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+  color:#0f172a!important;
+  text-align:center!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .sticky-weekday{
+  display:block!important;
+  font-size:11px!important;
+  line-height:1.15!important;
+  font-weight:800!important;
+  color:#475569!important;
+  text-align:center!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .day-note-box{
+  width:100%!important;
+  height:auto!important;
+  margin:2px 0 0!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .day-note-text{
+  display:block!important;
+  width:100%!important;
+  min-height:44px!important;
+  height:44px!important;
+  max-height:80px!important;
+  resize:vertical!important;
+  overflow:auto!important;
+  padding:4px 5px!important;
+  border:1px solid #cbd5e1!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  font-size:9px!important;
+  line-height:1.25!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .day-note-status{
+  display:block!important;
+  min-height:9px!important;
+  font-size:8px!important;
+  line-height:1!important;
+  text-align:right!important;
+  color:#64748b!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .room-chip{
+  display:inline-block!important;
+  min-width:66px!important;
+  height:auto!important;
+  padding:3px 7px!important;
+  margin:0!important;
+  border-radius:999px!important;
+  background:#e2e8f0!important;
+  text-align:center!important;
+  font-size:12px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.generator-slot{
+  min-height:54px!important;
+  height:auto!important;
+  max-height:none!important;
+  padding:4px 6px!important;
+  background:#fff!important;
+  position:relative!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event[data-key]{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0 0 3px!important;
+  padding:4px 5px!important;
+  border:1px solid #c9d4e3!important;
+  border-left:5px solid #6aa3e8!important;
+  border-radius:6px!important;
+  background:#eef5ff!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  color:inherit!important;
+  font-size:11px!important;
+  line-height:1.18!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event[data-key]:hover{
+  border-color:#6b91c4!important;
+  box-shadow:0 2px 7px rgba(42,79,126,.18)!important;
+  transform:none!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event-title{
+  display:block!important;
+  height:auto!important;
+  font-size:12px!important;
+  line-height:1.18!important;
+  font-weight:900!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event-teacher{
+  display:block!important;
+  height:auto!important;
+  margin-top:1px!important;
+  font-size:10px!important;
+  line-height:1.18!important;
+  font-weight:900!important;
+  color:#0f172a!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event-meta{
+  display:block!important;
+  height:auto!important;
+  margin-top:1px!important;
+  color:#64748b!important;
+  font-size:10px!important;
+  line-height:1.18!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .event-badges{
+  display:none!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout>.date-start{
+  border-top:6px solid #334155!important;
+}
+body[data-mode="teacher"] .teacher-generator-layout .room-unset{background:#f7f8fa!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-blue{background:#eaf4ff!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-yellow{background:#fff8d8!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-white{background:#fff!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-glass{background:#e8fbff!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-pc{background:#f1eaff!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-home{background:#fff0df!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-other{background:#f8f1e6!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-blue .room-chip{background:#bfdbfe!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-yellow .room-chip{background:#fde68a!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-white .room-chip{background:#f8fafc!important;border:1px solid #cbd5e1!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-glass .room-chip{background:#cffafe!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-pc .room-chip{background:#ddd6fe!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-home .room-chip{background:#fed7aa!important}
+body[data-mode="teacher"] .teacher-generator-layout .room-other .room-chip{background:#ead7b7!important}
+body[data-mode="teacher"] .teacher-generator-layout .event[draggable="true"]{cursor:grab!important;user-select:none!important}
+body[data-mode="teacher"] .teacher-generator-layout .event.dragging{opacity:.45!important;cursor:grabbing!important}
+body[data-mode="teacher"] .teacher-generator-layout .teacher-drop-slot.drop-target{outline:3px solid #22c55e!important;outline-offset:-3px!important;background:#ecfdf5!important}

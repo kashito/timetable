@@ -1,0 +1,46 @@
+.group-savebar{position:sticky;bottom:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;background:#edf4f8;border:1px solid #bfd0de;border-radius:10px;z-index:5}.group-savebar .ws-message{flex:1;min-width:180px}.group-att-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(120px,2fr) 130px;align-items:center;gap:12px;border-bottom:1px solid var(--ws-line);padding:10px 0}.group-att-row select{padding:9px;border:1px solid #b8cbd9;border-radius:7px;font:inherit}.group-original{white-space:pre-wrap}.lesson-group-link{display:inline!important;font-size:12px!important;text-decoration:none;margin-right:3px}@media(max-width:540px){.group-att-row{grid-template-columns:1fr 120px}.group-att-row .ws-muted{grid-column:1/-1;grid-row:2}.group-savebar{gap:7px;padding:10px}.group-savebar .ws-message{flex-basis:100%}}
+
+.lesson-group-create{display:inline-block;vertical-align:baseline;padding:0 2px;margin:0 3px 0 0;border:0;background:transparent;line-height:1;font-size:12px;cursor:pointer}.lesson-group-create:focus-visible{outline:2px solid #176b91}#lessonPlacementDialog .ws-dialog-foot{flex-wrap:wrap}#lessonPlacementDialog .ws-dialog-foot .ws-message{flex:1 1 100%}#lessonPlacementDialog h2{font-size:18px;margin:0}#lessonPlacementDialog .ws-dialog-head button{flex:none}
+
+.link-lesson-option{padding:0;overflow:hidden;border:2px solid #d8e2eb;transition:background-color .12s,border-color .12s}.link-lesson-select{display:block;min-height:76px;padding:16px;cursor:pointer;touch-action:manipulation}.link-lesson-select .ws-check{align-items:flex-start}.link-lesson-select input{width:23px;height:23px;flex:none;margin:0;accent-color:#176b91}.link-lesson-select b{min-width:0;overflow-wrap:anywhere}.link-lesson-select>small{display:block;margin:6px 0 0 32px}.link-lesson-option:has(input:checked){background:#e8f5fa;border-color:#176b91}.link-lesson-option:focus-within{outline:2px solid #176b91;outline-offset:2px}.link-lesson-option>details{padding:10px 16px;border-top:1px solid #cbdce7}.link-lesson-option>details summary{cursor:pointer}.link-lesson-option>details p{overflow-wrap:anywhere}
+
+/* A linked lesson spans its member columns; parallel lessons keep separate lanes. */
+.linked-calendar-track{height:60px;min-width:0;position:relative}
+body[data-mode="teacher"] #schedule .teacher-room-calendar:has(.linked-calendar-track){width:max(100%,1825px)!important;min-width:1825px!important}
+body[data-mode="teacher"] #schedule .teacher-room-calendar>.generator-slot{min-width:0!important}
+
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-key][data-linked-keys]>.event-meta{display:block!important}
+.event-card[data-linked-id]{border-left-width:6px;box-shadow:0 2px 8px #1232}
+body[data-mode="teacher"] #schedule .teacher-generator-layout .event[data-key] :is(.lesson-group-link,.lesson-group-create){pointer-events:auto!important}
+
+.linked-meal-notice{color:#9b4810;font-weight:700}.lesson-group-meal{margin-left:4px;font-size:12px;cursor:help}.linked-slot-states[hidden],#placementMealField[hidden]{display:none!important}
+
+
+
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-key][data-linked-keys]{transition:background-color .15s,border-color .15s!important}
+
+/* Shared controls belong to the entire linked lesson. */
+.linked-group-actions{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin-top:10px}
+.linked-group-actions button{flex:0 1 auto;min-width:90px;padding:7px 10px}
+.linked-group-actions [aria-pressed="mixed"]{background:#fff5d7;border-color:#d29b32;color:#895c00}
+.group-fixed-status{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:3px 7px;border:1px solid #b3c2d1;border-radius:6px;background:#fff;font-size:12px;font-weight:700}
+.group-fixed-status[data-state="true"]{background:#e7eefc;color:#244582}.group-fixed-status[data-state="mixed"]{background:#fff5d7;color:#895c00}
+.linked-group-actions>.lesson-action-status{flex:1 1 0;min-width:0;font-size:11px;white-space:normal}
+.linked-group-actions>.lesson-action-status:not([data-error="true"]){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
+.linked-group-actions:has(>.lesson-action-status[data-error="true"]){flex-wrap:wrap}.linked-group-actions>.lesson-action-status[data-error="true"]{flex-basis:100%;color:#991b1b}
+/* Full-width card, three aligned text lines on the left and two compact controls on the right. */
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-key][data-linked-keys]{display:grid!important;grid-template-columns:minmax(0,1fr) 70px!important;grid-template-rows:17px 13px 13px!important;gap:1px 8px!important;height:60px!important;min-height:60px!important;padding:6px 8px!important;box-sizing:border-box!important;align-content:center!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-title{grid-area:1/1!important;min-width:0!important;margin:0!important;font-size:12px!important;line-height:17px!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-teacher{grid-area:2/1!important;display:block!important;min-width:0!important;margin:0!important;line-height:13px!important;font-size:10px!important;color:#475569!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-meta{grid-area:3/1!important;display:block!important;min-width:0!important;margin:0!important;line-height:13px!important;font-size:10px!important;color:#334155!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.linked-group-actions{grid-area:1/2/4/3!important;position:relative!important;inset:auto!important;width:70px!important;height:45px!important;display:flex!important;flex-direction:row!important;align-items:flex-start!important;justify-content:flex-end!important;gap:4px!important;margin:0!important;overflow:visible!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.linked-group-actions button{width:32px!important;min-width:32px!important;height:32px!important;min-height:32px!important;flex:0 0 32px!important;border-radius:7px!important;font-size:0!important;padding:0!important;pointer-events:auto!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.linked-group-actions button::before{font-size:15px!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.linked-group-actions [data-lesson-action="ready"][aria-pressed="mixed"]::before{content:'◐'!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys] .group-fixed-status{width:32px!important;height:32px!important;min-height:32px!important;box-sizing:border-box!important;padding:0!important;font-size:0!important;flex:0 0 32px!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys] .group-fixed-status::before{content:'🔓';font:15px/1 system-ui}.compact-whole-schedule .group-fixed-status[data-state="true"]::before{content:'🔒'!important}.compact-whole-schedule .group-fixed-status[data-state="mixed"]::before{content:'🔓'!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-badges{grid-area:3/2!important;position:static!important;inset:auto!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:3px!important;margin:0!important;width:70px!important;height:13px!important;overflow:hidden!important;z-index:2!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-badges>.lesson-type-badge,body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-badges>.lesson-room-badge{display:none!important}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-badges>.irregular-time{font-size:0!important;padding:0!important}.compact-whole-schedule .event[data-linked-keys]>.event-badges>.irregular-time::before{content:'⚠';font:11px/1 system-ui}
+body[data-mode="teacher"].compact-whole-schedule #schedule .teacher-generator-layout .event[data-linked-keys]>.event-badges .event-badge{line-height:12px!important;font-size:10px;padding:0 1px!important;margin:0!important;min-height:0!important}
+.event.has-group-controls>.ready-badge,.event.has-group-controls>.lesson-fixed-badge,.event.has-group-controls .event-badges>.ready-badge{display:none!important}
