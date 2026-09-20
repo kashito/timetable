@@ -1,0 +1,140 @@
+name: Timetable - Lolipop SSH deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preview = 差分確認のみ / deploy = 本番反映（別途有効化が必要）'
+        type: choice
+        options: [preview, deploy]
+        default: preview
+        required: true
+      confirm_commit:
+        description: '本番反映時のみ、対象コミットの40桁SHAを入力'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+# Never interrupt an in-progress deployment with a newer push.
+concurrency:
+  group: lolipop-production-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  timetable:
+    # Unset/false means a push cannot even start an SSH connection.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.LOLIPOP_DEPLOY_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      SSH_HOST: ${{ secrets.LOLIPOP_SSH_HOST }}
+      SSH_USER: ${{ secrets.LOLIPOP_SSH_USER }}
+      LOLIPOP_DEPLOY_ENABLED: ${{ vars.LOLIPOP_DEPLOY_ENABLED }}
+      CONFIRM_COMMIT: ${{ inputs.confirm_commit }}
+
+    steps:
+      - name: Set runner-local paths
+        shell: bash
+        run: |
+          printf 'SSH_KEY_FILE=%s/timetable-ssh/key\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'SSH_KNOWN_HOSTS_FILE=%s/timetable-ssh/known_hosts\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'DEPLOY_OUTPUT=%s/timetable-deploy\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Check protection and failure recovery
+        run: python3 -B -m unittest discover -s .deploy -p 'test_*.py' -v
+
+      - name: Build from Git-tracked source only
+        run: python3 -B .deploy/deploy.py build --output "$DEPLOY_OUTPUT"
+
+      - name: Check PHP syntax without running application code
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          find "$DEPLOY_OUTPUT/payload" -type f -name '*.php' -print0 |
+            while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done
+
+      - name: Configure SSH identity and pinned host key
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.LOLIPOP_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.LOLIPOP_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$SSH_HOST" && test -n "$SSH_USER"
+          test -n "$SSH_PRIVATE_KEY" && test -n "$SSH_KNOWN_HOSTS"
+          install -d -m 700 "$(dirname "$SSH_KEY_FILE")"
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$SSH_KNOWN_HOSTS_FILE"
+          ssh-keygen -y -f "$SSH_KEY_FILE" >/dev/null
+          ssh-keygen -F "[$SSH_HOST]:2222" -f "$SSH_KNOWN_HOSTS_FILE" >/dev/null
+
+      - name: Check current public pages
+        run: python3 -B .deploy/healthcheck.py
+
+      - name: Preview only - no production writes
+        run: python3 -B .deploy/deploy.py preview --output "$DEPLOY_OUTPUT"
+
+      - name: Publish preview summary
+        if: always()
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ['DEPLOY_OUTPUT']) / 'preview.json'
+          if p.is_file():
+              r = json.loads(p.read_text())
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+                  out.write('## timetable デプロイ差分\n\n')
+                  out.write(f"対象 {r['source_files']} / 差分 {len(r['changed_files'])} / 保護対象の転送 0 / 削除 0\n\n")
+                  out.write(f"本番設定: {r['private_settings']} / ドライラン前後のサーバー一致: {r['server_unchanged']}\n\n")
+                  out.write('\n'.join('- `' + p + '`' for p in r['changed_files']) + '\n')
+                  if not r['ready_for_deploy']:
+                      out.write('\n本番反映は不可。保護対象の設定を別途確認してください。このワークフローは設定を作成・更新しません。\n')
+          PY
+
+      - name: Deploy only when explicitly enabled
+        if: vars.LOLIPOP_DEPLOY_ENABLED == 'true' && (github.event_name == 'push' || inputs.mode == 'deploy')
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            test "$CONFIRM_COMMIT" = "$GITHUB_SHA" || { echo 'Commit confirmation mismatch'; exit 1; }
+          fi
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$latest" = "$GITHUB_SHA" || { echo 'A newer main commit exists; stopping stale deployment'; exit 1; }
+          python3 -B .deploy/deploy.py deploy --output "$DEPLOY_OUTPUT" --confirm-commit "$GITHUB_SHA"
+
+      - name: Publish deployment or recovery result
+        if: always()
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['DEPLOY_OUTPUT'])
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              for name in ('transaction.json', 'deployed.json', 'rollback-result.json'):
+                  path = root / name
+                  if path.is_file():
+                      result = json.loads(path.read_text())
+                      out.write('\n### ' + name + '\n\n```json\n' + json.dumps(result, ensure_ascii=False, indent=2) + '\n```\n')
+              if not (root / 'deployed.json').exists():
+                  out.write('\n本番反映の完了記録はありません。失敗時はログと取引IDを確認してください。\n')
+          PY
+
+      - name: Remove runner credentials
+        if: always()
+        shell: bash
+        run: rm -f -- "$SSH_KEY_FILE" "$SSH_KNOWN_HOSTS_FILE"
