@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["level", "reason", "needsClarification", "answer", "files", "edits"],
+  "properties": {
+    "level": {"type": "integer", "enum": [1, 2, 3]},
+    "reason": {"type": "string"},
+    "needsClarification": {"type": "boolean"},
+    "answer": {"type": "string"},
+    "files": {"type": "array", "items": {"type": "string"}},
+    "edits": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "before", "after"],
+      "properties": {"path": {"type": "string"}, "before": {"type": "string"}, "after": {"type": "string"}}
+    }}
+  }
+}

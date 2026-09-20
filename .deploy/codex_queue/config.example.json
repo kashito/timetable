@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "repo": "C:/Users/idwor/Documents/GitHub/timetable",
+  "workRoot": "C:/Users/idwor/Documents/Codex/timetable-queue-runs",
+  "transport": "ssh",
+  "sshHost": "ssh.lolipop.jp",
+  "sshUser": "lolipop.jp-dp30304343",
+  "ssh": "C:/Windows/System32/OpenSSH/ssh.exe",
+  "sshKey": "REPLACE_WITH_EXISTING_PRIVATE_KEY_PATH_OUTSIDE_REPOSITORY",
+  "knownHosts": "REPLACE_WITH_PINNED_KNOWN_HOSTS_PATH_OUTSIDE_REPOSITORY",
+  "codex": "codex",
+  "php": "REPLACE_WITH_PHP_EXECUTABLE",
+  "node": "node",
+  "nodeModules": "REPLACE_WITH_NODE_MODULES_CONTAINING_PLAYWRIGHT",
+  "browserChannel": "msedge",
+  "rsync": "REPLACE_WITH_RSYNC_EXECUTABLE_FOR_EXISTING_TESTS",
+  "modelTimeoutSeconds": 900
+}

@@ -1,5 +1,12 @@
 # 志学館 時間割アプリ
 
+## Codex修正キュー（第1段階）
+
+管理者のCODEXメモから「Codexへ送信」し、このPCで修正候補・テスト・元メモへの結果表示までを実行する機能を追加しています。
+**この処理は自動commit・push・本番反映を行いません。** LEVEL 3は改修せず停止し、LEVEL 1・2も確認用候補で止まります。
+設定と起動、保存先、停止方法、確認範囲は [.deploy/codex_queue/README.md](.deploy/codex_queue/README.md) を参照してください。
+本番へのこの機能の設置には、下記の既存デプロイ手順を別途使います。
+
 公開先: https://224236.com/2026summer/  
 リポジトリ: `kashito/timetable` / 運用ブランチ: `main`
 

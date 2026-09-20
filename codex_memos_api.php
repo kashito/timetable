@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__.'/staff_security.php';
 require_once __DIR__.'/codex_memo_responses.php';
+require_once __DIR__.'/codex_queue_lib.php';
+function cmAllResponses($id){try{return array_merge(cmResponses($id),cqResponses($id));}catch(Throwable $e){return cmResponses($id);}}
 header('Cache-Control: private, no-store');header('Vary: Cookie');header('X-Content-Type-Options: nosniff');
 $actor=staffRequire(true);$file=__DIR__.'/data/codex_memos.php';$imageDir=__DIR__.'/data/codex_memo_images';
 function cmReply($v){header('Content-Type: application/json; charset=utf-8');echo json_encode($v,JSON_UNESCAPED_UNICODE);exit;}
@@ -9,7 +11,7 @@ function cmId($v){if(!is_string($v)||!preg_match('/^[a-f0-9]{24}$/D',$v))staffFa
 function cmVersion($r){return hash('sha256',json_encode($r,JSON_UNESCAPED_UNICODE));}
 function cmStatus($r){return !empty($r['doneAt'])?'done':(in_array($r['status']??'',['reviewing','hold','returned'],true)?$r['status']:'open');}
 function cmStatusLabel($r){return ['done'=>'対応完了','reviewing'=>'検証中','hold'=>'保留','returned'=>'差し戻し','open'=>'未対応'][cmStatus($r)];}
-function cmPublic($r){unset($r['requestId'],$r['requestHash']);$r['updates']=array_map(function($u){unset($u['requestId'],$u['requestHash']);return $u;},$r['updates']??[]);$r['version']=cmVersion($r);$r['referenceCode']='CM-'.$r['id'];$r['responses']=cmResponses($r['id']);$r['status']=cmStatus($r);return $r;}
+function cmPublic($r){unset($r['requestId'],$r['requestHash']);$r['updates']=array_map(function($u){unset($u['requestId'],$u['requestHash']);return $u;},$r['updates']??[]);$r['version']=cmVersion($r);$r['referenceCode']='CM-'.$r['id'];$r['responses']=cmAllResponses($r['id']);try{$r['automation']=cqSummaryForMemo($r['id']);}catch(Throwable $e){$r['automation']=null;}$r['status']=cmStatus($r);return $r;}
 function cmImages($r){$images=$r['images']??[];foreach($r['updates']??[] as $u)$images=array_merge($images,$u['images']??[]);return $images;}
 function cmPage($v){
  $parts=parse_url($v);$base=rtrim(str_replace('\\','/',dirname($_SERVER['SCRIPT_NAME'])),'/');
@@ -25,7 +27,7 @@ function cmImageBytes($image){
 }
 function cmExportText($items,$origin){
  $s="# 時間割システム CODEXメモ\n\n以下の未対応メモの内容を確認して、修正してください。元の運用データは保持してください。回答・修正結果は、このメモの結果欄にも残してください。\n画像は同梱の images フォルダにあります。対応完了への変更は、管理者が修正を確認してから行います。\n\n";
- foreach($items as $r){$s.="## メモ ".$r['id']."\nページ：".$r['pageTitle']."\nURL：".$origin.$r['pagePath']."\n画面内の場所：".$r['context']."\n記入：".$r['createdBy']." ／ ".$r['createdAt']."\n\n".$r['text']."\n\n";foreach($r['images'] as $i)$s.='画像：images/'.$r['id'].'/'.$i['id'].'.'.$i['ext']."\n";$s.="\n";foreach($r['updates']??[] as $index=>$u){$s.="### 追記 ".($index+1)."\n記入：".$u['createdBy']." ／ ".$u['createdAt']."\nページ：".$u['pageTitle']."\nURL：".$origin.$u['pagePath']."\n画面内の場所：".$u['context']."\n\n".$u['text']."\n";foreach($u['images']??[] as $i)$s.='画像：images/'.$r['id'].'/'.$i['id'].'.'.$i['ext']."\n";$s.="\n";}$s.="相談コード：CM-".$r['id']."\n種別：".(($r['kind']??'request')==='question'?'質問':'修正依頼')."\n対応状況：".(!empty($r['doneAt'])?'対応完了：'.$r['doneBy'].' '.$r['doneAt']:cmStatusLabel($r))."\n";foreach(cmResponses($r['id']) as $a)$s.="\n【".$a['kind']." / ".$a['release']."】 ".$a['by']." / ".$a['at']."\n".$a['text']."\n";foreach($r['history']??[] as $h)$s.="操作履歴：".$h['action'].(isset($h['status'])?' ('.$h['status'].')':'')." / ".$h['by']." / ".$h['at']."\n";$s.="\n追加の質問：\n\n";}return $s;
+ foreach($items as $r){$s.="## メモ ".$r['id']."\nページ：".$r['pageTitle']."\nURL：".$origin.$r['pagePath']."\n画面内の場所：".$r['context']."\n記入：".$r['createdBy']." ／ ".$r['createdAt']."\n\n".$r['text']."\n\n";foreach($r['images'] as $i)$s.='画像：images/'.$r['id'].'/'.$i['id'].'.'.$i['ext']."\n";$s.="\n";foreach($r['updates']??[] as $index=>$u){$s.="### 追記 ".($index+1)."\n記入：".$u['createdBy']." ／ ".$u['createdAt']."\nページ：".$u['pageTitle']."\nURL：".$origin.$u['pagePath']."\n画面内の場所：".$u['context']."\n\n".$u['text']."\n";foreach($u['images']??[] as $i)$s.='画像：images/'.$r['id'].'/'.$i['id'].'.'.$i['ext']."\n";$s.="\n";}$s.="相談コード：CM-".$r['id']."\n種別：".(($r['kind']??'request')==='question'?'質問':'修正依頼')."\n対応状況：".(!empty($r['doneAt'])?'対応完了：'.$r['doneBy'].' '.$r['doneAt']:cmStatusLabel($r))."\n";foreach(cmAllResponses($r['id']) as $a)$s.="\n【".$a['kind']." / ".$a['release']."】 ".$a['by']." / ".$a['at']."\n".$a['text']."\n";foreach($r['history']??[] as $h)$s.="操作履歴：".$h['action'].(isset($h['status'])?' ('.$h['status'].')':'')." / ".$h['by']." / ".$h['at']."\n";$s.="\n追加の質問：\n\n";}return $s;
 }
 // Stored ZIP entries keep exports available on hosts without the ZipArchive extension.
 function cmZip($entries){
