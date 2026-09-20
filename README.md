@@ -88,3 +88,13 @@ HTTP検査は講師ログイン・全体時間割・生徒予定表・カルテ�
 非公開設定を参照するためのプログラム7件を更新しました。運用データへの転送・削除は0件、転送後HTTP検査は11件成功しました。
 自動反映は有効です。停止する場合は上記「緊急時の停止方法」を使ってください。
 各pushの反映結果は[Actionsの実行一覧](https://github.com/kashito/timetable/actions/workflows/deploy-lolipop.yml)で確認できます。
+
+## CODEX修正キューの日常利用
+
+管理者が修正メモを保存し「Codexへ送信」を押すと、このPCのワーカーが1件ずつ取得します。
+LEVEL 1の候補だけを別フォルダで作成・検査し、結果を元メモへ返します。LEVEL 2・3や曖昧な依頼は「要確認」で止まります。
+候補を元ソースへ自動適用したり、commit・push・本番反映したりする機能はありません。
+
+このPCでは `C:/Users/idwor/Documents/Codex/timetable-queue/ワーカー開始.cmd` で開始し、同フォルダの「ワーカー停止.cmd」「ワーカー状態.cmd」で停止・確認できます。
+PC再起動後は再度開始してください。停止は処理中の1件を完了してから行い、次のメモは取得しません。
+詳しくは [.deploy/codex_queue/README.md](.deploy/codex_queue/README.md) を参照してください。

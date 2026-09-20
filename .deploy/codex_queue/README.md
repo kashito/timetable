@@ -76,10 +76,10 @@ python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/
 
 configの `max_level` は `1` または `2` です。新しい設定例は `1`。既存設定で省略した場合は従来互換の `2`（LEVEL 2の候補・テスト後に要確認）です。
 CLI指定とconfigのうち厳しい上限を採用します。`max_level: 1` を `--max-level 2` で緩めることはできません。
-将来 `--watch` を使う場合も同じ上限が適用されますが、今回の限定運用では常駐起動しません。
-PCの実運用configは `enabled: false` を保持し、開始が承認された1件試験時だけ有効にして、終了後に戻してください。
+継続利用も `max_level: 1` と `--max-level 1` を使い、1件ずつ処理します。LEVEL 2・3や曖昧な依頼は候補作成前に要確認で停止します。
+初回の1件試験成功後に開始してください。PC再起動時の自動起動設定は行いません。
 
-将来、継続運用を別途承認した場合のコマンド：
+継続利用のコマンド：
 ```powershell
 python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --watch --max-level 1
 ```
@@ -132,7 +132,7 @@ python -B -m unittest discover -s .deploy/codex_queue -p 'test_*.py' -v
 
 ## 停止と候補の確認
 
-管理画面の「処理停止」または「保留」で対象を止めます。全体を止める場合はワーカーのターミナルでCtrl+Cし、設定を `enabled: false` にします。
+管理画面の「処理停止」または「保留」で対象を止めます。全体を止める場合は下記の `manage.py stop` を使います。実行中の1件の結果を返してから終了し、次の依頼は取得しません。直ちに止める場合はキュー画面で対象の「処理停止」を押してください。
 強制終了後は次の接続で期限切れの依頼が「要確認」になります。再実行は別IDを発行し、前の記録を残します。
 この停止操作は既存のGitHub Actionsの有効・無効を変更しません。
 
@@ -149,3 +149,23 @@ python -B -m unittest discover -s .deploy/codex_queue -p 'test_*.py' -v
 6. 対象SHAに一致する既存Actions Runを追跡し、デプロイとHTTP検査の成功後だけ「本番反映済み」にする。失敗・不明の場合は停止する。
 
 第1段階を起動するための追加GitHub Secretsはありません。将来のpush有効化とは別です。
+
+## このPCで普段使う方法
+
+リポジトリ外の `C:/Users/idwor/Documents/Codex/timetable-queue/` にある「ワーカー開始.cmd」「ワーカー停止.cmd」「ワーカー状態.cmd」を使います。
+開始は非表示のバックグラウンド処理です。PCが起動している間だけ動きます。多重起動はロックで拒否します。
+停止操作は現在の1件を完了してから停止し、待機中なら通常15秒程度で終了します。
+ソース変更や通信障害を検出した場合も停止します。勝手に再起動・再取得せず、ログを確認してから開始してください。
+
+内部で使うコマンド（秘密値は引数に渡しません）：
+
+```powershell
+python -B .deploy/codex_queue/manage.py start --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json
+python -B .deploy/codex_queue/manage.py status --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json
+python -B .deploy/codex_queue/manage.py stop --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json
+```
+
+「開始」は構成確認後に `enabled: true`、`max_level: 1` とし、通常CLIの `--watch --max-level 1` を起動します。
+「停止」は `enabled: false` とします。他の設定や鍵は変更しません。処理ログは設定の `workRoot/worker.log` に保存します。
+メモを記入して「Codexへ送信」を押すと取得され、候補と検査結果が元メモの結果欄に戻ります。
+**候補の本番反映は自動では行いません。** 内容をレビューしてから別途依頼してください。

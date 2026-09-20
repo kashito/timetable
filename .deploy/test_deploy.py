@@ -163,6 +163,34 @@ class SafetyTests(unittest.TestCase):
         self.assertNotIn('private-personal-name', str(error.exception))
         self.assertIn('unknown-sha256:', str(error.exception))
 
+    @unittest.skipIf(os.name == 'nt', 'Exercise the actual Ubuntu sender/server protocol in Actions')
+    def test_linux_push_output_with_new_directories_and_different_mtimes(self):
+        # A local SSH substitute starts only rsync --server inside this temporary fixture.
+        # This exercises real sender output without credentials, network, or production writes.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            payload = root / 'payload'; payload.mkdir()
+            destination = root / 'destination'; destination.mkdir()
+            (payload / 'assets').mkdir()
+            for name, body in {'index.php': 'changed', 'same.php': 'same', 'assets/new.css': 'new'}.items():
+                (payload / name).write_text(body)
+            (destination / 'index.php').write_text('old')
+            (destination / 'same.php').write_text('same')
+            os.utime(destination / 'same.php', (1000000000, 1000000000))
+            shim = root / 'fixture_ssh.py'
+            shim.write_text('import os, sys\nassert sys.argv[1] == "fixture-host"\n'
+                            'assert sys.argv[2:4] == ["rsync", "--server"]\n'
+                            'os.execvp("rsync", sys.argv[2:])\n')
+            with patch.object(deploy, 'ssh_command', return_value=[sys.executable, str(shim)]):
+                args = deploy.rsync_args(root, True)
+            args[-1] = 'fixture-host:' + destination.as_posix() + '/'
+            manifest = {'files': {p.relative_to(payload).as_posix(): deploy.sha(p.read_bytes())
+                                 for p in payload.rglob('*') if p.is_file()}}
+            before = {p: p.read_bytes() for p in destination.rglob('*') if p.is_file()}
+            raw = subprocess.run(args, check=True, capture_output=True).stdout
+            self.assertEqual(deploy.parse_changes(raw, manifest), ['assets/new.css', 'index.php'])
+            self.assertEqual(before, {p: p.read_bytes() for p in destination.rglob('*') if p.is_file()})
+
     def test_private_setting_validation_and_read_only_probe(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()

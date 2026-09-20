@@ -404,6 +404,14 @@ def main(argv=None):
         while True:
             # Preflight before claiming; never fetch a memo into an unsafe/dirty repo.
             source_snapshot(Path(config['repo']))
+            if args.watch:
+                # Finish a current job, then honor the local stop switch before claiming another.
+                latest=read_config(args.config)
+                if not latest['enabled']:
+                    print('停止しました。次のメモは取得していません。',flush=True);break
+                if any(latest.get(k)!=config.get(k) for k in set(latest)|set(config) if k not in ('enabled','max_level')):
+                    raise Stopped('設定が変更されました。安全のため停止します。再起動してください。')
+                config['max_level']=min(config['max_level'],level_limit(latest.get('max_level',2)))
             job=claim_job(transport,config['max_level'],args.memo)
             if job:
                 result=process_job(config,transport,job)
