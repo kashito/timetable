@@ -72,3 +72,10 @@ HTTP検査は講師ログイン・全体時間割・生徒予定表・カルテ�
 ログイン後の画面操作や授業・給与の業務内容すべてを自動確認するものではありません。
 
 詳しい仕様、失敗時の扱い、非公開バックアップの場所は [DEPLOYMENT.md](DEPLOYMENT.md) を参照してください。
+
+## 導入時の検証記録
+
+2026年9月20日、[GitHub Actionsのpreview](https://github.com/kashito/timetable/actions/runs/35483000620)で、
+保護・復旧テスト26件、PHP構文、主要ページHTTP、SSH/rsync dry-runが成功しました。
+初回反映の対象は非公開設定を参照するためのプログラム7件で、運用データへの転送・削除は0件です。
+各pushの反映結果は[Actionsの実行一覧](https://github.com/kashito/timetable/actions/workflows/deploy-lolipop.yml)で確認できます。
