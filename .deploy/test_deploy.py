@@ -187,7 +187,9 @@ class SafetyTests(unittest.TestCase):
             manifest = {'files': {p.relative_to(payload).as_posix(): deploy.sha(p.read_bytes())
                                  for p in payload.rglob('*') if p.is_file()}}
             before = {p: p.read_bytes() for p in destination.rglob('*') if p.is_file()}
-            raw = subprocess.run(args, check=True, capture_output=True).stdout
+            result = subprocess.run(args, cwd=root, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', errors='replace'))
+            raw = result.stdout
             self.assertEqual(deploy.parse_changes(raw, manifest), ['assets/new.css', 'index.php'])
             self.assertEqual(before, {p: p.read_bytes() for p in destination.rglob('*') if p.is_file()})
 
