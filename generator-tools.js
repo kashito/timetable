@@ -29,7 +29,19 @@ async function open(row,mode){
   $('generatorCarriedHomework').dataset.recordingKey=Generator.eventKey(row);window.RecordingTools?.context(Generator.eventKey(row),$('generatorCarriedHomework'),true);await files();
  }catch(e){if(id===requestId)$('generatorRecordStatus').textContent='読込失敗：'+e.message;}
 }
-async function save(row=current){if(!row||!loaded)throw new Error('カルテを読み込めていません。保存せず、詳細を開き直してください。');const key=Generator.eventKey(row);const j=await Workspace.api('lesson_record_api.php',{eventKey:key,memo:$('generatorRecordMemo').value,homework:$('generatorHomework').value,date:Workspace.iso(row['日付']),slot:row['時間番号'],className:row['クラス'],teacher:row['担当講師'],room:row['教室'],subject:row['科目']});record=j.record||{};current={...row};$('generatorRecordMemo').value=record.memo||'';$('generatorRecordStatus').textContent='保存しました。';return record;}
+async function save(row=current){
+ if(!row||!loaded)throw new Error('カルテを読み込めていません。保存せず、詳細を開き直してください。');
+ const context=Generator.saveContext(),key=Generator.eventKey(row),memo=$('generatorRecordMemo').value,homework=$('generatorHomework').value;
+ const j=await Workspace.api('lesson_record_api.php',{eventKey:key,memo,homework,date:Workspace.iso(row['日付']),slot:row['時間番号'],className:row['クラス'],teacher:row['担当講師'],room:row['教室'],subject:row['科目']});
+ if(!Generator.isCurrentSave(context))return j.record||{};
+ record=j.record||{};current={...row};
+ const saved={generatorRecordMemo:record.memo||'',generatorHomework:record.homework||''};
+ // Preserve text entered during the save, and keep it marked as unsaved.
+ if($('generatorRecordMemo').value===memo)$('generatorRecordMemo').value=saved.generatorRecordMemo;
+ if($('generatorHomework').value===homework)$('generatorHomework').value=saved.generatorHomework;
+ Generator.markSaved(saved,context);
+ $('generatorRecordStatus').textContent='保存しました。';return record;
+}
 $('generatorRecordSave').onclick=async e=>{e.target.disabled=true;try{await save();}catch(err){$('generatorRecordStatus').textContent=err.message;}finally{e.target.disabled=false;}};
 for(const [id,action] of [['generatorReplySave','reply'],['generatorRead','read']])$(id).onclick=async e=>{e.target.disabled=true;try{await save();const j=await Workspace.api('lesson_record_api.php',{action,eventKey:Generator.eventKey(current),text:$('generatorReplyText').value});record=j.record;$('generatorReplyText').value='';showRecord();}catch(err){$('generatorRecordStatus').textContent=err.message;}finally{e.target.disabled=false;}};
 $('generatorFileUpload').onclick=async e=>{e.target.disabled=true;try{for(const f of $('generatorFileInput').files)await StudentAttachments.upload(Generator.eventKey(current),f);$('generatorFileInput').value='';await files();}catch(err){$('generatorRecordStatus').textContent=err.message;}finally{e.target.disabled=false;}};

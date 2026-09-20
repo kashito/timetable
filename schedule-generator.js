@@ -656,16 +656,19 @@ async function loadGeneratorOps(row){
   });
 }
 async function saveGeneratorTeacherMemo(){
+  const context=generatorSaveContext();
   const btn=$('saveTeacherSharedMemo');btn.disabled=true;
-  try{await SharedNotes.post(currentModalRow()['クラス']||'',$('fTeacherSharedMemo'));$('teacherSharedMemoMsg').textContent='共有メモを記録しました。';return true;}
+  try{await SharedNotes.post(currentModalRow()['クラス']||'',$('fTeacherSharedMemo'));if(generatorSaveIsCurrent(context)){markGeneratorFieldsSaved({fTeacherSharedMemo:''},context);$('teacherSharedMemoMsg').textContent='共有メモを記録しました。';}return true;}
   catch(e){$('teacherSharedMemoMsg').textContent=e.message;return false;}finally{btn.disabled=false;}
 }
 async function persistGeneratorAttendance(options={}){
+  const context=generatorSaveContext(),savedFields={};
   const row=options.row||currentModalRow();
   const eventKey=generatorEventKey(row);
   const attendance={};
   document.querySelectorAll('.generator-att-select').forEach(sel=>{
     const name=String(sel.dataset.name||'').trim();
+    savedFields['att:'+sel.dataset.name]=sel.value;
     if(name && sel.value && sel.value!=='---' && !(sel.dataset.autoExempt==='true'&&sel.value==='免除')) attendance[name]=sel.value;
   });
   const btn=$('saveGeneratorAttendance');
@@ -683,7 +686,10 @@ async function persistGeneratorAttendance(options={}){
     try{j=JSON.parse(raw);}catch(e){throw new Error('サーバー応答が不正です');}
     if(!res.ok||!j.ok) throw new Error(j.error||'保存失敗');
     generatorClassState[eventKey]=j.state||{attendance};
-    $('generatorAttendanceMsg').textContent='保存しました';
+    if(generatorSaveIsCurrent(context)){
+      markGeneratorFieldsSaved(savedFields,context);
+      $('generatorAttendanceMsg').textContent='保存しました';
+    }
     return true;
   }catch(e){
     $('generatorAttendanceMsg').textContent='保存失敗：'+(e.message||e);
@@ -703,6 +709,7 @@ async function duplicateLessonToNextSlot(){
 }
 
 async function populateModal(row,mode){
+  const session=++generatorModalSession;
   $('fMode').value=mode;
   $('fSourceKey').value=row['_sourceKey']||'';
   $('fDate').value=generatorDateToIso(row['日付']);
@@ -730,7 +737,7 @@ async function populateModal(row,mode){
     : `${row['日付']} ${row['時間番号']} 授業追加`;
   $('modal').classList.remove('hidden');
   await Promise.all([loadGeneratorOps(row),window.GeneratorExtras?GeneratorExtras.open(row,mode):Promise.resolve()]);
-  markGeneratorModalSnapshot();
+  if(session===generatorModalSession)markGeneratorModalSnapshot();
 }
 function openAddModal(date,slot,room){
   populateModal(normalize({
@@ -749,10 +756,22 @@ async function openEditModal(row){
   populateModal(row,'edit');
 }
 
-let generatorModalSnapshot='';
+let generatorModalSnapshot='',generatorModalSession=0;
 function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);return JSON.stringify(s)}
-function markGeneratorModalSnapshot(){setTimeout(()=>generatorModalSnapshot=generatorModalState(),0)}
-function generatorModalHasChanges(){return generatorModalSnapshot!==generatorModalState()}
+function markGeneratorModalSnapshot(){generatorModalSnapshot=generatorModalState()}
+function generatorModalHasChanges(){
+  const saved=JSON.parse(generatorModalSnapshot||'{}'),current=JSON.parse(generatorModalState());
+  return Object.keys(saved).length!==Object.keys(current).length||Object.keys(current).some(key=>saved[key]!==current[key]);
+}
+function generatorSaveContext(){return {session:generatorModalSession,source:$('fSourceKey').value};}
+function generatorSaveIsCurrent(context){return context.session===generatorModalSession&&context.source===$('fSourceKey').value&&!$('modal').classList.contains('hidden');}
+function markGeneratorFieldsSaved(values,context){
+  if(!generatorSaveIsCurrent(context))return;
+  // A section save acknowledges only the submitted fields, never unrelated drafts
+  // or edits made while its request was in flight.
+  generatorModalSnapshot=JSON.stringify({...JSON.parse(generatorModalSnapshot||'{}'),...values});
+  if(!generatorModalHasChanges()&&$('formMsg').textContent.startsWith('詳細に未保存の変更があります。'))$('formMsg').textContent='';
+}
 async function requestCloseModal(){
   if(window.SharedNotes?.busy($('fTeacherSharedMemo'))){$('teacherSharedMemoMsg').textContent='共有メモを保存中です。完了後に閉じてください。';return;}
   if($('modal').classList.contains('hidden')) return;
@@ -803,6 +822,7 @@ async function requestCloseModal(){
 }
 function closeModal(){requestCloseModal()}
 function forceCloseModal(){
+  generatorModalSession++;
   $('generatorSaveConfirm')?.classList.add('hidden');
   $('modal').classList.add('hidden');
 }
@@ -1266,8 +1286,7 @@ $('excelUpload').addEventListener('change',()=>{
 loadGeneratorDailyNotes().then(n=>{generatorDailyNotes=n||{}; if(document.getElementById('grid')) render();});
 load();
 
-window.Generator={hasDraft:()=>!$('modal').classList.contains('hidden')&&generatorModalHasChanges(),currentRow:currentModalRow,reload:load,render,refreshChoices,rows:()=>allRows,students:()=>studentRows,eventKey:generatorEventKey,open:openEditModal};
+window.Generator={hasDraft:()=>!$('modal').classList.contains('hidden')&&generatorModalHasChanges(),saveContext:generatorSaveContext,isCurrentSave:generatorSaveIsCurrent,markSaved:markGeneratorFieldsSaved,currentRow:currentModalRow,reload:load,render,refreshChoices,rows:()=>allRows,students:()=>studentRows,eventKey:generatorEventKey,open:openEditModal};
 document.addEventListener('history-window-change',render);
 })();
-
 
