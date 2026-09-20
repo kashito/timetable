@@ -57,6 +57,7 @@ GitHubの同時実行制御とサーバー側の排他ロックを使います�
 ## ローカルの確認・復旧コマンド
 
 Python 3、Git、rsync、OpenSSHが必要です。値は環境変数で指定し、秘密鍵はリポジトリの外に置いてください。
+本番で使うPythonは `/usr/local/bin/python3` に固定し、SSH接続時のPATHに依存しません。
 
 ```bash
 export SSH_HOST=ssh.lolipop.jp

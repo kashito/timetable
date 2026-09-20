@@ -77,5 +77,7 @@ HTTP検査は講師ログイン・全体時間割・生徒予定表・カルテ�
 
 2026年9月20日、[GitHub Actionsのpreview](https://github.com/kashito/timetable/actions/runs/35483000620)で、
 保護・復旧テスト26件、PHP構文、主要ページHTTP、SSH/rsync dry-runが成功しました。
-初回反映の対象は非公開設定を参照するためのプログラム7件で、運用データへの転送・削除は0件です。
+[mainへのpushによる初回本番反映](https://github.com/kashito/timetable/actions/runs/35483093515)も成功し、
+非公開設定を参照するためのプログラム7件を更新しました。運用データへの転送・削除は0件、転送後HTTP検査は11件成功しました。
+自動反映は有効です。停止する場合は上記「緊急時の停止方法」を使ってください。
 各pushの反映結果は[Actionsの実行一覧](https://github.com/kashito/timetable/actions/workflows/deploy-lolipop.yml)で確認できます。
