@@ -599,6 +599,7 @@ async function loadGeneratorOps(row){
   const isEdit=$('fMode').value==='edit';
   ops.classList.toggle('hidden',!isEdit);
   $('duplicateNextLesson').classList.toggle('hidden',!isEdit);
+  $('repeatLesson').classList.toggle('hidden',!isEdit||StaffAuth.user?.role!=='admin');
   if(!isEdit) return;
 
   const cls=String(row['クラス']||'').trim();
@@ -754,6 +755,7 @@ async function populateModal(row,mode){
   $('deleteLesson').classList.toggle('hidden',mode!=='edit');
   $('deleteLesson').disabled=false;
   $('duplicateNextLesson').classList.toggle('hidden',mode!=='edit');
+  $('repeatLesson').classList.toggle('hidden',mode!=='edit'||StaffAuth.user?.role!=='admin');
   $('duplicateNextLesson').disabled=false;
   $('generatorOps').classList.toggle('hidden',mode!=='edit');
   updateGeneratorCreateOptions(true);
@@ -1236,6 +1238,13 @@ $('modal').addEventListener('click',e=>{
 $('saveAdd').onclick=saveForm;
 $('deleteLesson').onclick=(e)=>{e.preventDefault();e.stopPropagation();deleteCurrentLesson();};
 $('duplicateNextLesson').onclick=duplicateLessonToNextSlot;
+$('repeatLesson').onclick=async()=>{
+  if(generatorModalHasChanges()){$('formMsg').textContent='詳細に未保存の変更があります。先に保存してから連続配置してください。';return;}
+  const result=await LessonRepeat.show($('fSourceKey').value);if(!result)return;
+  forceCloseModal();
+  try{await load();$('status').textContent=result.dates.length+'日へ'+result.count+'コマを配置しました。';}
+  catch(e){$('status').textContent='配置は保存済みです。再読み込みして確認してください。';}
+};
 $('saveTeacherSharedMemo').onclick=saveGeneratorTeacherMemo;
 $('saveGeneratorAttendance').onclick=(e)=>{e.preventDefault();e.stopPropagation();persistGeneratorAttendance();};
 $('loadExcel').onclick=importSelectedExcel;

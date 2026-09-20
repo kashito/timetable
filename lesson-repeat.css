@@ -1,0 +1,15 @@
+#lessonRepeatDialog{width:min(650px,calc(100vw - 24px));max-height:92dvh}
+#lessonRepeatDialog .ws-dialog-inner{min-width:0}
+.repeat-source-summary{padding:12px;background:#eef6fb;border-radius:10px;overflow-wrap:anywhere}
+.repeat-month-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.repeat-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.repeat-weekday{text-align:center;color:#64748b;font-size:.85rem}
+.repeat-day{display:flex;align-items:center;justify-content:center;gap:5px;min-height:52px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;font-weight:700}
+.repeat-day:has(input:checked){background:#dcfce7;border-color:#15803d;color:#14532d}
+.repeat-day input{width:17px;height:17px;margin:0;accent-color:#15803d;flex:none}
+.repeat-day:focus-within{outline:2px solid #0e7490;outline-offset:1px}
+.repeat-day small{display:block;font-weight:400;font-size:9px}
+.repeat-source{background:#f1f5f9;color:#64748b;cursor:default}
+.repeat-source input{display:none}
+.repeat-selected{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow:auto}
+@media(max-width:480px){.repeat-calendar{gap:3px}.repeat-day{flex-direction:column;gap:2px;min-height:53px}.repeat-day input{width:16px;height:16px}#lessonRepeatDialog .ws-dialog-body{padding:12px}#lessonRepeatDialog .ws-dialog-foot{flex-wrap:wrap}}
