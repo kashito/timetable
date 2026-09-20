@@ -6,12 +6,12 @@ header('Content-Type: application/json; charset=utf-8');header('Cache-Control: p
 $method=$_SERVER['REQUEST_METHOD'];$manage=isset($_GET['manage']);$actor=($method!=='GET'||$manage)?staffRequire(true):null;$d=ceData();
 if($method==='GET'){
  if(isset($_GET['id'])){$id=ceText($_GET,'id',24,true);$r=$d['events'][$id]??null;if(!$r||(!$manage&&!cePublished($r,$d)))staffFail('お知らせが見つからないか、公開されていません。',404);ceRespond(['ok'=>true,'event'=>ceProjection($r,$d,$manage)]);exit;}
- $studentMode=array_key_exists('student',$_GET)&&!$manage;$school=$studentMode?ceStudentSchool(ceText($_GET,'student',300),$d):null;
- $events=[];foreach($d['events'] as $r){if(!$manage&&!cePublished($r,$d))continue;if($studentMode&&$r['kind']==='school'&&(!$school||$r['schoolId']!==$school['id']))continue;$events[]=ceProjection($r,$d,$manage);}
+ $studentMode=array_key_exists('student',$_GET)&&!$manage;$studentName=$studentMode?ceText($_GET,'student',300):'';$school=$studentMode?ceStudentSchool($studentName,$d):null;$studentRows=$studentMode?ceStudentRows():[];$directory=$studentMode?readJsonStrict(__DIR__.'/data/directory_state.json'):[];
+ $events=[];foreach($d['events'] as $r){if(!$manage&&!cePublished($r,$d))continue;if($studentMode&&!ceStudentMatches($r,$studentName,$school,$studentRows,$directory))continue;$events[]=ceProjection($r,$d,$manage);}
  usort($events,fn($a,$b)=>strcmp($b['startDate'],$a['startDate'])?:strcmp($b['id'],$a['id']));
  $schools=[];foreach($d['schools'] as $r)if($manage||empty($r['archived']))$schools[]=$manage?array_merge(ceSchool($r),['archived'=>!empty($r['archived']),'version'=>ceVersion($r)]):ceSchool($r);
  usort($schools,fn($a,$b)=>strcmp($a['name'],$b['name']));
- ceRespond(['ok'=>true,'schools'=>$studentMode?($school?[$school]:[]):$schools,'events'=>$events,'studentSchool'=>$school]);exit;
+ ceRespond(['ok'=>true,'schools'=>$studentMode?($school?[$school]:[]):$schools,'events'=>$events,'studentSchool'=>$school]+($manage?['classes'=>ceClasses()]:[]));exit;
 }
 if($method!=='POST')staffFail('Method not allowed',405);
 $in=(strpos($_SERVER['CONTENT_TYPE']??'','multipart/form-data')!==false)?json_decode($_POST['payload']??'',true):json_decode(file_get_contents('php://input'),true);
@@ -33,8 +33,12 @@ if($action==='school_save'){
  if($kind==='school'&&(!isset($d['schools'][$schoolId])||(!empty($d['schools'][$schoolId]['archived'])&&(!$r||$schoolId!==$r['schoolId']))))staffFail('表示中の学校を選択してください。',400);
  $start=ceDate($in['startDate']??null);$end=ceDate($in['endDate']??null);if($end<$start)staffFail('終了日は開始日以降にしてください。',400);
  foreach(['published','archived','removeImage'] as $flag)if(!is_bool($in[$flag]??null))staffFail('公開・非表示・画像の設定を確認してください。',400);
- $category=ceText($in,'category',40);if(!in_array($category,['test','trip','festival','other','closure','announcement'],true))staffFail('行事の種類を確認してください。',400);
- $fields=['kind'=>$kind,'schoolId'=>$schoolId,'title'=>ceText($in,'title',480,true),'startDate'=>$start,'endDate'=>$end,'body'=>ceText($in,'body',30000),'category'=>$category,'published'=>$in['published'],'archived'=>$in['archived']];
+ $category=ceText($in,'category',40);if(!in_array($category,['test','exam','mock','trip','festival','other','closure','announcement'],true))staffFail('行事の種類を確認してください。',400);
+ $targets=$in['targetClasses']??($r['targetClasses']??[]);
+ if(!is_array($targets)||$targets!==array_values($targets)||count($targets)>200)staffFail('対象クラスを確認してください。',400);
+ $allowed=array_merge(ceClasses(),$r['targetClasses']??[]);foreach($targets as $c)if(!is_string($c)||!in_array($c,$allowed,true))staffFail('対象クラスを選び直してください。',400);
+ $targets=array_values(array_unique($targets));sort($targets,SORT_STRING);
+ $fields=['targetClasses'=>$targets,'kind'=>$kind,'schoolId'=>$schoolId,'title'=>ceText($in,'title',480,true),'startDate'=>$start,'endDate'=>$end,'body'=>ceText($in,'body',30000),'category'=>$category,'published'=>$in['published'],'archived'=>$in['archived']];
  $upload=null;
  if(isset($_FILES['image'])&&$_FILES['image']['error']!==UPLOAD_ERR_NO_FILE){
   $f=$_FILES['image'];if($f['error']!==UPLOAD_ERR_OK)staffFail('画像を送信できませんでした。画像サイズとサーバーの上限を確認してください。',400);

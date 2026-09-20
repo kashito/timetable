@@ -9,7 +9,7 @@ if($room==='__OTHER__')$room='';
 $slots=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪'];$starts=['13:30','14:20','15:10','16:00','16:50','17:40','18:30','19:20','20:10','21:00','21:50'];$ends=['14:10','15:00','15:50','16:40','17:30','18:20','19:10','20:00','20:50','21:40','22:30'];
 if(!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))||!in_array($slot,$slots,true))staffFail('移動先の日付・コマを確認してください。',400);
 $dir=__DIR__.'/data';$groups=lessonGroups();$g=groupForSource($source);if(!$g)staffFail('連結が変更・解除されました。再読み込みしてください。',409);
-$requestId=$in['requestId']??'';$requestHash=hash('sha256',json_encode([$actor['id'],$source,$date,$slot,$room,$in['version']??''],JSON_UNESCAPED_UNICODE));
+$requestId=$in['requestId']??'';$hashFields=[$actor['id'],$source,$date,$slot,$room,$in['version']??''];if(array_key_exists('teacher',$in))$hashFields[]=['teacher'=>$in['teacher']];$requestHash=hash('sha256',json_encode($hashFields,JSON_UNESCAPED_UNICODE));
 if($method==='POST'){
  if(!is_string($requestId)||!preg_match('/^[a-zA-Z0-9-]{16,80}$/D',$requestId))staffFail('移動操作をやり直してください。',400);
  if(($g['lastMove']['requestId']??'')===$requestId){if(!hash_equals($g['lastMove']['hash'],$requestHash))staffFail('保存済みの操作です。再読み込みしてください。',409);echo json_encode(['ok'=>true,'group'=>groupSummary($g),'replayed'=>true],JSON_UNESCAPED_UNICODE);exit;}
@@ -17,6 +17,11 @@ if($method==='POST'){
 $all=policyRows();$members=groupRows($g,$all);$anchor=null;$keys=[];
 foreach($members as $r){if($r['_sourceKey']===$source)$anchor=$r;$keys[]=canonicalLessonKey(policyKey($r));}
 if(!$anchor||count($members)<2||count($members)!==count($g['sources'])||count(array_unique($keys))!==count($keys))staffFail('連結したコマの対応を確認できません。管理者が元の予定を確認してください。',409);
+$teacher=array_key_exists('teacher',$in)?$in['teacher']:($anchor['担当講師']??'');
+if(!is_string($teacher)||strlen($teacher)>300||preg_match('/[\x00-\x1f\x7f|]/u',$teacher))staffFail('担当講師を確認してください。',400);$teacher=trim($teacher);
+$teachers=[];foreach($all as $r)if(!empty($r['担当講師']))$teachers[$r['担当講師']]=true;
+foreach(readJsonStrict($dir.'/staff_accounts.php') as $a)if(!empty($a['active'])&&!empty($a['name']))$teachers[$a['name']]=true;
+if($teacher!==''&&!isset($teachers[$teacher]))staffFail('登録済みの担当講師を選択してください。',400);
 $fromIndex=array_search($anchor['時間番号'],$slots,true);if($fromIndex===false)staffFail('移動元の時間番号を確認してください。',409);$delta=array_search($slot,$slots,true)-$fromIndex;
 $minute=function($v){if(!preg_match('/^(\d{2}):(\d{2})$/D',$v,$m)||(int)$m[1]>23||(int)$m[2]>59)staffFail('授業の開始・終了時刻を確認してください。',409);return (int)$m[1]*60+(int)$m[2];};
 $moved=[];$nextKeys=[];foreach($members as $r){
@@ -24,11 +29,11 @@ $moved=[];$nextKeys=[];foreach($members as $r){
  $next=$i+$delta;if($next<0||$next>=count($slots))staffFail('連結した全コマが収まる時間を選んでください。①～⑪の範囲外には移動できません。',400);
  $offset=$minute($starts[$next])-$minute($starts[$i]);$start=$minute(trim($r['開始']??'')?:$starts[$i])+$offset;$end=$minute(trim($r['終了']??'')?:$ends[$i])+$offset;
  if($start<0||$end>=1440||$end<=$start)staffFail('移動後の授業時刻が同じ日に収まりません。',400);
- $r=array_replace($r,['日付'=>$date,'時間番号'=>$slots[$next],'教室'=>$room,'開始'=>sprintf('%02d:%02d',intdiv($start,60),$start%60),'終了'=>sprintf('%02d:%02d',intdiv($end,60),$end%60)]);
+ $r=array_replace($r,['日付'=>$date,'時間番号'=>$slots[$next],'担当講師'=>$teacher,'教室'=>$room,'開始'=>sprintf('%02d:%02d',intdiv($start,60),$start%60),'終了'=>sprintf('%02d:%02d',intdiv($end,60),$end%60)]);
  $moved[]=$r;$nextKeys[]=policyKey($r);
 }
 $version=hash('sha256',json_encode([$g,$members],JSON_UNESCAPED_UNICODE));
-if($method==='GET'){echo json_encode(['ok'=>true,'version'=>$version,'group'=>groupSummary($g,$members),'rows'=>$moved],JSON_UNESCAPED_UNICODE);exit;}
+if($method==='GET'){echo json_encode(['ok'=>true,'version'=>$version,'group'=>groupSummary($g,$members),'rows'=>$moved,'teachers'=>array_keys($teachers)],JSON_UNESCAPED_UNICODE);exit;}
 if(!is_string($in['version']??null)||!hash_equals($version,$in['version']))staffFail('連結した予定が変更されました。画面を開き直して確認してください。',409);
 $names=['lesson_records.json','class_state.json','room_overrides.json','lesson_fixed.json'];$maps=[];foreach($names as $n)$maps[$n]=readJsonStrict($dir.'/'.$n);
 $aliases=readJsonStrict($dir.'/lesson_key_aliases.json');$files=readJsonStrict($dir.'/student_attachments.json');$resolve=function($key)use($aliases){$seen=[];while(isset($aliases[$key])&&!isset($seen[$key])){$seen[$key]=true;$key=$aliases[$key];}return $key;};
@@ -43,7 +48,7 @@ if(empty($in['overrideNg']))foreach(readJsonStrict($dir.'/teacher_ng.json') as $
 $changes=[];$edits=readJsonStrict($dir.'/edited_lessons.json');foreach($moved as $r)$edits[$r['_sourceKey']]=$r;$changes[$dir.'/edited_lessons.json']=$edits;
 // Build all destinations from the original maps before replacing any overlapping member key.
 foreach($maps as $name=>$before){$after=$before;foreach($keys as $key)unset($after[$key]);foreach($members as $i=>$old){$key=$keys[$i];$next=$nextKeys[$i];if(!isset($before[$key]))continue;$value=$before[$key];$r=$moved[$i];if($name==='room_overrides.json')$value['room']=$room;if($name==='lesson_records.json')$value=array_replace($value,['eventKey'=>$next,'date'=>$date,'slot'=>$r['時間番号'],'className'=>$r['クラス'],'teacher'=>$r['担当講師'],'room'=>$room]);$after[$next]=$value;}$changes[$dir.'/'.$name]=$after;}
-$common=$changes[$dir.'/lesson_records.json'][$g['key']]??null;if($common)$changes[$dir.'/lesson_records.json'][$g['key']]=array_replace($common,['date'=>$date,'slot'=>implode('',array_column($moved,'時間番号')),'room'=>$room]);
+$common=$changes[$dir.'/lesson_records.json'][$g['key']]??null;if($common)$changes[$dir.'/lesson_records.json'][$g['key']]=array_replace($common,['date'=>$date,'slot'=>implode('',array_column($moved,'時間番号')),'room'=>$room,'teacher'=>$teacher]);
 foreach($files as &$f){$old=$resolve($f['key']??'');if(isset($mapping[$old]))$f['key']=$mapping[$old];}unset($f);$changes[$dir.'/student_attachments.json']=$files;
 foreach($aliases as $a=>$v){$old=$resolve($a);if(isset($mapping[$old]))$aliases[$a]=$mapping[$old];}foreach($mapping as $old=>$next)if($old!==$next)$aliases[$old]=$next;foreach($nextKeys as $next)unset($aliases[$next]);$changes[$dir.'/lesson_key_aliases.json']=$aliases;
 $g['moveHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'from'=>$members,'to'=>$moved];$g['lastMove']=['requestId'=>$requestId,'hash'=>$requestHash];$groups[$g['id']]=$g;$changes[$dir.'/lesson_groups.json']=$groups;

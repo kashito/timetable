@@ -30,7 +30,8 @@ try{
  foreach($incoming as $s){
   if(!is_array($s))bgFail('案内の形式を確認してください。');$id=bgText($s,'id',32);if(!preg_match('/^[a-f0-9]{32}$/D',$id)||isset($ids[$id]))bgFail('案内の番号を確認してください。');$ids[$id]=true;
   if(!is_bool($s['visible']??null))bgFail('表示チェックを確認してください。');
-  $r=['id'=>$id,'title'=>bgText($s,'title',300),'body'=>bgText($s,'body',12000),'visible'=>$s['visible'],'seconds'=>bgSeconds($s['seconds']??null),'image'=>null];
+  $kind=$s['kind']??'notice';if(!in_array($kind,['notice','countdown'],true))bgFail('案内の種類を確認してください。');
+  $r=['kind'=>$kind,'id'=>$id,'title'=>bgText($s,'title',300),'body'=>bgText($s,'body',12000),'visible'=>$s['visible'],'seconds'=>bgSeconds($s['seconds']??null),'image'=>null];
   $upload=$s['imageData']??'';if(!is_string($upload))bgFail('画像を確認してください。');
   if($upload!==''){
    if(strlen($upload)>1500000||!preg_match('/^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+\/=]+)$/D',$upload,$m))bgFail('PNG・JPEG・WebP・GIFの画像（1枚1MBまで）を選んでください。');
@@ -39,7 +40,7 @@ try{
    $hash=hash('sha256',$bytes);$blobs[$hash]=$bytes;$r['image']=['id'=>$hash,'mime'=>$mime,'size'=>strlen($bytes)];
   }elseif(!empty($s['image'])){if(!is_array($s['image'])||!isset($allowed[$s['image']['id']??'']))bgFail('保存済みの画像を確認してください。');$r['image']=$allowed[$s['image']['id']];}
   $total+=$r['image']['size']??0;if($total>4194304)bgFail('1日の案内画像は合計4MBまでです。');
-  if($r['body']===''&&!$r['image'])bgFail('案内の文章か画像を追加してください。');if($r['title']==='')$r['title']='案内';$slides[]=$r;
+  if($kind!=='countdown'&&$r['body']===''&&!$r['image'])bgFail('案内の文章か画像を追加してください。');if($r['title']==='')$r['title']='案内';$slides[]=$r;
  }
  $fields=['mainSeconds'=>bgSeconds($in['mainSeconds']??null),'slides'=>$slides];$hash=bgVersion($fields);
  if(($day['receipt']['id']??'')===$request&&($day['receipt']['actor']??'')===$actor['id']){if(($day['receipt']['hash']??'')!==$hash)bgFail('前の内容は保存済みです。一覧を確認してください。',409);echo json_encode(['ok'=>true,'duplicate'=>true,'guide'=>bgProjection($day,$board,$date,true)],JSON_UNESCAPED_UNICODE);exit;}

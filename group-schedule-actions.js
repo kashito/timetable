@@ -25,6 +25,21 @@ async function move(sourceKey,target){
  }catch(e){msg.textContent=e.message;msg.classList.add('error');}
  return done;
 }
+async function edit(group){
+ if(active||StaffAuth.user?.role!=='admin')return false;active=true;
+ const d=dialog('連結した授業の担当・教室・日程を変更'),body=d.querySelector('[data-body]'),msg=d.querySelector('[data-message]'),save=d.querySelector('[data-save]');let busy=false,resolve;const done=new Promise(r=>resolve=r),close=value=>{if(!busy){active=false;d.close();resolve(value);}};
+ d.querySelector('[data-cancel]').onclick=()=>close(false);d.oncancel=e=>{e.preventDefault();close(false);};d.showModal();
+ try{const sourceKey=group.sources[0],input={sourceKey,date:group.date,slot:group.slots[0],room:group.room},plan=await Workspace.api('lesson_group_move_api.php?'+new URLSearchParams(input));
+  const rooms=[...new Set(['','青','黄','白','PC','ガラス','緑','自宅可','自由','その他',group.room])];
+  body.innerHTML=`<form class="group-edit-form" id="groupScheduleForm"><p><b>${esc(group.className)}</b> ／ 全${group.sources.length}コマをまとめて変更します。</p><label>日付<input name="date" type="date" required value="${esc(group.date)}"></label><label>先頭のコマ<select name="slot">${slots.map(s=>`<option ${s===group.slots[0]?'selected':''}>${s}</option>`).join('')}</select></label><label>担当講師<select name="teacher"><option value="">未設定（管理者）</option>${plan.teachers.map(t=>`<option value="${esc(t)}" ${t===group.teacher?'selected':''}>${esc(t)}</option>`).join('')}</select></label><label>教室<select name="room">${rooms.map(r=>`<option value="${esc(r)}" ${r===group.room?'selected':''}>${esc(r||'未設定')}</option>`).join('')}</select></label><p class="ws-muted">各コマの長さ・連結・食事休憩を維持します。出欠・カルテ・資料・確定・準備状態も引き継ぎます。</p></form>`;
+  save.textContent='全コマの変更を保存';save.disabled=false;msg.textContent='';let requestId=token();const form=body.querySelector('form');form.onchange=()=>{requestId=token();msg.textContent='';};form.onsubmit=e=>{e.preventDefault();save.click();};
+  save.onclick=async()=>{if(busy||!form.reportValidity())return;const fields=Object.fromEntries(new FormData(form)),payload={sourceKey,...fields,version:plan.version,requestId};busy=true;d.querySelectorAll('button,input,select').forEach(b=>b.disabled=true);msg.textContent='保存中…';
+   try{await Workspace.api('lesson_group_move_api.php',payload);busy=false;close(true);}
+   catch(e){msg.textContent=e.message;msg.classList.add('error');}finally{busy=false;d.querySelectorAll('button,input,select').forEach(b=>b.disabled=false);}
+  };
+ }catch(e){msg.textContent=e.message;msg.classList.add('error');}
+ return done;
+}
 async function extend(id){
  const returnTarget=origin();
  if(active||StaffAuth.user?.role!=='admin')return;active=true;const d=dialog('コマを追加して連結'),body=d.querySelector('[data-body]'),msg=d.querySelector('[data-message]'),save=d.querySelector('[data-save]');let busy=false;const close=()=>{if(!busy){active=false;d.close();}};d.querySelector('[data-cancel]').onclick=close;d.oncancel=e=>{e.preventDefault();close();};d.showModal();
@@ -53,5 +68,5 @@ async function lengthen(id){
   };
  }catch(e){msg.textContent=e.message;msg.classList.add('error');}
 }
-window.GroupScheduleActions={move,extend,lengthen,origin,returnToSchedule};
+window.GroupScheduleActions={move,edit,extend,lengthen,origin,returnToSchedule};
 })();

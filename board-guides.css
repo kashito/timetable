@@ -3,3 +3,7 @@
 .board-student-preview :is(.workspace-nav,#cmLauncher,#cmReview,.cm-context-launch){display:none!important}
 
 .board-student-preview #boardGuidesPage>a.ws-button:first-child{display:none!important}
+
+.bg-countdown{display:block;width:100%;height:72dvh;min-height:450px;border:0;border-radius:10px;background:#657180}.bg-editor [hidden]{display:none!important}.bg-stage:has(.bg-countdown){padding:8px}.bg-card:has(.bg-countdown){padding:0;overflow:hidden}
+
+.bg-stage .bg-countdown{min-height:300px}

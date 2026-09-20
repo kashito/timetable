@@ -24,3 +24,9 @@
 .records-page .card.is-editing :is(.record-attendance,.homework){display:none}
 
 .record-sort{display:flex;align-items:center;gap:8px;margin:10px 0}.record-sort select{padding:8px;border:1px solid #bdced7;border-radius:6px}
+
+/* A grid item's intrinsic text width must not widen the entire record list. */
+.records-page .list,.records-page .replies{grid-template-columns:minmax(0,1fr)}
+.records-page :is(.card,.bubble,.record-attendance,.record-conversation,.memo,.homework,.record-attendance-row){min-width:0;max-width:100%;overflow-wrap:anywhere}
+.records-page .filters{grid-template-columns:minmax(0,1.2fr) repeat(2,minmax(0,1fr))}
+@media(max-width:700px){.records-page .filters{grid-template-columns:minmax(0,1fr)}}
