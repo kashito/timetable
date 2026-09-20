@@ -193,6 +193,58 @@ class SafetyTests(unittest.TestCase):
             self.assertEqual(deploy.parse_changes(raw, manifest), ['assets/new.css', 'index.php'])
             self.assertEqual(before, {p: p.read_bytes() for p in destination.rglob('*') if p.is_file()})
 
+    def test_root_directory_item_requires_explicit_verified_context(self):
+        manifest={'files':{'index.php':'new'}}
+        raw=b'cd+++++++++|./\n<fcsT......|index.php\n'
+        with self.assertRaisesRegex(RuntimeError,'Unexpected rsync target'):
+            deploy.parse_changes(raw,manifest)
+        self.assertEqual(deploy.parse_changes(raw,manifest,verified_root=True),['index.php'])
+
+    def test_verified_root_does_not_allow_other_directories_or_metadata(self):
+        manifest={'files':{'index.php':'new'}}
+        for raw in [b'cd+++++++++|../\n',b'cd+++++++++|data/\n',b'cd+++++++++|unknown/\n',
+                    b'.d...p.....|./\n',b'cL+++++++++|./\n',b'*deleting  |./\n',
+                    b'<f+++++++++|./index.php\n',b'<f+++++++++|data/secret.php\n']:
+            with self.subTest(raw=raw),self.assertRaises(RuntimeError):
+                deploy.parse_changes(raw,manifest,verified_root=True)
+
+    def test_preview_root_marker_still_matches_independent_file_hashes(self):
+        manifest={'commit':'a'*40,'files':{'index.php':'new','same.php':'same'}}
+        before={'files':{'index.php':'old','same.php':'same'},'all_digest':'unchanged',
+                'file_count':2,'retained_count':0,'private_settings':'valid'}
+        for raw,success in [(b'cd+++++++++|./\n<fcsT......|index.php\n',True),
+                            (b'cd+++++++++|./\n<f+++++++++|index.php\n<f+++++++++|same.php\n',False)]:
+            with tempfile.TemporaryDirectory() as temp, \
+                    patch.object(deploy,'validate_payload',return_value=manifest), \
+                    patch.object(deploy,'probe',return_value=before) as probe, \
+                    patch.object(deploy,'rsync_args',return_value=['rsync','--dry-run']), \
+                    patch.object(deploy,'run',return_value=raw):
+                if success:
+                    _,_,result=deploy.preview(Path(temp));self.assertEqual(result['changed_files'],['index.php'])
+                    self.assertEqual(result['protected_transfers'],0);self.assertEqual(result['deletions'],0)
+                    self.assertEqual(probe.call_count,2)
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'disagree'):deploy.preview(Path(temp))
+
+    def test_missing_root_stops_before_rsync_even_if_marker_would_be_allowed(self):
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(deploy,'validate_payload',return_value={'files':{}}), \
+                patch.object(deploy,'probe',side_effect=RuntimeError('Destination must be existing')), \
+                patch.object(deploy,'run') as run:
+            with self.assertRaisesRegex(RuntimeError,'Destination'):deploy.preview(Path(temp))
+            run.assert_not_called()
+
+    def test_verified_root_marker_still_rejects_changed_server(self):
+        manifest={'commit':'a'*40,'files':{'index.php':'new'}}
+        before={'files':{'index.php':'old'},'all_digest':'before','file_count':1,'retained_count':0,'private_settings':'valid'}
+        after={**before,'all_digest':'changed'}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(deploy,'validate_payload',return_value=manifest), \
+                patch.object(deploy,'probe',side_effect=[before,after]), \
+                patch.object(deploy,'rsync_args',return_value=['rsync','--dry-run']), \
+                patch.object(deploy,'run',return_value=b'cd+++++++++|./\n<fcsT......|index.php\n'):
+            with self.assertRaisesRegex(RuntimeError,'Production changed'):deploy.preview(Path(temp))
+
     def test_private_setting_validation_and_read_only_probe(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()

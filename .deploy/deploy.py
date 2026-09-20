@@ -242,7 +242,7 @@ def stage_args(output, stage, run_id):
     return args
 
 
-def parse_changes(raw, manifest):
+def parse_changes(raw, manifest, *, verified_root=False):
     changes = []
     dirs = {str(parent) + '/' for p in manifest['files'] for parent in PurePosixPath(p).parents
             if str(parent) != '.'}
@@ -252,6 +252,12 @@ def parse_changes(raw, manifest):
         require(len(line) > 12 and line[11] == '|', 'Unexpected rsync output; refusing deployment')
         code, path = line[:11], line[12:]
         require(not code.startswith('*'), 'Deletion is prohibited')
+        # Some sender/server combinations itemize the transfer root itself.
+        # Accept only this exact directory marker, after a separate existence /
+        # realpath probe (or transaction prepare). It is never a file transfer.
+        # The caller still compares every file with the independent hash plan.
+        if verified_root and path == './' and code == 'cd+++++++++':
+            continue
         if path in dirs and code == 'cd+++++++++':
             continue
         # In a push, rsync marks files sent TO the server with '<'.
@@ -271,7 +277,7 @@ def preview(output):
     write_json(output / 'remote-before.json', before)
     raw = run(rsync_args(output, True), cwd=output, timeout=300)
     (output / 'rsync-dry-run.txt').write_bytes(raw)
-    changes = parse_changes(raw, manifest)
+    changes = parse_changes(raw, manifest, verified_root=True)
     expected = sorted(p for p, digest in manifest['files'].items() if before['files'].get(p) != digest)
     require(changes == expected, 'SSH content comparison and rsync dry-run disagree')
     after = probe(manifest)
@@ -309,7 +315,7 @@ def deploy(output, confirmed_commit):
             'files': {p: {'old': before['files'].get(p), 'new': manifest['files'][p]} for p in changed}})
         (output / 'transfer-files.txt').write_text('\n'.join(changed) + '\n', encoding='utf-8')
         raw = run(stage_args(output, prepared['stage'], run_id), cwd=output, timeout=300)
-        require(parse_changes(raw, manifest) == sorted(changed), 'Unexpected staging transfer')
+        require(parse_changes(raw, manifest, verified_root=True) == sorted(changed), 'Unexpected staging transfer')
         # The remote apply rolls back independently if its checks fail or SSH is interrupted.
         applied_result = remote_transaction({'action': 'apply', 'run_id': run_id})
         write_json(output / 'apply-result.json', applied_result)
