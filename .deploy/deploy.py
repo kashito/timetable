@@ -255,7 +255,10 @@ def parse_changes(raw, manifest):
         if path in dirs and code == 'cd+++++++++':
             continue
         # In a push, rsync marks files sent TO the server with '<'.
-        require(path in manifest['files'] and code.startswith('<f'), 'Unexpected rsync target')
+        if not (path in manifest['files'] and code.startswith('<f')):
+            # Only source-owned names may appear in public Actions logs.
+            target = path if path in manifest['files'] or path in dirs or path == './' else 'unknown-sha256:' + sha(path.encode())[:16]
+            raise RuntimeError('Unexpected rsync target: ' + json.dumps({'item': code, 'target': target}, ensure_ascii=True))
         require(not excluded(path, load_rules()), 'Protected rsync target')
         changes.append(path)
     require(len(changes) == len(set(changes)), 'Duplicate transfer path')

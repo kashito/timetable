@@ -154,6 +154,15 @@ class SafetyTests(unittest.TestCase):
                 deploy.parse_changes(line, manifest)
         self.assertEqual(deploy.parse_changes(b'<fcsT......|index.php\n', manifest), ['index.php'])
 
+    def test_rsync_diagnostics_do_not_expose_unknown_names(self):
+        with self.assertRaisesRegex(RuntimeError, '"item": ".f...p....."') as error:
+            deploy.parse_changes(b'.f...p.....|index.php\n', {'files': {'index.php': 'hash'}})
+        self.assertIn('index.php', str(error.exception))
+        with self.assertRaises(RuntimeError) as error:
+            deploy.parse_changes(b'<f+++++++++|private-personal-name.php\n', {'files': {}})
+        self.assertNotIn('private-personal-name', str(error.exception))
+        self.assertIn('unknown-sha256:', str(error.exception))
+
     def test_private_setting_validation_and_read_only_probe(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()
