@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "max_level": 1,
   "repo": "C:/Users/idwor/Documents/GitHub/timetable",
   "workRoot": "C:/Users/idwor/Documents/Codex/timetable-queue-runs",
   "transport": "ssh",

@@ -56,6 +56,7 @@ function cqResponses($id){
  static $cache=null;if($cache===null)$cache=cqLoad();$out=[];
  foreach($cache['jobs'] as $job)if($job['memoId']===$id&&!empty($job['finishedAt'])){
   $text=($job['answer']??'')."\n状態：".(cqLabels()[$job['status']]??$job['status']);
+  if(!empty($job['needs_clarification']))$text.="\n追加確認が必要です（needs_clarification=true）。候補は作成していません。";
   if(!empty($job['changedFiles']))$text.="\n変更ファイル：".implode('、',$job['changedFiles']);
   foreach($job['tests']??[] as $test)$text.="\n".$test['name'].'：'.($test['passed']?'成功':'失敗');
   if(!empty($job['error']))$text.="\n".$job['error'];
@@ -70,7 +71,7 @@ function cqNewJob($memo,$actor){
   'requestText'=>$memo['text'],'memoCreatedAt'=>$memo['createdAt'],'createdAt'=>$now,'createdBy'=>$actor['name'],'createdById'=>$actor['id'],
   'snapshot'=>cqSnapshot($memo),'memoFingerprint'=>cqFingerprint($memo),'status'=>'queued','level'=>null,'levelReason'=>'',
   'statusChangedAt'=>$now,'updatedAt'=>$now,'startedAt'=>null,'finishedAt'=>null,'leaseUntil'=>null,'worker'=>null,
-  'changedFiles'=>[],'tests'=>[],'commitSha'=>null,'actionsRunId'=>null,'deploymentResult'=>'not_requested',
+  'changedFiles'=>[],'tests'=>[],'needs_clarification'=>false,'commitSha'=>null,'actionsRunId'=>null,'deploymentResult'=>'not_requested',
   'answer'=>'','error'=>'','candidateId'=>null,'baseCommit'=>null,'patchSha256'=>null,'completedAt'=>null,'history'=>[
    ['status'=>'queued','at'=>$now,'by'=>$actor['name'],'message'=>'Codexへ送信。第1段階のため本番反映はしません。']]];
 }
@@ -118,20 +119,32 @@ function cqWorkerJob(&$data,$input){
  }
  return $id;
 }
+function cqClaimJob(&$data,$id,$input,$maximum){
+ $job=$data['jobs'][$id];$memos=cqMemos();$memo=$memos[$job['memoId']]??null;
+ if(!$memo||!empty($memo['doneAt'])||!hash_equals($job['memoFingerprint'],cqFingerprint($memo))){
+  $job['error']='送信後にメモが変更されました。内容を確認して再送信してください。';$job['finishedAt']=cqNow();cqSetStatus($job,'review','システム',$job['error']);$data['jobs'][$id]=$job;cqSave($data);
+  return ['ok'=>true,'job'=>null,'reviewId'=>$id]; // Never advance to a second memo in one claim.
+ }
+ $token=bin2hex(random_bytes(32));$job['leaseHash']=hash('sha256',$token);$job['leaseUntil']=date('c',time()+120);
+ $job['maxLevel']=$maximum;$job['startedAt']=cqNow();$job['worker']=cqText($input['worker']??'local',100);cqSetStatus($job,'running','Codex');
+ $data['jobs'][$id]=$job;cqSave($data);$public=cqPublic($job);$public['snapshot']=$job['snapshot'];$public['token']=$token;
+ require_once __DIR__.'/codex_memo_responses.php';$public['previousResponses']=array_merge(cmResponses($job['memoId']),cqResponses($job['memoId']));
+ return ['ok'=>true,'job'=>$public];
+}
 function cqWorker($action,$input){
- $data=cqLoad();if(cqExpire($data))cqSave($data);
- if($action==='claim'){
+ // Unknown actions (including a newer client's pinned claim) must not mutate a queue.
+ if(!in_array($action,['claim','claim_memo','heartbeat','image','progress','result'],true))cqFail('処理コマンドを確認してください。');
+ $maximum=$input['maxLevel']??2;
+ if(in_array($action,['claim','claim_memo'],true)&&!in_array($maximum,[1,2],true))cqFail('処理上限はLEVEL 1または2を指定してください。');
+ $memoId=$action==='claim_memo'?cqId($input['memoId']??''):null;
+ $data=cqLoad();
+ // A pinned claim must not expire or otherwise modify unrelated jobs.
+ if($action!=='claim_memo'&&cqExpire($data))cqSave($data);
+ if($action==='claim'||$action==='claim_memo'){
   foreach($data['jobs'] as $job)if(in_array($job['status'],['running','fixed','testing'],true))return ['ok'=>true,'job'=>null,'busy'=>true];
-  foreach($data['jobs'] as $id=>$job)if($job['status']==='queued'){
-   $memos=cqMemos();$memo=$memos[$job['memoId']]??null;
-   if(!$memo||!empty($memo['doneAt'])||!hash_equals($job['memoFingerprint'],cqFingerprint($memo))){$job['error']='送信後にメモが変更されました。内容を確認して再送信してください。';$job['finishedAt']=cqNow();cqSetStatus($job,'review','システム',$job['error']);$data['jobs'][$id]=$job;cqSave($data);continue;}
-   $token=bin2hex(random_bytes(32));$job['leaseHash']=hash('sha256',$token);$job['leaseUntil']=date('c',time()+120);
-   $job['startedAt']=cqNow();$job['worker']=cqText($input['worker']??'local',100);cqSetStatus($job,'running','Codex');
-   $data['jobs'][$id]=$job;cqSave($data);$public=cqPublic($job);$public['snapshot']=$job['snapshot'];$public['token']=$token;
-   require_once __DIR__.'/codex_memo_responses.php';$public['previousResponses']=array_merge(cmResponses($job['memoId']),cqResponses($job['memoId']));
-   return ['ok'=>true,'job'=>$public];
-  }
-  return ['ok'=>true,'job'=>null];
+  $ids=[];foreach($data['jobs'] as $id=>$job)if($job['status']==='queued'&&($memoId===null||$job['memoId']===$memoId))$ids[]=$id;
+  if($memoId!==null&&count($ids)>1)cqFail('同じ相談コードに複数の処理待ちがあります。確認するまで取得しません。',409);
+  return $ids?cqClaimJob($data,$ids[0],$input,$maximum):['ok'=>true,'job'=>null];
  }
  $id=cqWorkerJob($data,$input);$job=&$data['jobs'][$id];
  if($action==='heartbeat'){
@@ -154,6 +167,7 @@ function cqWorker($action,$input){
   if(!in_array($next,$allowed[$job['status']]??[],true))cqFail('処理の順序を確認してください。',409);
   $level=$input['level']??null;if(!in_array($level,[1,2,3],true))cqFail('処理レベルを確認してください。');
   if($level===3)cqFail('LEVEL 3は改修できません。',409);
+  if($level>($job['maxLevel']??2))cqFail('LEVEL 1限定運用のため自動処理対象外です。',409);
   if(isset($job['level'])&&$level<$job['level'])cqFail('処理レベルを下げることはできません。',409);
   $job['level']=$level;$job['levelReason']=cqText($input['levelReason']??'',3000);cqSetStatus($job,$next,'Codex');cqSave($data);
   return ['ok'=>true,'item'=>cqPublic($job)];
@@ -168,6 +182,8 @@ function cqWorker($action,$input){
   $tests=$result['tests']??[];if(!is_array($tests)||count($tests)>100)cqFail('テスト結果を確認してください。');
   foreach($tests as $t)if(!is_array($t)||!is_bool($t['passed']??null)||!is_string($t['name']??null)||strlen($t['name'])>300||!is_string($t['detail']??'')||strlen($t['detail']??'')>1500)cqFail('テスト結果の形式を確認してください。');
   $files=$result['changedFiles']??[];if(!is_array($files)||count($files)>=100)cqFail('変更ファイル数を確認してください。');
+  $clarify=$result['needs_clarification']??false;if(!is_bool($clarify))cqFail('追加確認の形式を確認してください。');
+  if(($clarify||(($job['maxLevel']??2)===1&&$level>1))&&($status!=='review'||$files||$tests||!empty($result['patchSha256'])))cqFail('処理対象外・曖昧な依頼は候補作成前に要確認で停止してください。');
   if($level===3&&$files)cqFail('LEVEL 3の改修結果は登録できません。');
   foreach($files as $p)if(!is_string($p)||strlen($p)>300||preg_match('~(?:^|/)(?:\.\.|data|\.git|\.deploy|\.github)(?:/|$)|[\\\\\x00-\x1f]~',$p)||substr($p,0,1)==='/')cqFail('保護された変更ファイルを結果へ登録できません。');
   $digest=hash('sha256',json_encode($result,JSON_UNESCAPED_UNICODE));
@@ -176,7 +192,7 @@ function cqWorker($action,$input){
   if($level===2&&$status==='tested')cqFail('LEVEL 2は要確認で停止してください。');
   if(!in_array($job['status'],['running','fixed','testing'],true))cqFail('結果を受け付けられない状態です。',409);
   $job['level']=$level;$job['levelReason']=cqText($result['levelReason']??'',3000);$job['answer']=cqText($result['answer']??'',24000);$job['error']=cqText($result['error']??'',6000);
-  $job['changedFiles']=$files;$job['tests']=$tests;$job['candidateId']=cqText($result['candidateId']??'',120);$job['baseCommit']=cqText($result['baseCommit']??'',40);$job['patchSha256']=cqText($result['patchSha256']??'',64);
+  $job['changedFiles']=$files;$job['tests']=$tests;$job['needs_clarification']=$clarify;$job['candidateId']=cqText($result['candidateId']??'',120);$job['baseCommit']=cqText($result['baseCommit']??'',40);$job['patchSha256']=cqText($result['patchSha256']??'',64);
   $job['finishedAt']=cqNow();$job['resultDigest']=$digest;$job['leaseUntil']=date('c',time()+120);cqSetStatus($job,$status,'Codex');cqSave($data);
   return ['ok'=>true,'item'=>cqPublic($job)];
  }

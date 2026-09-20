@@ -103,6 +103,105 @@ class QueueApiTests(unittest.TestCase):
         value=dict(status='tested',level=1,levelReason='文言のみ',answer='合成テストで修正しました。',error='',changedFiles=['fixture.html'],tests=[dict(name='fixture test',passed=True,detail='synthetic')],candidateId='fixture-candidate',baseCommit='1'*40,patchSha256='2'*64,commitSha=None,actionsRunId=None,deploymentResult='not_requested')
         value.update(extra);return value
 
+    def second_memo(self):
+        other='b2'*12
+        self.write_data('codex_memos.php',{'schema':1,'items':{MEMO:self.memo,other:dict(self.memo,id=other)}})
+        version=self.api(path='codex_memos_api.php?id='+other)[1]['items'][0]['version']
+        return self.api({'action':'enqueue','memoId':other,'memoVersion':version})[1]['item']
+
+    def queue_data(self):return json.loads((self.root/'data/codex_queue.php').read_text(encoding='utf-8').split('?>',1)[1])
+
+    def test_pinned_claim_selects_exact_code_not_oldest_job(self):
+        first=self.enqueue();second=self.second_memo();before=self.queue_data()['jobs'][first['id']]
+        job=self.worker('claim_memo',memoId=second['memoId'],maxLevel=1)['job']
+        self.assertEqual((job['id'],job['memoId'],job['maxLevel']),(second['id'],second['memoId'],1))
+        self.assertEqual(self.queue_data()['jobs'][first['id']],before)
+
+    def test_missing_pinned_memo_leaves_other_queue_untouched(self):
+        self.enqueue();before=(self.root/'data/codex_queue.php').read_bytes()
+        self.assertIsNone(self.worker('claim_memo',memoId='f'*24,maxLevel=1)['job'])
+        self.assertEqual((self.root/'data/codex_queue.php').read_bytes(),before)
+
+    def test_stale_pinned_memo_never_falls_back_to_other(self):
+        first=self.enqueue();second=self.second_memo();before=self.queue_data()['jobs'][second['id']]
+        data=json.loads((self.root/'data/codex_memos.php').read_text(encoding='utf-8').split('?>',1)[1]);data['items'][MEMO]['text']='変更済み';self.write_data('codex_memos.php',data)
+        reply=self.worker('claim_memo',memoId=MEMO,maxLevel=1)
+        self.assertIsNone(reply['job']);self.assertEqual(reply['reviewId'],first['id'])
+        self.assertEqual(self.queue_data()['jobs'][second['id']],before)
+
+    def test_generic_claim_stale_first_does_not_advance_to_second(self):
+        self.enqueue();second=self.second_memo();before=self.queue_data()['jobs'][second['id']]
+        data=json.loads((self.root/'data/codex_memos.php').read_text(encoding='utf-8').split('?>',1)[1]);data['items'][MEMO]['text']='変更済み';self.write_data('codex_memos.php',data)
+        self.assertIsNone(self.worker('claim',maxLevel=1)['job'])
+        self.assertEqual(self.queue_data()['jobs'][second['id']],before)
+
+    def test_pinned_claim_does_not_expire_unrelated_job(self):
+        self.enqueue();second=self.second_memo();job=self.claim()
+        data=self.queue_data();data['jobs'][job['id']]['leaseUntil']='2000-01-01T00:00:00+09:00';self.write_data('codex_queue.php',data)
+        before=(self.root/'data/codex_queue.php').read_bytes()
+        self.assertTrue(self.worker('claim_memo',memoId=second['memoId'],maxLevel=1)['busy'])
+        self.assertEqual((self.root/'data/codex_queue.php').read_bytes(),before)
+
+    def test_pinned_duplicate_queue_and_invalid_input_fail_closed(self):
+        first=self.enqueue();data=self.queue_data();data['jobs']['f'*24]=dict(data['jobs'][first['id']],id='f'*24);self.write_data('codex_queue.php',data)
+        before=(self.root/'data/codex_queue.php').read_bytes()
+        self.assertFalse(self.worker('claim_memo',memoId=MEMO,maxLevel=1)['ok'])
+        for args in [dict(memoId='../other'),dict(memoId=MEMO,maxLevel=3),dict(memoId=MEMO,maxLevel=True)]:
+            self.assertFalse(self.worker('claim_memo',**args)['ok'])
+        self.assertEqual((self.root/'data/codex_queue.php').read_bytes(),before)
+
+    def test_limit_enforced_on_server_progress_and_results(self):
+        self.enqueue();job=self.worker('claim_memo',memoId=MEMO,maxLevel=1)['job']
+        for level in (2,3):
+            self.assertFalse(self.worker('progress',job,status='fixed',level=level)['ok'])
+            self.assertFalse(self.worker('result',job,result=self.result(status='review',level=level))['ok'])
+        result=self.result(status='review',level=2,changedFiles=[],tests=[],patchSha256='',error='要確認：LEVEL 1限定運用のため自動処理対象外')
+        self.assertTrue(self.worker('result',job,result=result)['ok'])
+        self.assertIn('LEVEL 1限定運用',self.memo_public()['responses'][-1]['text'])
+        self.assertEqual(self.memo_before,(self.root/'data/codex_memos.php').read_bytes())
+
+    def test_clarification_flag_persisted_and_overlaid_without_memo_write(self):
+        self.enqueue();job=self.worker('claim_memo',memoId=MEMO,maxLevel=1)['job']
+        result=self.result(status='review',level=1,needs_clarification=True,changedFiles=[],tests=[],patchSha256='')
+        self.assertFalse(self.worker('result',job,result=dict(result,needs_clarification='true'))['ok'])
+        self.assertFalse(self.worker('result',job,result=dict(result,changedFiles=['fixture.html']))['ok'])
+        self.assertTrue(self.worker('result',job,result=result)['item']['needs_clarification'])
+        self.assertIn('needs_clarification=true',self.memo_public()['responses'][-1]['text'])
+        self.assertEqual(self.memo_before,(self.root/'data/codex_memos.php').read_bytes())
+
+    def normal_cli(self,level):
+        import contextlib,io
+        from unittest.mock import patch
+        import worker
+        from test_limits import decision
+        first=self.enqueue();second=self.second_memo();other_before=self.queue_data()['jobs'][second['id']]
+        memos_before=(self.root/'data/codex_memos.php').read_bytes()
+        with tempfile.TemporaryDirectory(prefix='timetable-normal-cli-') as temp:
+            root=Path(temp);config=root/'config.json'
+            worker.write_json(config,dict(enabled=True,max_level=1,repo=str(root/'source'),workRoot=str(root/'runs'),transport='local',fixtureRoot=str(self.root),php=PHP,codex='unused',node='unused',nodeModules='unused'))
+            before=config.read_bytes();original={'fixture.css':b'h1{color:red}'}
+            answers=[decision(level,files=['fixture.css'])]
+            if level==1:answers.append(decision(edits=[dict(path='fixture.css',before='red',after='blue')],files=['fixture.css']))
+            with patch.object(worker,'source_snapshot',return_value=('1'*40,original)), \
+                 patch.object(worker.CodexModel,'ask',side_effect=answers) as model, \
+                 patch.object(worker,'validate_candidate',return_value=[dict(name='synthetic',passed=True)]) as tests, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                worker.main(['--config',str(config),'--once','--memo','CM-'+MEMO,'--max-level','1'])
+            self.assertEqual(config.read_bytes(),before)
+            self.assertEqual(model.call_count,2 if level==1 else 1)
+            self.assertEqual(tests.call_count,1 if level==1 else 0)
+            directory=root/'runs'/first['id']
+            self.assertEqual((directory/'candidate').exists(),level==1)
+            self.assertEqual((directory/'candidate.patch').exists(),level==1)
+        self.assertEqual(self.queue_data()['jobs'][second['id']],other_before)
+        self.assertEqual(self.memo_public()['automation']['status'],'tested' if level==1 else 'review')
+        self.assertEqual(self.queue_data()['jobs'][first['id']]['level'],level)
+        self.assertEqual((self.root/'data/codex_memos.php').read_bytes(),memos_before)
+
+    def test_normal_cli_pinned_level_one_end_to_end(self):self.normal_cli(1)
+    def test_normal_cli_pinned_level_two_end_to_end(self):self.normal_cli(2)
+    def test_normal_cli_pinned_level_three_end_to_end(self):self.normal_cli(3)
+
     def test_access_csrf_and_cli_not_public(self):
         self.assertEqual(self.api(client=self.client())[0],401)
         self.assertEqual(self.api(client=self.teacher)[0],403)

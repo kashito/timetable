@@ -8,7 +8,7 @@
 
 1. 管理者としてCODEXメモを開き、「Codexへ送信」を押す。
 2. 「Codex修正キュー」で処理待ち・実行中・検査結果を確認する。
-3. LEVEL 1は検査成功で「修正・テスト完了（未反映）」、LEVEL 2は「要確認」、LEVEL 3は改修せず「要確認」で止まる。
+3. LEVEL 1は検査成功で「修正・テスト完了（未反映）」。LEVEL 1限定運用ではLEVEL 2・3は候補作成前に「要確認」で止まる。
 4. 元メモの結果欄にも回答・ファイル名・テスト結果が表示される。既存の回答と追記は残る。
 5. 内容を直して再実行する場合は、追記してから「再実行」を押す。「結果を確認済みにする」はキュー上の確認だけで、元メモを自動で完了にしない。
 
@@ -42,14 +42,46 @@ CLIの非対話実行とJSON出力は[公式の非対話モードの説明](http
 ```powershell
 # 実際のpython.exeとconfig.jsonのパスを使用
 python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --doctor
-python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --once
+python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --once --memo CM-ここを24桁のメモIDに置換 --max-level 1
 ```
 
 `--doctor` はローカルの構成確認だけです。SSH接続・サーバー設置・Codexログインの成功までは保証しません。
 サーバー側の設置後、まず合成メモ1件で `--once` を確認してから、継続処理を使います。
 
+## LEVEL 1限定運用と相談コードの固定
+
+`--once --max-level 1` は、処理待ちを最大1件取得し、次の順に進みます。
+
+1. 元リポジトリがcleanなmainであることを確認する。
+2. キューから1件取得し、依頼全文・追記・画像をCodexへ渡して事前判定する。この段階は読み取りと分類だけ。
+3. LEVEL 2・3なら `要確認：LEVEL 1限定運用のため自動処理対象外` として終了する。曖昧な依頼も `needs_clarification: true` を返して終了する。
+4. LEVEL 1の場合だけ関連ソースを渡す。ソース確認後に判定が上がった場合、不明点が見つかった場合も停止する。
+5. 差分全体のポリシー検査を行う。JS・PHP・複数ファイルなど、検査でLEVEL 2になった場合も、候補フォルダやパッチを書かず停止する。
+6. 全検査を通った場合だけ、リポジトリ外に候補を作成してテストし、キューへ結果を返す。
+
+停止時に残すのは依頼・分類の記録と結果です。候補・パッチ・テスト用修正版は作成しません。
+「文字を黄色にして、太字機能も追加して」は依頼全体がLEVEL 2です。色変更だけを切り出しません。
+「上のスペースをもっと有効活用して」のように完成状態が不明確なら、LEVELと別の追加確認フラグで止めます。
+分類はモデルによる意味判断も使うため、曖昧な実メモを事前確認なしで流さないでください。
+
+`--memo CM-<24桁の小文字16進ID>` を加えると、そのメモの処理待ちだけを取得します。`--once` との併用が必須です。
+指定がない・保留中・既に終了・内容変更済みの場合、別メモへ切り替えません。同じ相談コードに複数の処理待ちがある場合も停止します。
+別の処理が実行中なら取得しません。期限切れを含む別処理は管理画面で確認してください。
+メモIDを指定しても自動送信・再送信はしません。管理者が内容を確認し、事前にキューへ送信する必要があります。
+`--once` は取得なしや要確認の場合もその1回で終了し、2件目の取得をしません。
+
+相談コード指定はサーバーの専用コマンド `claim_memo` を使います。**更新前のサーバーでは失敗して停止し、旧 `claim` へのフォールバックはしません。**
+この機能を使う前に、変更した `codex_queue_lib.php` のレビュー・設置と、PC側ワーカーの更新が必要です。
+今回の実装作業だけでは本番には反映されません。未コミット差分のあるリポジトリでは通常CLIは取得前に止まります。
+
+configの `max_level` は `1` または `2` です。新しい設定例は `1`。既存設定で省略した場合は従来互換の `2`（LEVEL 2の候補・テスト後に要確認）です。
+CLI指定とconfigのうち厳しい上限を採用します。`max_level: 1` を `--max-level 2` で緩めることはできません。
+将来 `--watch` を使う場合も同じ上限が適用されますが、今回の限定運用では常駐起動しません。
+PCの実運用configは `enabled: false` を保持し、開始が承認された1件試験時だけ有効にして、終了後に戻してください。
+
+将来、継続運用を別途承認した場合のコマンド：
 ```powershell
-python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --watch
+python -B .deploy/codex_queue/worker.py --config C:/Users/idwor/Documents/Codex/timetable-queue/config.json --watch --max-level 1
 ```
 
 `--watch` は15秒ごとにキューを確認し、1件ずつ処理します。既存の変更・接続不良などを検出すると停止します。
