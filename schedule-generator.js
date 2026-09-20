@@ -453,6 +453,8 @@ function render(){
           <div class="generator-date-head"><button type="button" class="sticky-date" data-availability-date="${esc(date)}" aria-haspopup="dialog" aria-controls="teacherAvailabilityPanel" aria-label="${esc(date)}の講師OK・NGを表示">${esc(date.slice(5).replace('/','-'))}（${esc(weekdayLabel(date))}）</button><button type="button" class="date-fixed-focus" data-fixed-focus-date="${esc(date)}" aria-pressed="false" aria-label="確定状態を読み込み中…" disabled>🔓</button></div>
           <button type="button" class="whole-day-toggle" data-day-expand="${esc(iso)}" aria-expanded="false" aria-controls="whole-day-${esc(iso)}">＋ 詳しく</button>
           <button type="button" class="copy-prev-week" data-copy-target="${esc(date)}" title="7日前の予定をこの日にコピー">先週の同曜日をコピー</button>
+          <button type="button" class="copy-prev-week" data-day-copy="from" data-copy-date="${esc(date)}">別の日からコピー</button>
+          <button type="button" class="copy-prev-week" data-day-copy="to" data-copy-date="${esc(date)}">別の日へコピー</button>
           ${genHolidayControl(date)}
           <div class="day-note-box"><textarea class="generator-day-note" data-date="${esc(date)}" placeholder="生徒の予定・個人メモ">${esc(generatorDailyNotes[iso]||'')}</textarea><span class="generator-day-note-status"></span></div>
         </div>
@@ -519,6 +521,7 @@ async function addCopiedLesson(row){
 async function copyPreviousWeekSchedule(targetDate,button){await WeekCopy.open(shiftGeneratorDate(targetDate,-7),targetDate);}
 
 function bindPreviousWeekCopyButtons(){
+  document.querySelectorAll('[data-day-copy]').forEach(btn=>{btn.onclick=e=>{e.preventDefault();e.stopPropagation();const date=btn.dataset.copyDate;WeekCopy.open(btn.dataset.dayCopy==='from'?shiftGeneratorDate(date,-7):date,btn.dataset.dayCopy==='to'?shiftGeneratorDate(date,7):date);};});
   document.querySelectorAll('[data-copy-target]').forEach(btn=>{
     btn.onclick=e=>{e.preventDefault();e.stopPropagation();copyPreviousWeekSchedule(btn.dataset.copyTarget,btn);};
   });
