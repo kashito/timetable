@@ -396,7 +396,7 @@ function lessonHTML(r){
   return `<div role="button" tabindex="0" draggable="true" class="lesson ${cls} ${r._linked?'generator-linked-card':''}" ${window.LinkedSchedule?.attributes(r)||''} data-source-key="${esc(r['_sourceKey'])}">
     <strong>${r._linked?esc(r._linked.slots.join(''))+' ':''}${esc(r['クラス'])}</strong>
     <div>${esc(r['種別'])}　${esc(r['科目'])}</div>
-    <div class="lesson-meta">担当 ${esc(r['担当講師'])}</div>
+    <div class="lesson-meta" title="担当 ${esc(r['担当講師']||'未設定')}">担当 ${esc(r['担当講師']||'未設定')}</div>
   </div>`;
 }
 
@@ -446,14 +446,19 @@ function render(){
   });
 
   dates.forEach(date=>{
-    ROOMS.filter(room=>(!window.GeneratorExtras||GeneratorExtras.showRoom(room))&&(!window.DayCompare?.active||DayCompare.showRoom(room,rows))).forEach((room,i)=>{
-      h+=`<div class="cell lane-label ${roomClass(room)} ${i===0?'date-start':''} ${i===0&&genHoliday(date)?'school-holiday-cell':''}">
-        ${i===0?`<div class="sticky-date-box">
+    const iso=generatorDateToIso(date);
+    // Keep day information separate from every classroom, including the unset room.
+    h+=`<div class="cell lane-label teacher-day-note-cell generator-day-label date-start whole-day-collapsed ${genHoliday(date)?'school-holiday-cell':''}">
+        <div class="sticky-date-box">
           <div class="generator-date-head"><button type="button" class="sticky-date" data-availability-date="${esc(date)}" aria-haspopup="dialog" aria-controls="teacherAvailabilityPanel" aria-label="${esc(date)}の講師OK・NGを表示">${esc(date.slice(5).replace('/','-'))}（${esc(weekdayLabel(date))}）</button><button type="button" class="date-fixed-focus" data-fixed-focus-date="${esc(date)}" aria-pressed="false" aria-label="確定状態を読み込み中…" disabled>🔓</button></div>
+          <button type="button" class="whole-day-toggle" data-day-expand="${esc(iso)}" aria-expanded="false" aria-controls="whole-day-${esc(iso)}">＋ 詳しく</button>
           <button type="button" class="copy-prev-week" data-copy-target="${esc(date)}" title="7日前の予定をこの日にコピー">先週の同曜日をコピー</button>
-          ${genHolidayControl(date)}<div class="ce-day-events" data-calendar-date="${esc(date)}"></div>
-          <textarea class="generator-day-note" data-date="${esc(date)}" placeholder="生徒の予定・個人メモ">${esc(generatorDailyNotes[date.replaceAll('/','-')]||'')}</textarea><span class="generator-day-note-status"></span>
-        </div>`:''}
+          ${genHolidayControl(date)}
+          <div class="day-note-box"><textarea class="generator-day-note" data-date="${esc(date)}" placeholder="生徒の予定・個人メモ">${esc(generatorDailyNotes[iso]||'')}</textarea><span class="generator-day-note-status"></span></div>
+        </div>
+      </div><section id="whole-day-${esc(iso)}" class="cell teacher-day-info generator-day-info date-start whole-day-collapsed" data-info-date="${esc(iso)}" aria-label="${esc(date)}の学校行事・連絡"><div class="whole-day-events"><strong class="whole-day-events-label">学校行事・お知らせ</strong><div class="ce-day-events" data-calendar-date="${esc(iso)}" data-calendar-full="1"></div></div><div class="whole-day-contacts" data-contact-date="${esc(iso)}"></div></section>`;
+    ROOMS.filter(room=>(!window.GeneratorExtras||GeneratorExtras.showRoom(room))&&(!window.DayCompare?.active||DayCompare.showRoom(room,rows))).forEach(room=>{
+      h+=`<div class="cell lane-label ${roomClass(room)}">
         <span class="room-chip">${ROOM_LABEL[room]}</span>
       </div>`;
 
@@ -467,7 +472,7 @@ function render(){
           roomKey(r['教室'])===room
         );
 
-        h+=`<div class="cell generator-slot ${roomClass(room)} ${i===0?'date-start':''}"
+        h+=`<div class="cell generator-slot ${roomClass(room)}"
           data-date="${date}" data-slot="${slot}" data-room="${room}">
           ${hasSpan?Array.from({length:linked.count},(_,lane)=>{const u=linked.units.find(u=>u.start===index&&u.lane===lane);return '<div class="generator-linked-track">'+(u?lessonHTML({...u.row._original,_linked:u.row._linked,_roomClass:roomClass(room)}):'')+'</div>';}).join(''):items.map(r=>lessonHTML(Object.assign({},r,{_roomClass:roomClass(room)}))).join('')}
           ${items.length===0

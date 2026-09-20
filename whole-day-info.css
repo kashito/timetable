@@ -21,3 +21,19 @@ body[data-mode="teacher"] #schedule .teacher-day-info{display:flex!important;fle
 .teacher-day-info.whole-day-collapsed .whole-day-events-label{display:none}
 body[data-mode="teacher"] #schedule .teacher-day-info.whole-day-collapsed{gap:2px}
 body[data-mode="teacher"] #schedule .teacher-day-info:not(.whole-day-collapsed) .ce-day-events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 16px}
+
+/* Generator: a full-width day row above the independent classroom lanes. */
+#grid .generator-day-info{grid-column:2/-1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px 12px;background:#f0f6fa;color:#354c60;align-content:start}
+#grid .generator-day-info>.whole-day-events,#grid .generator-day-info>.whole-day-contacts{width:min(100%,max(150px,calc(100vw - 225px)));box-sizing:border-box}
+#grid .generator-day-info .ce-day-events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 16px;padding:0;margin:0;max-height:none}
+#grid .generator-day-info .ce-day-events a{display:block;max-width:100%;font:13px/1.6 system-ui;white-space:normal;overflow-wrap:anywhere;padding:0;background:transparent;text-overflow:clip}
+#grid .generator-day-label{justify-content:flex-start;padding:5px 8px;min-height:68px}
+#grid .generator-day-label.whole-day-collapsed,#grid .generator-day-info.whole-day-collapsed{height:68px;min-height:68px;overflow:hidden}
+#grid .generator-day-label.whole-day-collapsed .sticky-date-box{min-height:0!important;margin:0}
+#grid .generator-day-label.whole-day-collapsed .copy-prev-week{display:none}
+#grid .generator-day-info.whole-day-collapsed{gap:2px;padding-top:5px;padding-bottom:5px}
+#grid .generator-day-info.whole-day-collapsed .whole-day-events-label{display:none}
+#grid .generator-day-info.whole-day-collapsed .ce-day-events{display:flex;flex-wrap:nowrap;height:22px;overflow:hidden;gap:12px}
+#grid .generator-day-info.whole-day-collapsed .ce-day-events a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+#grid .generator-day-info .whole-day-contact-button{text-align:left}
+@media(max-width:640px){#grid .generator-day-info .ce-day-events{grid-template-columns:1fr}#grid .generator-day-info .whole-day-contact-button{font-size:11px;padding:2px 5px}}
