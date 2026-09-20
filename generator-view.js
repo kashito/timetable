@@ -1,5 +1,22 @@
 (()=>{
   const preference='timetable.generator.headerCollapsed';
+  // Re-rendering replaces every grid cell. Keep the visible date/room anchored
+  // even if a lesson added above it changes row heights.
+  function capture(){
+    const grid=document.getElementById('gridWrap');if(!grid)return null;
+    const rect=grid.getBoundingClientRect(),head=grid.querySelector('.head');
+    const edge=Math.max(rect.top,head?.getBoundingClientRect().bottom||rect.top);
+    const cell=[...grid.querySelectorAll('.generator-slot')].find(e=>{const r=e.getBoundingClientRect();return r.bottom>edge&&r.top<rect.bottom;});
+    return {top:grid.scrollTop,left:grid.scrollLeft,anchor:cell?{...cell.dataset,offset:cell.getBoundingClientRect().top-rect.top}:null};
+  }
+  function restore(position){
+    const grid=document.getElementById('gridWrap');if(!grid||!position)return;
+    grid.scrollTop=position.top;grid.scrollLeft=position.left;
+    const a=position.anchor;if(!a)return;
+    const cell=[...grid.querySelectorAll('.generator-slot')].find(e=>e.dataset.date===a.date&&e.dataset.slot===a.slot&&e.dataset.room===a.room);
+    if(cell)grid.scrollTop+=cell.getBoundingClientRect().top-grid.getBoundingClientRect().top-a.offset;
+  }
+  window.GeneratorView={capture,restore};
   async function install(){
     await StaffAuth.ready;
     if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
@@ -23,15 +40,6 @@
     }
     document.addEventListener('history-window-change',()=>{
       grid.scrollTop=0;
-      // A consumed return-from-linking date must follow the user's new selection.
-      // Otherwise reloading would force the previous date back into the calendar.
-      if(window.__generatorLinkedDate&&window.HistoryWindow){
-        const url=new URL(location.href);
-        if(url.searchParams.has('linkedDate')){
-          url.searchParams.set('linkedDate',HistoryWindow.start());
-          window.history.replaceState(window.history.state,'',url);
-        }
-      }
     });
     const button=document.getElementById('generatorHeaderToggle');
     let collapsed=false;try{collapsed=localStorage.getItem(preference)==='1';}catch(e){}

@@ -1,10 +1,12 @@
 (()=>{
 const day=d=>d.toLocaleDateString('sv-SE');let days=0,anchor=day(new Date());
 const stateKey='history:'+location.pathname;try{const old=JSON.parse(sessionStorage.getItem(stateKey)||'null');if(old&&old.today===day(new Date())){days=old.days||0;anchor=old.anchor||anchor;}}catch(e){}
-const requested=new URL(location.href).searchParams.get('date');if(/^\d{4}-\d{2}-\d{2}$/.test(requested||'')){anchor=requested;days=0;}
+const generatorPage=/\/schedule_generator\.(?:html|php)$/.test(location.pathname),params=new URL(location.href).searchParams;
+const requested=(generatorPage&&params.get('linkedDate'))||params.get('date');if(/^\d{4}-\d{2}-\d{2}$/.test(requested||'')){anchor=requested;days=0;}
 function start(){const d=new Date(anchor+'T00:00:00');d.setDate(d.getDate()-days);return day(d);}
-window.HistoryWindow={capture,restore:k=>{if(k)restore(k);},start,includes:d=>String(d).replaceAll('/','-')>=start(),get days(){return days;},get anchor(){return anchor;}};
-function change(){if(location.pathname.endsWith('/teacher2026summer.html')){const u=new URL(location.href);u.searchParams.set('date',start());history.replaceState(history.state,'',u);}
+function goTo(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return;anchor=value;days=0;change();}
+window.HistoryWindow={capture,restore:k=>{if(k)restore(k);},goTo,start,includes:d=>String(d).replaceAll('/','-')>=start(),get days(){return days;},get anchor(){return anchor;}};
+function change(){if(generatorPage||location.pathname.endsWith('/teacher2026summer.html')){const u=new URL(location.href);u.searchParams.set('date',start());if(generatorPage&&u.searchParams.has('linkedDate'))u.searchParams.set('linkedDate',start());history.replaceState(history.state,'',u);}
 sessionStorage.setItem(stateKey,JSON.stringify({today:day(new Date()),days,anchor}));for(const id of ['showPast','pastDayToggle','studentPastToggle']){const el=document.getElementById(id);if(el){el.checked=days>0||anchor<day(new Date());el.dispatchEvent(new Event('change',{bubbles:true}));}}document.dispatchEvent(new Event('history-window-change'));update();}
 function capture(){
  const scroller=document.getElementById('schedule');if(!scroller)return null;

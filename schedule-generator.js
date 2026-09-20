@@ -413,6 +413,7 @@ function bindGeneratorDailyNotes(){
   document.querySelectorAll('.generator-day-note').forEach(el=>{let t=null;el.addEventListener('input',()=>{const st=el.parentElement.querySelector('.generator-day-note-status');if(st)st.textContent='未保存';clearTimeout(t);t=setTimeout(async()=>{try{await saveGeneratorDailyNote(el.dataset.date,el.value);generatorDailyNotes[el.dataset.date.replaceAll('/','-')]=el.value;if(st)st.textContent='保存済み';}catch(e){if(st)st.textContent='保存失敗';}},700);});});
 }
 function render(){
+  const position=window.GeneratorView?.capture();
   const rows=filteredRows();
   const registeredDates=[...new Set(rows.map(r=>String(r['日付']||'').trim()).filter(Boolean))].sort();
   // コマ生成は「登録済み日だけ」ではなく、これから授業を登録する未来日も表示する。
@@ -486,6 +487,7 @@ function render(){
   bindGeneratorDailyNotes();
   bindGeneratorHolidayChecks();
   bindPreviousWeekCopyButtons();
+  window.GeneratorView?.restore(position);
   $('status').textContent=`${dates.length}日分・${rows.length}件を表示`;
 }
 function shiftGeneratorDate(date,deltaDays){
@@ -885,6 +887,7 @@ async function saveForm(){
     if(mode==='edit'&&!await saveGeneratorTeacherMemo()){$('formMsg').textContent='授業予定は保存済みです。共有メモ：'+$('teacherSharedMemoMsg').textContent;return;}
     if(window.GeneratorExtras && mode==='edit') await GeneratorExtras.save(j.row||row);
     forceCloseModal();
+    if(mode==='add')window.HistoryWindow?.goTo(generatorDateToIso((j.row||row)['日付']));
   }catch(e){
     $('formMsg').textContent='保存失敗：'+(e.message||e);
   }finally{
@@ -1154,7 +1157,7 @@ async function load(){
     render();
     const linkedDate=new URLSearchParams(location.search).get('linkedDate');
     if(linkedDate&&/^\d{4}-\d{2}-\d{2}$/.test(linkedDate)&&!window.__generatorLinkedDate){
-      window.__generatorLinkedDate=true;const jump=$('historyJump');if(jump){jump.value=linkedDate;jump.dispatchEvent(new Event('change',{bubbles:true}));}
+      window.__generatorLinkedDate=true;
       $('status').textContent='授業を連結しました。コマを押すと共通の詳細を開けます。';
     }
     const openSource=new URLSearchParams(location.search).get('openSource');
@@ -1289,4 +1292,3 @@ load();
 window.Generator={hasDraft:()=>!$('modal').classList.contains('hidden')&&generatorModalHasChanges(),saveContext:generatorSaveContext,isCurrentSave:generatorSaveIsCurrent,markSaved:markGeneratorFieldsSaved,currentRow:currentModalRow,reload:load,render,refreshChoices,rows:()=>allRows,students:()=>studentRows,eventKey:generatorEventKey,open:openEditModal};
 document.addEventListener('history-window-change',render);
 })();
-
