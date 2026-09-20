@@ -28,7 +28,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 <script src="student-attachments.js?v=20260910-r5"></script>
 <style id="school-holiday-generator-v63">.school-holiday-toggle{display:inline-flex;align-items:center;gap:4px;margin:4px 0 2px;font-size:12px;font-weight:800;color:#9f1239;cursor:pointer}.school-holiday-toggle input{accent-color:#ec4899}.school-holiday-cell{background:#fce7f3!important}.school-holiday-cell .sticky-date{color:#9d174d!important}</style>
 <style id="confirmed-date-v67">.confirmed-date-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:8px 0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:800}.confirmed-date-bar input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}.confirmed-date-status{color:#64748b;font-size:12px}</style>
-<style id="modal-sticky-head-v67">#modal .modal-head{position:sticky;top:-22px;z-index:50;background:#fff;padding:14px 0 12px;border-bottom:1px solid #e2e8f0;margin-bottom:12px}</style><link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="quick-controls.css?v=20260917-r55-ready"><script defer src="attendance-actions.js?v=20260912-r17"></script><script defer src="generator-view.js?v=20260920-keep-date"></script><link rel="stylesheet" href="generator-date-navigation.css?v=20260916-r51"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="generator-fixed-focus.css?v=20260911-r10"><script defer src="generator-fixed-focus.js?v=20260915-r50"></script><link rel="stylesheet" href="class-tree-picker.css?v=20260911-r11"><script defer src="class-tree-picker.js?v=20260911-r12"></script><link rel="stylesheet" href="calendar-events.css?v=20260912-r17"><link rel="stylesheet" href="shared-notes.css?v=20260916-r54-ready"><script defer src="shared-notes.js?v=20260916-r54-ready"></script><script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20260913-r31"></script></head>
+<style id="modal-sticky-head-v67">#modal .modal-head{position:sticky;top:-22px;z-index:50;background:#fff;padding:14px 0 12px;border-bottom:1px solid #e2e8f0;margin-bottom:12px}</style><link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="quick-controls.css?v=20260917-r55-ready"><script defer src="attendance-actions.js?v=20260912-r17"></script><script defer src="generator-view.js?v=20260920-keep-date"></script><link rel="stylesheet" href="generator-date-navigation.css?v=20260916-r51"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="generator-fixed-focus.css?v=20260911-r10"><script defer src="generator-fixed-focus.js?v=20260915-r50"></script><link rel="stylesheet" href="class-tree-picker.css?v=20260911-r11"><script defer src="class-tree-picker.js?v=20260911-r12"></script><link rel="stylesheet" href="calendar-events.css?v=20260912-r17"><link rel="stylesheet" href="shared-notes.css?v=20260916-r54-ready"><script defer src="shared-notes.js?v=20260916-r54-ready"></script><script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20260920-linked-create"></script></head>
 <body>
 <header>
   <div>
@@ -155,6 +155,11 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
     <div class="modal-content-scroll"><div class="form-grid">
       <label>日付<input id="fDate" type="date"></label>
       <label>時間番号<select id="fSlot"><option value="①">①</option><option value="②">②</option><option value="③">③</option><option value="④">④</option><option value="⑤">⑤</option><option value="⑥">⑥</option><option value="⑦">⑦</option><option value="⑧">⑧</option><option value="⑨">⑨</option><option value="⑩">⑩</option><option value="⑪">⑪</option></select></label>
+      <div id="generatorCreateOptions" class="wide hidden" style="padding:12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc">
+        <label>追加するコマ数<select id="fCreateCount"><option value="1">1コマ</option></select></label>
+        <label id="generatorCreateMeal" hidden>途中の食事休憩<select id="fCreateMeal"><option value="0">なし</option><option value="1">あり（途中で食事休憩が入ります）</option></select></label>
+        <p id="generatorCreatePreview" class="generator-ops-help" aria-live="polite"></p>
+      </div>
       <label class="generator-key-field key-room"><span class="generator-key-label">教室</span>
         <select id="fRoomSelect">
           <option value="">未設定</option>
@@ -203,7 +208,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
       </label>
       <label>開始<input id="fStart" type="time"></label>
       <label>終了<input id="fEnd" type="time"></label>
-      <label class="wide">先生から生徒へのメッセージ（このコマのみ） <span class="public-warning">公開されます</span><textarea id="fNote" rows="4"></textarea></label>
+      <label class="wide">先生から生徒へのメッセージ <span class="public-warning">公開されます</span><textarea id="fNote" rows="4"></textarea></label>
     </div>
 
     <section id="generatorOps" class="generator-ops hidden">
@@ -242,7 +247,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20260920-save-state"></script><script src="schedule-generator.js?v=20260920-keep-date"></script>
+<script src="generator-tools.js?v=20260920-save-state"></script><script src="schedule-generator.js?v=20260920-linked-create"></script>
 
 
 <script id="generator-nowline-today-only-v2">

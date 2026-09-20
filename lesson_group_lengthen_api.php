@@ -51,7 +51,7 @@ $state=readJsonStrict($dir.'/class_state.json');$fixed=readJsonStrict($dir.'/les
 $rooms=readJsonStrict($dir.'/room_overrides.json');$files=readJsonStrict($dir.'/student_attachments.json');
 $matches=array_values(array_filter($all,fn($r)=>empty($r['日区分'])&&policyKey($r)===$newKey));
 if(count($matches)>1)staffFail('次の'.$slots[$next].'に同じ授業が複数あります。どのコマを使うか確認できないため、延長していません。',409);
-$existing=count($matches)===1;$mode=$existing?'join':'create';
+$existing=count($matches)===1;$recover=false;$mode=$existing?'join':'create';
 if($existing){
  $new=$matches[0];
  if(!lgCompatible($last,$new))staffFail('次の'.$slots[$next].'に同じ授業がありますが、教室などの設定が異なります。次のコマの設定を確認してください。',409);
@@ -62,9 +62,13 @@ if($existing){
 }else{
  foreach($all as $r)if(empty($r['日区分'])&&canonicalLessonKey(policyKey($r))===$canonical)staffFail('次のコマに別の授業の履歴があります。記録を保護するため延長していません。',409);
  if($canonical!==$newKey)staffFail('次のコマに以前の授業の履歴があります。記録を保護するため延長していません。',409);
- foreach([$records,$state,$fixed,$rooms] as $map)if(isset($map[$newKey]))staffFail('次のコマに保存済みの記録があります。記録を保護するため延長していません。',409);
- foreach($files as $f)if(canonicalLessonKey($f['key']??'')===$newKey)staffFail('次のコマに保存済みの資料があります。延長していません。',409);
- $new['備考']=(string)($state[$memberKeys[count($memberKeys)-1]]['publicNote']??$last['備考']??'');
+ // Deleting a lesson deliberately leaves its records intact. Reuse the exact
+ // same occurrence without resetting attendance, notes, preparation or files.
+ foreach([$records,$state,$fixed,$rooms] as $map)if(isset($map[$newKey]))$recover=true;
+ foreach($files as $f)if(canonicalLessonKey($f['key']??'')===$newKey)$recover=true;
+ if(isset($rooms[$newKey]['room'])&&$rooms[$newKey]['room']!==($new['教室']??''))staffFail('以前のコマの教室設定が異なります。記録を保護するため、教室を確認してから延長してください。',409);
+ $mode=$recover?'recover':'create';
+ $new['備考']=(string)($state[$newKey]['publicNote']??$state[$memberKeys[count($memberKeys)-1]]['publicNote']??$last['備考']??'');
 }
 $validTime=fn($s)=>is_string($s)&&preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$s);
 $lastEnd=trim((string)($last['終了']??''));
@@ -72,30 +76,32 @@ if(!$validTime($new['開始']??null)||!$validTime($new['終了']??null)||$new['�
 if($lastEnd!==''&&(!$validTime($lastEnd)||$lastEnd>$new['開始']))staffFail('現在の終了時刻が次のコマに重なっています。最後のコマの時刻を確認してください。',409);
 // Bind the preview to both the action and the exact existing period/records.
 // A period created or edited by another administrator must not be silently adopted.
-$target=$existing?[$newKey,$records[$newKey]??[],$state[$newKey]??[],$fixed[$newKey]??[]]:null;
+$target=[$newKey,$records[$newKey]??[],$state[$newKey]??[],$fixed[$newKey]??[],$rooms[$newKey]??[],array_values(array_filter($files,fn($f)=>canonicalLessonKey($f['key']??'')===$newKey))];
 $version=hash('sha256',json_encode([$g,$members,$records[$g['key']],$mode,$new,$target],JSON_UNESCAPED_UNICODE));
 if($method==='POST'&&!hash_equals($version,$in['version']))staffFail('授業またはカルテが更新されました。開き直して確認してください。',409);
 if($method==='GET'){
  echo json_encode(['ok'=>true,'version'=>$version,'mode'=>$mode,'group'=>groupSummary($g,$members),'row'=>$new,'slots'=>implode('',array_column($members,'時間番号')).$new['時間番号']],JSON_UNESCAPED_UNICODE);exit;
 }
-$fixedKeys=$existing?array_merge($memberKeys,[$newKey]):$memberKeys;
-if(empty($in['overrideFixed']))foreach($fixedKeys as $key)if(!empty($fixed[$key]['fixed']))policyConflict('fixedConflict','確定済みのコマがあります。'.($existing?'配置済みの'.$new['時間番号'].'を連結に加えて延長しますか？ 確定状態は引き継ぎます。':'後ろに'.$new['時間番号'].'を1コマ増やしますか？ 追加するコマは未確定になります。'));
+$fixedKeys=($existing||$recover)?array_merge($memberKeys,[$newKey]):$memberKeys;
+if(empty($in['overrideFixed']))foreach($fixedKeys as $key)if(!empty($fixed[$key]['fixed']))policyConflict('fixedConflict','確定済みのコマがあります。'.(($existing||$recover)?'以前の記録がある'.$new['時間番号'].'を連結に加えて延長しますか？ 確定状態は引き継ぎます。':'後ろに'.$new['時間番号'].'を1コマ増やしますか？ 追加するコマは未確定になります。'));
 guardRoomSharing($new,$existing?$new['_sourceKey']:'',$in);
 if(empty($in['overrideNg']))foreach(readJsonStrict($dir.'/teacher_ng.json') as $ng)if(($ng['teacher']??'')===($new['担当講師']??'')&&str_replace('/','-',$ng['date']??'')===$date&&(!empty($ng['allDay'])||in_array($new['時間番号'],$ng['slots']??[],true)))policyConflict('ngConflict',($new['担当講師']??'').'先生は '.$date.' '.$new['時間番号'].' がNG登録されています。それでも1コマ延長しますか？');
 $changes=[];
-if($existing){
+if($existing||$recover){
  foreach(['memo','homework'] as $field){$text=(string)($records[$newKey][$field]??'');if(trim($text)!=='')$records[$g['key']][$field]=rtrim((string)($records[$g['key']][$field]??'')).(trim((string)($records[$g['key']][$field]??''))!==''?"\n\n":'').'【追加 '.$new['時間番号'].'】'."\n".$text;}
-}else{
+}
+if(!$existing){
  $added=readJsonStrict($dir.'/added_lessons.json');
  $new['_追加ID']='ADD-'.date('YmdHis').'-'.bin2hex(random_bytes(8));$new['_追加日時']=date('c');$added[]=$new;
  $new['_sourceKey']='ADD:'.$new['_追加ID'];
  // Only a newly created period starts with blank attendance and preparation.
- $state[$newKey]=['ready'=>false,'attendance'=>[],'publicNote'=>$new['備考'],'updatedAt'=>date('c')];
- $changes[$dir.'/added_lessons.json']=$added;$changes[$dir.'/class_state.json']=$state;
+ if(!$recover)$state[$newKey]=['ready'=>false,'attendance'=>[],'publicNote'=>$new['備考'],'updatedAt'=>date('c')];
+ $changes[$dir.'/added_lessons.json']=$added;
+ if(!$recover)$changes[$dir.'/class_state.json']=$state;
 }
 $members[]=$new;
 $g['sources']=array_column($members,'_sourceKey');$g['snapshot']=$members;
-$g['extendHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'sources'=>[$new['_sourceKey']],'mode'=>$existing?'lengthen-existing':'lengthen','mealBreakBefore'=>!empty($g['mealBreak']),'mealBreakAfter'=>$mealBreak];
+$g['extendHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'sources'=>[$new['_sourceKey']],'mode'=>$existing?'lengthen-existing':($recover?'lengthen-preserve-records':'lengthen'),'mealBreakBefore'=>!empty($g['mealBreak']),'mealBreakAfter'=>$mealBreak];
 $g['mealBreak']=$mealBreak;
 $g['lastLengthen']=['requestId'=>$requestId,'hash'=>$requestHash];$groups[$g['id']]=$g;
 $records[$g['key']]['slot']=implode('',array_column($members,'時間番号'));

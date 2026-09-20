@@ -710,6 +710,20 @@ async function duplicateLessonToNextSlot(){
   await load();$('formMsg').textContent=result.rows.length+'コマを複製しました。';
 }
 
+let generatorCreateRequest=null;
+function updateGeneratorCreateOptions(reset=false,updateEnd=false){
+  const count=$('fCreateCount');if(!count)return;
+  const adding=$('fMode').value==='add',slots=Object.keys(SLOTS),start=slots.indexOf($('fSlot').value),available=slots.slice(Math.max(0,start));
+  const n=reset?1:Math.max(1,Math.min(Number(count.value)||1,available.length));
+  count.innerHTML=available.map((s,i)=>`<option value="${i+1}">${i+1}コマ${i?'（まとめて連結）':''}</option>`).join('');count.value=String(n);
+  if(reset){$('fCreateMeal').value='0';generatorCreateRequest=null;}
+  $('generatorCreateOptions').classList.toggle('hidden',!adding);
+  $('generatorCreateMeal').hidden=n===1;
+  const chosen=available.slice(0,n);
+  if(adding&&updateEnd)$('fEnd').value=SLOTS[chosen[chosen.length-1]][1];
+  $('generatorCreatePreview').textContent=n>1?`${chosen.join('')} を連結して追加します。出席・カルテは1つ、給与は${n}コマ分です。生徒へのメッセージは全コマ共通です。`:'1コマの授業を追加します。';
+  if(adding)$('saveAdd').textContent=n>1?`${n}コマを追加して連結`:'授業を追加';
+}
 async function populateModal(row,mode){
   const session=++generatorModalSession;
   $('fMode').value=mode;
@@ -734,6 +748,7 @@ async function populateModal(row,mode){
   $('duplicateNextLesson').classList.toggle('hidden',mode!=='edit');
   $('duplicateNextLesson').disabled=false;
   $('generatorOps').classList.toggle('hidden',mode!=='edit');
+  updateGeneratorCreateOptions(true);
   $('modalTitle').textContent=mode==='edit'
     ? `${row['日付']} ${row['時間番号']} 授業編集`
     : `${row['日付']} ${row['時間番号']} 授業追加`;
@@ -759,7 +774,7 @@ async function openEditModal(row){
 }
 
 let generatorModalSnapshot='',generatorModalSession=0;
-function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);return JSON.stringify(s)}
+function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);return JSON.stringify(s)}
 function markGeneratorModalSnapshot(){generatorModalSnapshot=generatorModalState()}
 function generatorModalHasChanges(){
   const saved=JSON.parse(generatorModalSnapshot||'{}'),current=JSON.parse(generatorModalState());
@@ -862,7 +877,14 @@ async function saveForm(){
       ? {action:'update',sourceKey:source,row}
       : {action:'add',row};
 
-    const r=await fetch('lesson_add_api.php',{
+    const count=mode==='add'?Number($('fCreateCount')?.value||1):1;
+    const linked=count>1;
+    if(linked){
+      const input={row,count,mealBreak:$('fCreateMeal').value==='1'},signature=JSON.stringify(input);
+      if(!generatorCreateRequest||generatorCreateRequest.signature!==signature)generatorCreateRequest={signature,id:crypto.randomUUID()};
+      Object.assign(payload,input,{requestId:generatorCreateRequest.id});
+    }
+    const r=await fetch(linked?'lesson_create_group_api.php':'lesson_add_api.php',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
@@ -870,6 +892,7 @@ async function saveForm(){
     const j=await r.json();
     if(!r.ok||!j.ok) throw new Error(j.error||'保存失敗');
 
+    if(j.group){forceCloseModal();LessonGroups.returnToGenerator(j.group);return;}
     if(mode==='edit'){
       edits[source]=normalize(j.row||row);
     }else{
@@ -1183,7 +1206,9 @@ if($('quickAddLesson')) $('quickAddLesson').onclick=()=>{
 if($('fSlot')) $('fSlot').addEventListener('change',()=>{
   const slot=$('fSlot').value;
   if(SLOTS[slot]){ $('fStart').value=SLOTS[slot][0]; $('fEnd').value=SLOTS[slot][1]; }
+  updateGeneratorCreateOptions(false,true);
 });
+if($('fCreateCount'))$('fCreateCount').onchange=()=>updateGeneratorCreateOptions(false,true);
 
 ['teacherFilter','classFilter','showPast'].forEach(id=>$(id).addEventListener('change',render));
 $('clearFilters').onclick=()=>{
