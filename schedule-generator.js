@@ -419,8 +419,8 @@ function showMoreDays(){
   visibleDays+=7;render({append:true});
 }
 let pagingFrame=0;
-$('gridWrap').addEventListener('scroll',()=>{
-  if(pagingFrame)return;pagingFrame=requestAnimationFrame(()=>{pagingFrame=0;const w=$('gridWrap');if(w.scrollTop>0&&w.scrollHeight-w.scrollTop-w.clientHeight<400)showMoreDays();});
+window.addEventListener('scroll',()=>{
+  if(pagingFrame)return;pagingFrame=requestAnimationFrame(()=>{pagingFrame=0;const w=$('gridWrap');if(window.scrollY>0&&w.getBoundingClientRect().bottom-innerHeight<400)showMoreDays();});
 },{passive:true});
 function render(options={}){
   if(!scheduleLoaded)return;

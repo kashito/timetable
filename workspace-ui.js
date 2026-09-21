@@ -27,7 +27,7 @@ function nav(user){
  const admin=user?.role==='admin',fullMenu=!!user&&(admin||!publicPage||page==='system_updates.php');
  document.body.classList.toggle('workspace-admin',admin);
  const links=fullMenu?[['teacher2026summer.html','全体時間割'],['teacher2026summer_vertical.html?teacher='+encodeURIComponent(user.name),'講師別'],['student.html','生徒別'],['lesson_records.html','カルテ'],['availability.html','勤務OK・NG']]:[['student.html','生徒一覧']];
- if(admin){links.unshift(['schedule_generator.html','コマ生成']);links.push(['class_manage.html','クラス管理'],['student_manage.html','生徒管理'],['payroll.html','給与'],['codex_memos.php','CODEXメモ一覧'],['codex_queue.php','Codex修正キュー']);}
+ if(admin){links.unshift(['schedule_generator.php','コマ生成']);links.push(['class_manage.html','クラス管理'],['student_manage.html','生徒管理'],['payroll.html','給与'],['codex_memos.php','CODEXメモ一覧'],['codex_queue.php','Codex修正キュー']);}
  links.push(['daily_board.html','今日の動き'],['room_board.html?mode=monitor','青教室の指示']);if(user)links.push(['presence.html','入退室'],['shared_todos.html','TODO'],['test_results.html','テスト結果'],['test_results.html?pending=1','テスト未報告']);
  links.push(['notices.html','学校行事・お知らせ']);
  if(user)links.push(['incident_reports.php','トラブル・来客']);links.push(['system_updates.php','更新履歴・お知らせ']);

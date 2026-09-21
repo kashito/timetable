@@ -23,11 +23,13 @@ test('teacher page still uses date instead of generator linkedDate',()=>{const p
 test('student page does not rewrite its URL',()=>{const url='https://fixture.test/student.html?date=2026-09-21';const p=historyPage(url);p.install();assert.equal(p.c.location.href,url);});
 test('malformed programmatic date does not change current view',()=>{const p=historyPage('https://fixture.test/schedule_generator.php?date=2026-09-21');p.h.goTo('not-a-date');assert.equal(p.h.start(),'2026-09-21');});
 function viewport(){
- let heightShift=0;const grid={scrollTop:350,scrollLeft:400,getBoundingClientRect:()=>({top:100,bottom:700}),querySelector:()=>({getBoundingClientRect:()=>({bottom:172})}),querySelectorAll:()=>cells};
- const cells=[0,1,2].map(i=>({dataset:{date:'2026/09/'+(22+i),slot:'⑦',room:'青'},getBoundingClientRect:()=>({top:100+i*200+heightShift-grid.scrollTop,bottom:300+i*200+heightShift-grid.scrollTop})}));
- const c=vm.createContext({document:{getElementById:id=>id==='gridWrap'?grid:null},StaffAuth:{ready:new Promise(()=>{})},console});c.window=c;
+ let heightShift=0;const grid={scrollTop:0,scrollLeft:400,getBoundingClientRect:()=>({top:100-c.scrollY,bottom:900-c.scrollY}),querySelector:()=>({getBoundingClientRect:()=>({bottom:172-c.scrollY})}),querySelectorAll:()=>cells};
+ const cells=[0,1,2].map(i=>({dataset:{date:'2026/09/'+(22+i),slot:'⑦',room:'青'},getBoundingClientRect:()=>({top:100+i*200+heightShift-c.scrollY,bottom:300+i*200+heightShift-c.scrollY})}));
+ const c=vm.createContext({innerHeight:800,scrollY:350,scrollTo:({top})=>c.scrollY=top,scrollBy:({top})=>c.scrollY+=top,document:{getElementById:id=>id==='gridWrap'?grid:null},StaffAuth:{ready:new Promise(()=>{})},console});c.window=c;
  vm.runInContext(fs.readFileSync(path.join(root,'generator-view.js'),'utf8'),c);
- return {view:c.GeneratorView,grid,cells,shift:n=>heightShift=n};
+ return {view:c.GeneratorView,grid,cells,c,shift:n=>heightShift=n};
 }
-test('calendar rerender retains visible date and horizontal scroll',()=>{const p=viewport(),saved=p.view.capture();p.grid.scrollTop=p.grid.scrollLeft=0;p.view.restore(saved);assert.equal(p.grid.scrollTop,350);assert.equal(p.grid.scrollLeft,400);});
-test('an added row above the viewport retains the same visible date/room offset',()=>{const p=viewport(),saved=p.view.capture();p.shift(80);p.grid.scrollTop=0;p.view.restore(saved);assert.equal(p.grid.scrollTop,430);const cell=p.cells.find(e=>e.dataset.date===saved.anchor.date);assert.equal(cell.getBoundingClientRect().top-100,saved.anchor.offset);});
+test('calendar rerender retains page scroll and horizontal grid scroll without inner vertical scroll',()=>{const p=viewport(),saved=p.view.capture();p.c.scrollY=p.grid.scrollLeft=0;p.view.restore(saved);assert.equal(p.c.scrollY,350);assert.equal(p.grid.scrollTop,0);assert.equal(p.grid.scrollLeft,400);});
+test('an added row above the viewport retains the same visible date/room offset',()=>{const p=viewport(),saved=p.view.capture();p.shift(80);p.c.scrollY=0;p.view.restore(saved);assert.equal(p.c.scrollY,430);const cell=p.cells.find(e=>e.dataset.date===saved.anchor.date);assert.equal(cell.getBoundingClientRect().top,saved.anchor.offset);});
+test('date navigation returns to the calendar start with one page scroller',()=>{const p=viewport();p.view.scrollStart();assert.equal(p.c.scrollY,100);assert.equal(p.grid.scrollTop,0);});
+test('date navigation does not hide the controls when they are already visible',()=>{const p=viewport();p.c.scrollY=0;p.view.scrollStart();assert.equal(p.c.scrollY,0);});

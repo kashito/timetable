@@ -1,7 +1,8 @@
 const FILE='schedule.xlsx';
 const SLOTS={"①":["13:30","14:10"],"②":["14:20","15:00"],"③":["15:10","15:50"],"④":["16:00","16:40"],"⑤":["16:50","17:30"],"⑥":["17:40","18:20"],"⑦":["18:30","19:10"],"⑧":["19:20","20:00"],"⑨":["20:10","20:50"],"⑩":["21:00","21:40"],"⑪":["21:50","22:30"]};
 const SLOT_KEYS=Object.keys(SLOTS);
-let rows=[];
+let rows=[],scheduleLoaded=false,calendarDays=7,calendarStart='',calendarAvailable=0;
+const progressiveCalendar=document.body.classList.contains('compact-whole-schedule');
 window.getCurrentScheduleRows=()=>rows.map(r=>({date:r.date,teacher:r.teacher,slot:r.slot,dayType:r.dayType}));
 const mode=document.body.dataset.mode==='teacher'?'teacher':'student';
 const $=id=>document.getElementById(id);
@@ -187,9 +188,9 @@ async function saveDailyNote(date,text){
 let dailyNotes={};
 function isSchoolHoliday(date){return !!(window.SchoolHolidays&&SchoolHolidays.isHoliday(date));}
 function holidayControl(date){const on=isSchoolHoliday(date);return `<label class="school-holiday-toggle" title="塾の休講日として表示"><input type="checkbox" class="school-holiday-check" data-date="${esc(date)}" ${on?'checked':''}><span>塾休み</span></label>`;}
-function bindSchoolHolidayChecks(){document.querySelectorAll('.school-holiday-check').forEach(el=>{el.addEventListener('change',async e=>{e.stopPropagation();const before=!el.checked;el.disabled=true;try{await SchoolHolidays.set(el.dataset.date,el.checked);render();}catch(err){el.checked=before;alert(err.message||'休講日を保存できませんでした');}finally{el.disabled=false;}});});}
-function bindDailyNotes(){
-  document.querySelectorAll('.day-note-text').forEach(el=>{
+function bindSchoolHolidayChecks(root=document){root.querySelectorAll('.school-holiday-check').forEach(el=>{el.addEventListener('change',async e=>{e.stopPropagation();const before=!el.checked;el.disabled=true;try{await SchoolHolidays.set(el.dataset.date,el.checked);render();}catch(err){el.checked=before;alert(err.message||'休講日を保存できませんでした');}finally{el.disabled=false;}});});}
+function bindDailyNotes(root=document){
+  root.querySelectorAll('.day-note-text').forEach(el=>{
     let timer=null;
     el.addEventListener('input',()=>{
       const st=el.closest('.day-note-box')?.querySelector('.day-note-status'); if(st)st.textContent='未保存';
@@ -197,15 +198,17 @@ function bindDailyNotes(){
     });
   });
 }
-function renderCalendar(){
-  const dates=continuousDates();
-  const filtered=rows.filter(r=>!r.dayType&&filterMatch(r));
+function renderCalendar(append=false){
+  const allDates=continuousDates();calendarAvailable=allDates.length;
+  const dates=progressiveCalendar?allDates.slice(append?Math.max(0,calendarDays-7):0,calendarDays):allDates;
+  const filtered=rows.filter(r=>!r.dayType&&filterMatch(r)),lanes=new Map();
+  for(const row of filtered){const key=JSON.stringify([row.date,teacherRoomKey(row.room)]);if(!lanes.has(key))lanes.set(key,[]);lanes.get(key).push(row);}
   let html='';
 
   if(mode==='teacher'){
     // 全体ページはコマ生成ページの見た目・行構成をそのまま踏襲する。
-    html='<div class="generator-grid teacher-room-calendar teacher-generator-layout"><div class="cell head">日付・教室・予定メモ</div>';
-    SLOT_KEYS.forEach(slot=>{const t=SLOTS[slot];html+=`<div class="cell head slot-head"><strong>${slot}</strong><small>${t[0]}<br>〜${t[1]}</small></div>`});
+    if(!append)html='<div class="generator-grid teacher-room-calendar teacher-generator-layout"><div class="cell head">日付・教室・予定メモ</div>';
+    if(!append)SLOT_KEYS.forEach(slot=>{const t=SLOTS[slot];html+=`<div class="cell head slot-head"><strong>${slot}</strong><small>${t[0]}<br>〜${t[1]}</small></div>`});
     dates.forEach(d=>{
       const special=rows.find(r=>r.date===d&&r.dayType);
       // v20: 日付・予定メモを教室行から完全分離。未設定は他教室と同じ独立行にする。
@@ -218,7 +221,7 @@ function renderCalendar(){
       TEACHER_ROOMS.forEach((room)=>{
         const rc=teacherRoomClass(room);
         html+=`<div class="cell lane-label ${rc}"><span class="room-chip">${TEACHER_ROOM_LABEL[room]}</span></div>`;
-        const dayRows=filtered.filter(r=>r.date===d&&teacherRoomKey(r.room)===room);
+        const dayRows=lanes.get(JSON.stringify([d,room]))||[];
         const linked=window.LinkedSchedule?.lanes(dayRows);
         const hasSpan=linked?.units.some(u=>u.end>u.start);
         SLOT_KEYS.forEach((slot,index)=>{
@@ -227,13 +230,21 @@ function renderCalendar(){
         });
       });
     });
-    html+='</div>';
+    if(!append)html+='</div>';
   }else{
     html='<div class="calendar horizontal-time"><div class="cell head date-head">日付・予定メモ</div>';
     SLOT_KEYS.forEach(slot=>{const t=SLOTS[slot];html+=`<div class="cell head slot-head"><strong>${slot}</strong><small>${t[0]}<br>〜${t[1]}</small></div>`});
     dates.forEach(d=>{const special=rows.find(r=>r.date===d&&r.dayType);html+=`<div class="cell date-cell"><strong>${esc(d.slice(5).replace('-','/'))}</strong><small>(${weekdays(d)})</small><div class="ce-day-events" data-calendar-date="${esc(d)}"></div><div class="day-note-box"><textarea class="day-note-text" data-date="${esc(d)}" placeholder="生徒の予定・個人メモ">${esc(dailyNotes[d]||'')}</textarea><span class="day-note-status"></span></div></div>`;if(special){html+=`<div class="cell special-span"><div class="event special special-day" data-key="special-${esc(d)}">${esc(displayDayType(special.dayType,d))}${special.note?'<div class="event-meta">'+esc(special.note)+'</div>':''}</div></div>`}else{SLOT_KEYS.forEach(slot=>{const es=filtered.filter(r=>r.date===d&&r.slot===slot);html+=`<div class="cell slot-cell">${es.map(eventHTML).join('')}</div>`})}});html+='</div>';
   }
-  $('schedule').innerHTML=html;window.LinkedSchedule?.layout();bindEvents();bindDailyNotes();if(mode==='teacher'){bindTeacherDragAndDrop();bindSchoolHolidayChecks();}
+  const fresh=document.createElement('div');fresh.innerHTML=html;
+  bindEvents(fresh);bindDailyNotes(fresh);if(mode==='teacher'){bindTeacherDragAndDrop(fresh);bindSchoolHolidayChecks(fresh);}
+  if(append)$('schedule').querySelector('.teacher-generator-layout').append(...fresh.childNodes);
+  else $('schedule').replaceChildren(...fresh.childNodes);
+  window.LinkedSchedule?.layout();
+  if(progressiveCalendar){
+    let more=$('wholeMoreDays');if(!more){more=document.createElement('button');more.id='wholeMoreDays';more.type='button';more.onclick=showMoreCalendarDays;$('schedule').after(more);}
+    more.textContent='次の7日を表示 ↓';more.hidden=calendarDays>=calendarAvailable;
+  }
 }
 
 let teacherDraggedSourceKey='';
@@ -287,8 +298,8 @@ async function moveTeacherLesson(sourceKey,date,slot,room){
     alert('移動を保存できませんでした：'+(e.message||e));
   }
 }
-function bindTeacherDragAndDrop(){
-  document.querySelectorAll('.teacher-room-calendar .event[draggable="true"]').forEach(card=>{
+function bindTeacherDragAndDrop(root=document){
+  root.querySelectorAll('.event[draggable="true"]').forEach(card=>{
     card.addEventListener('dragstart',e=>{
       teacherDraggedSourceKey=card.dataset.sourceKey||'';
       card.classList.add('dragging');
@@ -303,7 +314,7 @@ function bindTeacherDragAndDrop(){
       document.querySelectorAll('.teacher-drop-slot').forEach(c=>c.classList.remove('drop-target'));
     });
   });
-  document.querySelectorAll('.teacher-drop-slot').forEach(cell=>{
+  root.querySelectorAll('.teacher-drop-slot').forEach(cell=>{
     cell.addEventListener('dragover',e=>{
       const sourceKey=teacherDraggedSourceKey;
       if(!sourceKey)return;
@@ -327,7 +338,18 @@ function bindTeacherDragAndDrop(){
   });
 }
 function renderList(){const specials=rows.filter(r=>r.dayType).sort((a,b)=>a.date.localeCompare(b.date));const lessons=rows.filter(r=>!r.dayType&&filterMatch(r)).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));let html='<div class="list-wrap">';specials.forEach(r=>{html+=`<div class="list-item special-row"><strong>${esc(r.date)} ${esc(displayDayType(r.dayType,r.date))}</strong>${r.note?`<div class="event-meta">${esc(r.note)}</div>`:''}</div>`});lessons.forEach(r=>{html+=`<div class="list-item" ${document.body.classList.contains('compact-whole-schedule')?lessonAttributes(r):`data-key="${esc(r.id||r.date+r.slot+r.cls+r.teacher)}"`}><div class="list-top"><div><strong>${esc(r.date)} ${esc(r.slot)} ${esc(r.start)}-${esc(r.end)}</strong><br>${esc(r.cls)} ｜ ${esc(displayType(r))}</div><span class="badge">${esc(r.room||'-')}</span></div><div class="event-meta">担当 ${esc(r.teacher||'-')}${mode==='teacher'&&r.subjects.length?' ｜ '+esc(r.subjects.join('・')):''}${r.note?' ｜ '+esc(r.note):''}</div></div>`});html+='</div>';$('schedule').innerHTML=html;bindEvents()}
-function render(){const position=window.HistoryWindow?.capture();const filteredCount=rows.filter(r=>!r.dayType&&filterMatch(r)).length;const total=rows.filter(r=>!r.dayType).length;$('viewSelect').value==='list'?renderList():renderCalendar();$('statusBar').textContent=mode==='teacher'?'':`授業 ${filteredCount}件を表示中（全${total}件）。プルダウンを選ぶと、条件に一致する予定だけを表示します。`;window.HistoryWindow?.restore(position);}
+function render(){
+  if(!scheduleLoaded)return;
+  const start=window.HistoryWindow?.start()||'',dateChanged=start!==calendarStart;
+  if(dateChanged){calendarStart=start;calendarDays=7;}
+  if($('wholeMoreDays'))$('wholeMoreDays').hidden=$('viewSelect').value==='list';
+  const position=dateChanged?null:window.HistoryWindow?.capture();
+  const filteredCount=rows.filter(r=>!r.dayType&&filterMatch(r)).length,total=rows.filter(r=>!r.dayType).length;
+  $('viewSelect').value==='list'?renderList():renderCalendar();
+  $('statusBar').textContent=mode==='teacher'?'':`授業 ${filteredCount}件を表示中（全${total}件）。プルダウンを選ぶと、条件に一致する予定だけを表示します。`;
+  if(dateChanged&&progressiveCalendar&&$('schedule').getBoundingClientRect().top<0)window.scrollTo({top:window.scrollY+$('schedule').getBoundingClientRect().top,behavior:'instant'});
+  else window.HistoryWindow?.restore(position);
+}
 const MEMO_API='memo_api.php';
 function memoKey(r){return r.id||[r.date,r.slot,r.cls,r.teacher].join('|')}
 async function loadMemo(r){
@@ -370,9 +392,25 @@ async function showDetail(key){
     }
   }
 }
-function bindEvents(){document.querySelectorAll('[data-key]').forEach(e=>e.onclick=ev=>{if(ev.target.closest('[data-lesson-action]')||teacherDragJustFinished)return;showDetail(e.dataset.key)})}
+function bindEvents(root=document){root.querySelectorAll('[data-key]').forEach(e=>e.onclick=ev=>{if(ev.target.closest('[data-lesson-action]')||teacherDragJustFinished)return;showDetail(e.dataset.key)})}
 window.WholeSchedule={reload:()=>load()};
-async function load(){try{await window.LessonGroups?.ready;await window.LessonFixed?.ready;dailyNotes=await loadDailyNotes();if(window.SchoolHolidays)await SchoolHolidays.load();let raw=[];try{const api=await fetch('data_api.php?v='+Date.now(),{cache:'no-store'});if(api.ok){const j=await api.json();if(j&&j.ok&&j.initialized&&Array.isArray(j.schedule)){raw=j.schedule;window.__scheduleServerLoaded=true;}}}catch(e){}if(!raw.length&&!window.__scheduleServerLoaded){const res=await fetch(FILE+'?v='+Date.now());if(!res.ok)throw new Error('時間割データが見つかりません');const buf=await res.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets['時間割データ']||wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:''});}rows=raw.map(normalize).filter(r=>r.date);refreshFilters();render()}catch(e){$('statusBar').innerHTML=`<strong>読込エラー：</strong>${esc(e.message)}`;}}
+async function load(){try{
+  const dataPromise=(async()=>{try{const response=await fetch('data_api.php?v='+Date.now(),{cache:'no-store'});const data=await response.json();if(response.ok&&data.ok&&data.initialized&&Array.isArray(data.schedule))return data.schedule;}catch(e){}return null;})();
+  const [serverRows,notes]=await Promise.all([dataPromise,loadDailyNotes(),window.LessonGroups?.ready,window.LessonFixed?.ready,window.SchoolHolidays?.load()]);
+  dailyNotes=notes;let raw=serverRows;
+  if(raw===null){const res=await fetch(FILE+'?v='+Date.now());if(!res.ok)throw new Error('時間割データが見つかりません');const wb=XLSX.read(await res.arrayBuffer(),{type:'array'});raw=XLSX.utils.sheet_to_json(wb.Sheets['時間割データ']||wb.Sheets[wb.SheetNames[0]],{defval:''});}
+  else window.__scheduleServerLoaded=true;
+  rows=raw.map(normalize).filter(r=>r.date);scheduleLoaded=true;refreshFilters();render();
+}catch(e){$('statusBar').innerHTML=`<strong>読込エラー：</strong>${esc(e.message)}`;}}
+function showMoreCalendarDays(){
+  if(!scheduleLoaded||!progressiveCalendar||$('viewSelect').value==='list'||calendarDays>=calendarAvailable)return;
+  calendarDays+=7;renderCalendar(true);
+}
+let calendarFrame=0;
+window.addEventListener('scroll',()=>{
+ if(!progressiveCalendar||calendarFrame)return;
+ calendarFrame=requestAnimationFrame(()=>{calendarFrame=0;const more=$('wholeMoreDays');if(more&&!more.hidden&&window.scrollY>0&&more.getBoundingClientRect().top<innerHeight+400)showMoreCalendarDays();});
+},{passive:true});
 ['classFilter','teacherFilter','roomFilter','typeFilter','subjectFilter','viewSelect'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',render)});$('clearFilters').onclick=()=>{['classFilter','teacherFilter','roomFilter','typeFilter','subjectFilter'].forEach(id=>{const el=$(id);if(el)el.value=''});render()};$('modalClose').onclick=()=>{$('modal').classList.add('hidden')};$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.add('hidden')};load();
 
 document.addEventListener('history-window-change',()=>{if(typeof render==='function')render();});

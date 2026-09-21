@@ -5,18 +5,19 @@
   function capture(){
     const grid=document.getElementById('gridWrap');if(!grid)return null;
     const rect=grid.getBoundingClientRect(),head=grid.querySelector('.head');
-    const edge=Math.max(rect.top,head?.getBoundingClientRect().bottom||rect.top);
-    const cell=[...grid.querySelectorAll('.generator-slot')].find(e=>{const r=e.getBoundingClientRect();return r.bottom>edge&&r.top<rect.bottom;});
-    return {top:grid.scrollTop,left:grid.scrollLeft,anchor:cell?{...cell.dataset,offset:cell.getBoundingClientRect().top-rect.top}:null};
+    const edge=Math.max(0,rect.top,head?.getBoundingClientRect().bottom||0);
+    const cell=[...grid.querySelectorAll('.generator-slot')].find(e=>{const r=e.getBoundingClientRect();return r.bottom>edge&&r.top<innerHeight;});
+    return {top:window.scrollY,left:grid.scrollLeft,anchor:cell?{...cell.dataset,offset:cell.getBoundingClientRect().top}:null};
   }
   function restore(position){
     const grid=document.getElementById('gridWrap');if(!grid||!position)return;
-    grid.scrollTop=position.top;grid.scrollLeft=position.left;
+    window.scrollTo({top:position.top,behavior:'instant'});grid.scrollLeft=position.left;
     const a=position.anchor;if(!a)return;
     const cell=[...grid.querySelectorAll('.generator-slot')].find(e=>e.dataset.date===a.date&&e.dataset.slot===a.slot&&e.dataset.room===a.room);
-    if(cell)grid.scrollTop+=cell.getBoundingClientRect().top-grid.getBoundingClientRect().top-a.offset;
+    if(cell)window.scrollBy({top:cell.getBoundingClientRect().top-a.offset,behavior:'instant'});
   }
-  window.GeneratorView={capture,restore};
+  function scrollStart(){const grid=document.getElementById('gridWrap');if(grid&&grid.getBoundingClientRect().top<0)window.scrollTo({top:window.scrollY+grid.getBoundingClientRect().top,behavior:'instant'});}
+  window.GeneratorView={capture,restore,scrollStart};
   async function install(){
     await StaffAuth.ready;
     if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
@@ -39,7 +40,7 @@
       observer.observe(grid.parentElement,{childList:true});
     }
     document.addEventListener('history-window-change',()=>{
-      grid.scrollTop=0;
+      scrollStart();
     });
     const button=document.getElementById('generatorHeaderToggle');
     let collapsed=false;try{collapsed=localStorage.getItem(preference)==='1';}catch(e){}
