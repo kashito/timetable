@@ -5,18 +5,19 @@
     if(message)message.textContent='';
   }).observe(list,{childList:true});
   document.addEventListener('click',event=>{
-    const button=event.target.closest('[data-all-present]');
+    const button=event.target.closest('[data-all-present],[data-all-unknown]');
     if(!button)return;
-    const controls=[...document.querySelectorAll(button.dataset.allPresent)]
-      .filter(select=>!select.disabled&&[...select.options].some(option=>option.value==='出席'));
+    const unknown=button.hasAttribute('data-all-unknown'),value=unknown?'不明':'出席';
+    const controls=[...document.querySelectorAll(unknown?button.dataset.allUnknown:button.dataset.allPresent)]
+      .filter(select=>!select.disabled&&(!unknown||!select.value||select.value==='---')&&[...select.options].some(option=>option.value===value));
     for(const select of controls){
-      select.value='出席';
+      select.value=value;
       select.dispatchEvent(new Event('change',{bubbles:true}));
     }
     const message=button.parentElement.querySelector('[data-attendance-bulk-message]');
     if(message)message.textContent=controls.length
-      ? `${controls.length}人を出席にしました。保存ボタンで確定してください。`
-      : '出席を選択できる生徒がいません。';
+      ? `${controls.length}人を${value}にしました。保存ボタンで確定してください。`
+      : unknown?'未入力の生徒はいません。記録済みの出欠は変更していません。':'出席を選択できる生徒がいません。';
   });
 })();
 (()=>{

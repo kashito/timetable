@@ -9,6 +9,8 @@ const SLOT_KEYS=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','�
 const SLOTS={'①':['13:30','14:10'],'②':['14:20','15:00'],'③':['15:10','15:50'],'④':['16:00','16:40'],'⑤':['16:50','17:30'],'⑥':['17:40','18:20'],'⑦':['18:30','19:10'],'⑧':['19:20','20:00'],'⑨':['20:10','20:50'],'⑩':['21:00','21:40'],'⑪':['21:50','22:30']};
 
 let excelRows=[], addedRows=[], edits={}, allRows=[];
+let scheduleLoaded=false,visibleStart='',visibleDays=7,availableDays=0;
+let templatePromise=null;
 window.getCurrentScheduleRows=()=>allRows.map(r=>({date:r['日付'],teacher:r['担当講師'],slot:r['時間番号'],dayType:r['日区分']}));
 let studentRows=[];
 let hiddenClassNames=new Set();
@@ -20,7 +22,7 @@ let generatorClassState={},generatorOpsLoaded=false;
 const $=id=>document.getElementById(id);
 function genHoliday(date){const iso=generatorDateToIso(date);return !!(window.SchoolHolidays&&SchoolHolidays.isHoliday(iso));}
 function genHolidayControl(date){const iso=generatorDateToIso(date),on=genHoliday(date);return `<label class="school-holiday-toggle"><input type="checkbox" class="school-holiday-check" data-date="${esc(iso)}" ${on?'checked':''}><span>塾休み</span></label>`;}
-function bindGeneratorHolidayChecks(){document.querySelectorAll('.school-holiday-check').forEach(el=>{el.onchange=async e=>{e.stopPropagation();const before=!el.checked;el.disabled=true;try{await SchoolHolidays.set(el.dataset.date,el.checked);render();}catch(err){el.checked=before;alert(err.message||'休講日を保存できませんでした');}finally{el.disabled=false;}};});}
+function bindGeneratorHolidayChecks(root=document){root.querySelectorAll('.school-holiday-check').forEach(el=>{el.onchange=async e=>{e.stopPropagation();const before=!el.checked;el.disabled=true;try{await SchoolHolidays.set(el.dataset.date,el.checked);render();}catch(err){el.checked=before;alert(err.message||'休講日を保存できませんでした');}finally{el.disabled=false;}};});}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function setTypeValue(value){
@@ -409,10 +411,20 @@ async function saveGeneratorDailyNote(date,text){
   const r=await fetch(DAILY_NOTE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:date.replaceAll('/','-'),text})});
   const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||'メモ保存失敗');
 }
-function bindGeneratorDailyNotes(){
-  document.querySelectorAll('.generator-day-note').forEach(el=>{let t=null;el.addEventListener('input',()=>{const st=el.parentElement.querySelector('.generator-day-note-status');if(st)st.textContent='未保存';clearTimeout(t);t=setTimeout(async()=>{try{await saveGeneratorDailyNote(el.dataset.date,el.value);generatorDailyNotes[el.dataset.date.replaceAll('/','-')]=el.value;if(st)st.textContent='保存済み';}catch(e){if(st)st.textContent='保存失敗';}},700);});});
+function bindGeneratorDailyNotes(root=document){
+  root.querySelectorAll('.generator-day-note').forEach(el=>{let t=null;el.addEventListener('input',()=>{const st=el.parentElement.querySelector('.generator-day-note-status');if(st)st.textContent='未保存';clearTimeout(t);t=setTimeout(async()=>{try{await saveGeneratorDailyNote(el.dataset.date,el.value);generatorDailyNotes[el.dataset.date.replaceAll('/','-')]=el.value;if(st)st.textContent='保存済み';}catch(e){if(st)st.textContent='保存失敗';}},700);});});
 }
-function render(){
+function showMoreDays(){
+  if(!scheduleLoaded||window.DayCompare?.active||visibleDays>=availableDays)return;
+  visibleDays+=7;render({append:true});
+}
+let pagingFrame=0;
+$('gridWrap').addEventListener('scroll',()=>{
+  if(pagingFrame)return;pagingFrame=requestAnimationFrame(()=>{pagingFrame=0;const w=$('gridWrap');if(w.scrollTop>0&&w.scrollHeight-w.scrollTop-w.clientHeight<400)showMoreDays();});
+},{passive:true});
+function render(options={}){
+  if(!scheduleLoaded)return;
+  const append=options.append===true;
   const position=window.GeneratorView?.capture();
   const rows=filteredRows();
   const registeredDates=[...new Set(rows.map(r=>String(r['日付']||'').trim()).filter(Boolean))].sort();
@@ -427,7 +439,7 @@ function render(){
 
   let start=window.HistoryWindow?new Date(HistoryWindow.start()+'T00:00:00'):new Date(today);
 
-  let end=new Date(horizon);
+  let end=new Date(Math.max(horizon.getTime(),start.getTime()+6*86400000));
   if(registeredDates.length){
     const lastRegistered=dateObj(registeredDates[registeredDates.length-1]);
     if(lastRegistered && lastRegistered>end) end=lastRegistered;
@@ -439,12 +451,18 @@ function render(){
     cur.setDate(cur.getDate()+1);
   }
 
-  if(window.DayCompare?.active)dates=DayCompare.dates().map(d=>d.replaceAll('-','/'));
+  const comparing=!!window.DayCompare?.active;
+  if(comparing)dates=DayCompare.dates().map(d=>d.replaceAll('-','/'));
+  else{const first=dates[0];if(visibleStart!==first){visibleStart=first;visibleDays=7;}availableDays=dates.length;dates=dates.slice(0,visibleDays);}
+  const shownDates=dates;
+  if(append)dates=dates.slice(Math.max(0,visibleDays-7));
   let h='<div class="generator-grid"><div class="cell head">日付・教室</div>';
   SLOT_KEYS.forEach(s=>{
     h+=`<div class="cell head"><strong>${s}</strong><br><small>${SLOTS[s][0]}〜${SLOTS[s][1]}</small></div>`;
   });
 
+  if(append)h='';
+  const rowsByLane=new Map();for(const r of rows){const k=r['日付']+'|'+roomKey(r['教室']);if(!rowsByLane.has(k))rowsByLane.set(k,[]);rowsByLane.get(k).push(r);}
   dates.forEach(date=>{
     const iso=generatorDateToIso(date);
     // Keep day information separate from every classroom, including the unset room.
@@ -464,15 +482,11 @@ function render(){
         <span class="room-chip">${ROOM_LABEL[room]}</span>
       </div>`;
 
-      const laneRows=rows.filter(r=>r['日付']===date&&roomKey(r['教室'])===room);
+      const laneRows=rowsByLane.get(date+'|'+room)||[];
       const linked=window.LinkedSchedule?.lanes(laneRows.map(r=>({date:r['日付'].replaceAll('/','-'),slot:r['時間番号'],cls:r['クラス'],teacher:r['担当講師'],type:r['種別'],subjects:String(r['科目']||'').split(/[,、，]/).filter(Boolean),room:r['教室'],start:r['開始'],end:r['終了'],sourceKey:r._sourceKey,_original:r})));
       const hasSpan=linked?.units.some(u=>u.end>u.start);
       SLOT_KEYS.forEach((slot,index)=>{
-        const items=rows.filter(r=>
-          r['日付']===date &&
-          r['時間番号']===slot &&
-          roomKey(r['教室'])===room
-        );
+        const items=laneRows.filter(r=>r['時間番号']===slot);
 
         h+=`<div class="cell generator-slot ${roomClass(room)}"
           data-date="${date}" data-slot="${slot}" data-room="${room}">
@@ -485,17 +499,17 @@ function render(){
     });
   });
 
-  h+='</div>';
-  $('grid').innerHTML=h;
+  if(!append)h+='</div>';
+  const fresh=document.createElement('div');fresh.innerHTML=h;
+  bindAdd(fresh);bindEdit(fresh);bindDragAndDrop(fresh);
+  bindGeneratorDailyNotes(fresh);bindGeneratorHolidayChecks(fresh);bindPreviousWeekCopyButtons(fresh);
+  if(append)$('grid').querySelector('.generator-grid').append(...fresh.childNodes);
+  else $('grid').replaceChildren(...fresh.childNodes);
   window.DayCompare?.layout();
-  bindAdd();
-  bindEdit();
-  bindDragAndDrop();
-  bindGeneratorDailyNotes();
-  bindGeneratorHolidayChecks();
-  bindPreviousWeekCopyButtons();
+  let more=$('generatorMoreDays');if(!more){more=document.createElement('button');more.id='generatorMoreDays';more.type='button';more.onclick=showMoreDays;$('gridWrap').append(more);}
+  more.hidden=comparing||visibleDays>=availableDays;more.textContent='次の7日を表示 ↓';
   window.GeneratorView?.restore(position);
-  $('status').textContent=`${dates.length}日分・${rows.length}件を表示`;
+  $('status').textContent=`${shownDates.length}日分・${rows.filter(r=>shownDates.includes(r['日付'])).length}件を表示${!comparing&&visibleDays<availableDays?'（下へ進むと続き）':''}`;
 }
 function shiftGeneratorDate(date,deltaDays){
   const d=dateObj(date); if(!d) return '';
@@ -520,20 +534,20 @@ async function addCopiedLesson(row){
 }
 async function copyPreviousWeekSchedule(targetDate,button){await WeekCopy.open(shiftGeneratorDate(targetDate,-7),targetDate);}
 
-function bindPreviousWeekCopyButtons(){
-  document.querySelectorAll('[data-day-copy]').forEach(btn=>{btn.onclick=e=>{e.preventDefault();e.stopPropagation();const date=btn.dataset.copyDate;WeekCopy.open(btn.dataset.dayCopy==='from'?shiftGeneratorDate(date,-7):date,btn.dataset.dayCopy==='to'?shiftGeneratorDate(date,7):date);};});
-  document.querySelectorAll('[data-copy-target]').forEach(btn=>{
+function bindPreviousWeekCopyButtons(root=document){
+  root.querySelectorAll('[data-day-copy]').forEach(btn=>{btn.onclick=e=>{e.preventDefault();e.stopPropagation();const date=btn.dataset.copyDate;WeekCopy.open(btn.dataset.dayCopy==='from'?shiftGeneratorDate(date,-7):date,btn.dataset.dayCopy==='to'?shiftGeneratorDate(date,7):date);};});
+  root.querySelectorAll('[data-copy-target]').forEach(btn=>{
     btn.onclick=e=>{e.preventDefault();e.stopPropagation();copyPreviousWeekSchedule(btn.dataset.copyTarget,btn);};
   });
 }
 
-function bindAdd(){
-  document.querySelectorAll('.add-cell').forEach(b=>{
+function bindAdd(root=document){
+  root.querySelectorAll('.add-cell').forEach(b=>{
     b.onclick=()=>openAddModal(b.dataset.date,b.dataset.slot,b.dataset.room);
   });
 }
-function bindEdit(){
-  document.querySelectorAll('.lesson').forEach(b=>{
+function bindEdit(root=document){
+  root.querySelectorAll('.lesson').forEach(b=>{
     b.onkeydown=e=>{if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();b.click();}};
     b.onclick=e=>{
       if(e.target.closest('[data-lesson-action]'))return;
@@ -1067,8 +1081,8 @@ async function moveLessonToCell(sourceKey,date,slot,room){
     alert('移動保存に失敗しました：'+(e.message||e));
   }
 }
-function bindDragAndDrop(){
-  document.querySelectorAll('.lesson[draggable="true"]').forEach(card=>{
+function bindDragAndDrop(root=document){
+  root.querySelectorAll('.lesson[draggable="true"]').forEach(card=>{
     card.addEventListener('dragstart',e=>{
       draggedSourceKey=card.dataset.sourceKey||'';
       card.classList.add('dragging');
@@ -1082,7 +1096,7 @@ function bindDragAndDrop(){
     });
   });
 
-  document.querySelectorAll('.generator-slot').forEach(cell=>{
+  root.querySelectorAll('.generator-slot').forEach(cell=>{
     const occupied=cell.querySelector('.lesson')!==null;
     cell.addEventListener('dragover',e=>{
 
@@ -1102,8 +1116,16 @@ function bindDragAndDrop(){
   });
 }
 
-function exportExcel(){
+async function loadExcelTemplate(){
+  if(baseWorkbook)return baseWorkbook;
+  if(!templatePromise)templatePromise=(async()=>{const r=await fetch(FILE+'?v='+Date.now());if(!r.ok)throw Error('Excelのひな形を読み込めません');const wb=XLSX.read(await r.arrayBuffer(),{type:'array',cellDates:true});baseWorkbook=wb;baseWorkbookName=FILE;baseSheetName=chooseScheduleSheet(wb);return wb;})().finally(()=>{templatePromise=null;});
+  return templatePromise;
+}
+async function exportExcel(){
   try{
+    // Keep extra template sheets when available; server-only installations can
+    // still export their current lessons and students without an Excel file.
+    try{await loadExcelTemplate();}catch(e){console.warn('Excelのひな形なしで現在データを書き出します',e);}
     const headers=['日付','日区分','授業ID','クラス','種別','給与区分','担当講師','教室','時間番号','開始','終了','科目','備考'];
     const rows=allRows.map(r=>Object.fromEntries(headers.map(k=>[k,r[k]||''])));
     const ws=XLSX.utils.json_to_sheet(rows,{header:headers});
@@ -1131,27 +1153,9 @@ function exportExcel(){
 }
 async function load(){
   try{
-    await window.LessonGroups?.ready;
-    await loadLessonVisibility();
-    if(window.Workspace)await Workspace.refresh();
-    if(window.SchoolHolidays) await SchoolHolidays.load();
-    // コマ生成は schedule.xlsx だけではなく、サーバーの現在データ(data/)を正として読む。
-    // これにより全体スケに残っている追加・編集済み授業も、そのままコマ生成に表示される。
-    const [xr,dr,ar]=await Promise.all([
-      fetch(FILE+'?v='+Date.now()).catch(()=>null),
-      fetch('data_api.php?v='+Date.now(),{cache:'no-store'}).catch(()=>null),
-      fetch('lesson_add_api.php?v='+Date.now(),{cache:'no-store'}).catch(()=>null)
-    ]);
-
-    // Excelは「Excel書出し」のひな形として保持する。読めなくてもサーバーデータがあれば画面は動かす。
-    if(xr&&xr.ok){
-      const wb=XLSX.read(await xr.arrayBuffer(),{type:'array',cellDates:true});
-      baseWorkbook=wb;
-      baseWorkbookName='schedule.xlsx';
-      baseSheetName=chooseScheduleSheet(wb);
-      await loadStudentMaster(wb);
-    }
-
+    const dataRequest=fetch('data_api.php?v='+Date.now(),{cache:'no-store'}).catch(()=>null);
+    await Promise.all([window.LessonGroups?.ready,loadLessonVisibility(),window.Workspace?.refresh(),window.SchoolHolidays?.load()]);
+    const dr=await dataRequest;
     let loadedFromServer=false;
     if(dr&&dr.ok){
       const dj=await dr.json();
@@ -1171,7 +1175,9 @@ async function load(){
 
     if(!loadedFromServer){
       // 初期化前の環境だけ従来方式(schedule.xlsx + added/edited)へフォールバック。
-      if(!(xr&&xr.ok)) throw new Error('現在の時間割データを読み込めません');
+      await loadExcelTemplate();
+      await loadStudentMaster(baseWorkbook);
+      const ar=await fetch('lesson_add_api.php?v='+Date.now(),{cache:'no-store'});
       const ws=baseWorkbook.Sheets[baseSheetName];
       excelRows=XLSX.utils.sheet_to_json(ws,{defval:''}).map(normalize);
       addedRows=[];
@@ -1187,7 +1193,7 @@ async function load(){
     refreshChoices();
     if(window.GeneratorExtras) GeneratorExtras.refresh();
     $('excelIoStatus').textContent='最新の授業を表示しています。';
-    render();
+    scheduleLoaded=true;render();
     const linkedDate=new URLSearchParams(location.search).get('linkedDate');
     if(linkedDate&&/^\d{4}-\d{2}-\d{2}$/.test(linkedDate)&&!window.__generatorLinkedDate){
       window.__generatorLinkedDate=true;

@@ -22,3 +22,8 @@
 #gridWrap .generator-date-head{width:100%;min-width:0}#gridWrap .generator-date-head>.sticky-date{text-align:left;padding:4px 2px;font-size:13px}
 #dayCompare .dc-weekday{font-size:13px;font-weight:700;color:#28577a}
 
+
+html.generator-focused body.workspace-admin #generatorViewBar{top:0}
+#generatorMoreDays{display:block;margin:12px auto;padding:12px 24px;border:1px solid #94a3b8;border-radius:8px;background:#fff;color:#173b54;cursor:pointer}
+#generatorMoreDays[hidden]{display:none}
+#gridWrap{scrollbar-gutter:stable;overscroll-behavior-y:contain}

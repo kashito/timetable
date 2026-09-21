@@ -342,7 +342,7 @@ body.teacher-vertical-page #schedule{
 
 </style>
 <style>.public-warning{display:inline-block;margin-left:8px;color:#dc2626!important;font-weight:950;font-size:12px}</style>
-<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="quick-controls.css?v=20260917-r55-ready"><script defer src="attendance-actions.js?v=20260912-r17"></script><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260912-r17"><link rel="stylesheet" href="shared-notes.css?v=20260916-r54-ready"><script defer src="shared-notes.js?v=20260916-r54-ready"></script><script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20260920-linked-create"></script></head>
+<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="quick-controls.css?v=20260917-r55-ready"><script defer src="attendance-actions.js?v=20260921-unknown"></script><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260912-r17"><link rel="stylesheet" href="shared-notes.css?v=20260916-r54-ready"><script defer src="shared-notes.js?v=20260916-r54-ready"></script><script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20260920-linked-create"></script></head>
 <body data-mode="teacher" class="teacher-vertical-page">
 
 <header class="topbar">
@@ -714,6 +714,7 @@ async function applyReadyOnce(){
     const cardSubject=card.dataset.subject||'';
     modal.querySelector('#opsBody').innerHTML=`
       <div class="ops-summary"><span class="ops-chip">📅 ${esc(cardDate)}</span><span class="ops-chip">🕒 ${esc(cardSlot)}</span>${cardTeacher?`<span class="ops-chip">👤 ${esc(cardTeacher)}</span>`:''}${cardRoom?`<span class="ops-chip">🏫 ${esc(cardRoom)}</span>`:''}</div>
+      <p class="ws-panel" role="status">${esc(RecordingFeedback.fieldStatus(roster.every(n=>att[n]&&att[n]!=='---'),lessonRecord.memo,lessonRecord.homework).join(' ／ '))}</p>
       <section class="ops-sec record-sec">
         <div class="record-headline"><h3>🗂 この授業の記録・カルテ</h3><a class="record-list-mini-link" href="lesson_records.html?class=${encodeURIComponent(cls)}">この授業のカルテ一覧を見る</a></div>
         <textarea id="lessonRecordMemo" placeholder="例：理解度、つまずき、次回の対応、保護者共有事項など">${esc(lessonRecord.memo||'')}</textarea>
@@ -762,7 +763,7 @@ async function applyReadyOnce(){
       </section>
 
       <section class="ops-sec">
-        <h3>✅ 出席者確認</h3><div id="scOpsContacts"></div><div class="attendance-bulk-actions"><button type="button" id="opsAllPresent" data-all-present="#teacherOpsModal .attSel">全員出席にする</button><button type="button" class="ce-copy-previous" data-previous-mode="teacher" data-copy-previous="#teacherOpsModal .attSel">前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div>
+        <h3>✅ 出席者確認</h3><div id="scOpsContacts"></div><div class="attendance-bulk-actions"><button type="button" id="opsAllPresent" data-all-present="#teacherOpsModal .attSel">全員出席にする</button><button type="button" data-all-unknown="#teacherOpsModal .attSel">未入力を一括で不明にする</button><button type="button" class="ce-copy-previous" data-previous-mode="teacher" data-copy-previous="#teacherOpsModal .attSel">前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div>
         ${roster.map(n=>`<div class="att-row ${att[n]==='免除'?'is-exempt':''}"><span>${esc(n)}</span><select class="attSel" data-name="${esc(n)}" data-auto-exempt="${autoExempt.has(n)}" onchange="this.closest('.att-row').classList.toggle('is-exempt',this.value==='免除')">${['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'].map(v=>`<option ${(att[n]||'---')===v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')||'<small>対象生徒なし</small>'}
       </section>
       <section class="ops-sec">
@@ -1014,6 +1015,8 @@ async function saveOpsAndClose(){
         }catch(uiError){ console.warn('保存後の画面更新に失敗',uiError); }
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden','true');
+        RecordingFeedback.showSaved([...modal.querySelectorAll('.attSel')].every(x=>x.value&&x.value!=='---'),modal.querySelector('#lessonRecordMemo')?.value,modal.querySelector('#lessonHomework')?.value);
+        document.dispatchEvent(new Event('lesson-recording-saved'));
         return true;
       }catch(saveError){
         if(msg) msg.textContent='保存に失敗しました：'+(saveError.message||saveError);
@@ -1022,6 +1025,7 @@ async function saveOpsAndClose(){
     }
 
     function hideOpsWithoutSave(){
+      RecordingFeedback.consumeLink();
       const confirmBox=document.getElementById('opsSaveConfirm');
       if(confirmBox) confirmBox.classList.add('hidden');
       modal.classList.add('hidden');
@@ -1673,5 +1677,5 @@ async function saveOpsAndClose(){
 })();
 </script>
 
-<script defer src="attendance-notifications.js?v=20260921-refresh"></script><script defer src="karte-attendance-focus.js?v=20260912-r25"></script><script defer src="calendar-view.js?v=20260917-r55-ready"></script></body>
+<script defer src="recording-feedback.js?v=20260921-status"></script><script defer src="attendance-notifications.js?v=20260921-unknown"></script><script defer src="karte-attendance-focus.js?v=20260912-r25"></script><script defer src="calendar-view.js?v=20260917-r55-ready"></script></body>
 </html>
