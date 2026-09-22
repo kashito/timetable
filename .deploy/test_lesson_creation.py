@@ -19,7 +19,7 @@ ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parent
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
 FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php',
-         'lesson_group_lengthen_api.php', 'lesson_create_group_api.php']
+         'lesson_group_lengthen_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
 SLOTS = list('①②③④⑤⑥⑦⑧⑨⑩⑪')
 TIMES = [('13:30','14:10'),('14:20','15:00'),('15:10','15:50'),('16:00','16:40'),
          ('16:50','17:30'),('17:40','18:20'),('18:30','19:10'),('19:20','20:00'),
@@ -158,7 +158,7 @@ class LessonCreationTests(unittest.TestCase):
         code,j=self.create(self.payload(2,9));self.assertEqual(code,200,j);self.assertEqual(j['group']['slots'],'⑩⑪')
 
     def test_admin_auth_and_csrf_required(self):
-        for endpoint,payload in [('lesson_create_group_api.php',self.payload()),('lesson_group_lengthen_api.php',{'id':'a'*24})]:
+        for endpoint,payload in [('lesson_create_group_api.php',self.payload()),('lesson_group_lengthen_api.php',{'id':'a'*24}),('lesson_group_shorten_api.php',{'id':'a'*24})]:
             before=self.snapshot()
             self.assertEqual(self.request(endpoint,payload,self.client())[0],401)
             self.assertEqual(self.request(endpoint,payload,self.teacher,self.teacher_csrf)[0],403)
@@ -205,5 +205,24 @@ class LessonCreationTests(unittest.TestCase):
     def test_incompatible_historical_room_is_not_silently_changed(self):
         g,rows=self.prepare_group();self.write('room_overrides.json',{key(row()):{'room':'黄'}});before=self.snapshot()
         code,j=self.plan(g);self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+
+    def test_group_can_be_shortened_from_either_edge_without_deleting_periods(self):
+        for source_index,expected in [(0,'⑥⑦'),(2,'⑤⑥')]:
+            with self.subTest(source_index=source_index):
+                g,rows=self.prepare_group(deleted=False);g['sources']=[r['_sourceKey'] for r in rows];g['snapshot']=rows
+                self.write('lesson_groups.json',{g['id']:g});records=self.read('lesson_records.json');records[g['key']]['slot']='⑤⑥⑦';self.write('lesson_records.json',records)
+                code,plan=self.request('lesson_group_shorten_api.php?id='+g['id']);self.assertEqual(code,200,plan);self.assertEqual(len(plan['choices']),2)
+                before_rows=self.read('added_lessons.json');request_id=secrets.token_hex(16)
+                payload=dict(id=g['id'],version=plan['version'],source=rows[source_index]['_sourceKey'],requestId=request_id)
+                code,result=self.post('lesson_group_shorten_api.php',payload);self.assertEqual(code,200,result);self.assertEqual(result['group']['slots'],expected)
+                self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json')[g['key']]['slot'],expected)
+                after=self.snapshot();code,replay=self.post('lesson_group_shorten_api.php',payload);self.assertEqual(code,200,replay);self.assertTrue(replay['replayed']);self.assertEqual(after,self.snapshot())
+
+    def test_shorten_rejects_middle_stale_and_two_period_groups_without_writes(self):
+        g,rows=self.prepare_group(deleted=False);g['sources']=[r['_sourceKey'] for r in rows];g['snapshot']=rows;self.write('lesson_groups.json',{g['id']:g})
+        code,plan=self.request('lesson_group_shorten_api.php?id='+g['id']);self.assertEqual(code,200,plan);before=self.snapshot()
+        code,_=self.post('lesson_group_shorten_api.php',dict(id=g['id'],version=plan['version'],source=rows[1]['_sourceKey'],requestId=secrets.token_hex(16)));self.assertEqual(code,400);self.assertEqual(before,self.snapshot())
+        code,_=self.post('lesson_group_shorten_api.php',dict(id=g['id'],version='0'*64,source=rows[2]['_sourceKey'],requestId=secrets.token_hex(16)));self.assertEqual(code,409);self.assertEqual(before,self.snapshot())
+        g['sources']=g['sources'][:2];g['snapshot']=rows[:2];self.write('lesson_groups.json',{g['id']:g});before=self.snapshot();self.assertEqual(self.request('lesson_group_shorten_api.php?id='+g['id'])[0],409);self.assertEqual(before,self.snapshot())
 
 if __name__=='__main__':unittest.main()

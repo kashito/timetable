@@ -68,5 +68,15 @@ async function lengthen(id){
   };
  }catch(e){msg.textContent=e.message;msg.classList.add('error');}
 }
-window.GroupScheduleActions={move,edit,extend,lengthen,origin,returnToSchedule};
+async function shorten(id){
+ const returnTarget=origin(),d=dialog('連結を短くする'),body=d.querySelector('[data-body]'),save=d.querySelector('[data-save]'),msg=d.querySelector('[data-message]');
+ d.querySelector('[data-cancel]').onclick=()=>d.close();d.showModal();
+ try{
+  const plan=await Workspace.api('lesson_group_shorten_api.php?id='+encodeURIComponent(id));
+  body.innerHTML=`<p><b>${esc(plan.group.className)}</b> ／ ${esc(plan.group.date)} ／ ${esc(plan.group.slots)}</p><p>連結の端から外すコマを選んでください。外したコマは削除されず、個別の授業に戻ります。</p><div class="link-lesson-list">${plan.choices.map((choice,i)=>`<label class="ws-card link-lesson-option"><span class="link-lesson-select"><input type="radio" name="shortenSource" value="${esc(choice.source)}" ${i===plan.choices.length-1?'checked':''}><b>${esc(choice.slot)} ${esc(choice.start)}–${esc(choice.end)}</b><span>を連結から外す</span></span></label>`).join('')}</div><p class="ws-muted">共通カルテ・出欠・給与の記録は保持されます。</p>`;
+  save.textContent='選んだコマを外す';save.disabled=false;msg.textContent='';let requestId=token();body.onchange=()=>{requestId=token();};
+  save.onclick=async()=>{if(busy)return;const source=body.querySelector('[name="shortenSource"]:checked')?.value;if(!source)return;busy=true;save.disabled=true;msg.textContent='短縮を保存中…';try{const result=await Workspace.api('lesson_group_shorten_api.php',{id,version:plan.version,source,requestId});returnToSchedule(result.group,returnTarget);}catch(e){msg.textContent=e.message;msg.classList.add('error');busy=false;save.disabled=false;}};
+ }catch(e){msg.textContent=e.message;msg.classList.add('error');save.hidden=true;}
+}
+window.GroupScheduleActions={move,edit,extend,lengthen,shorten,origin,returnToSchedule};
 })();
