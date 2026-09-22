@@ -25,7 +25,9 @@ REPO = HERE.parent
 EXPECTED_ROOT = '/home/users/0/lolipop.jp-dp30304343/web/2026summer'
 EXPECTED_HOST = 'ssh.lolipop.jp'
 EXPECTED_USER = 'lolipop.jp-dp30304343'
-REMOTE_PYTHON = '/usr/local/bin/python3'
+REMOTE_PYTHON = ('if [ -x /usr/local/bin/python3 ]; then exec /usr/local/bin/python3 -; '
+                 'elif [ -x /usr/bin/python3 ]; then exec /usr/bin/python3 -; '
+                 'else echo "python3 unavailable" >&2; exit 127; fi')
 MANDATORY = {'**/data/***', '**/uploads/***', '**/student_uploads/***',
              '**/calendar_images/***', '**/board_guide_images/***', '**/codex_memo_images/***',
              '**/backup/***', '**/backups/***', '**/_backup/***', '**/_system_backups/***',
@@ -204,7 +206,7 @@ def ssh_command():
 def probe(manifest):
     source = (HERE / 'remote_probe.py').read_text(encoding='utf-8')
     source += '\nprint(json.dumps(probe(' + repr(EXPECTED_ROOT) + ', ' + repr(list(manifest['files'])) + ')))\n'
-    response = run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON + ' -'],
+    response = run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON],
                    input=source.encode(), timeout=300)
     return json.loads(response)
 
@@ -228,7 +230,7 @@ def remote_transaction(request):
     source += (HERE / 'healthcheck.py').read_text(encoding='utf-8').split("\nif __name__ ==")[0] + '\n'
     source += (HERE / 'remote_transaction.py').read_text(encoding='utf-8') + '\n'
     source += 'print(json.dumps(dispatch(' + repr(request) + ')))\n'
-    return json.loads(run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON + ' -'],
+    return json.loads(run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON],
                           input=source.encode(), timeout=300))
 
 

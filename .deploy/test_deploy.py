@@ -49,6 +49,14 @@ PUBLIC = ['index.php', 'staff_security.php', 'staff_auth_api.php', 'backup_api.p
 
 
 class SafetyTests(unittest.TestCase):
+    def test_remote_python_uses_only_known_absolute_paths_with_fallback(self):
+        command = deploy.REMOTE_PYTHON
+        self.assertIn('/usr/local/bin/python3', command)
+        self.assertIn('/usr/bin/python3', command)
+        self.assertNotIn('/usr/bin/env', command)
+        self.assertNotIn('PATH=', command)
+        self.assertIn('exit 127', command)
+
     def test_target(self):
         self.assertEqual(deploy.load_config()['APP_NAME'], 'timetable')
 
