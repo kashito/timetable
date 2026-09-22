@@ -21,13 +21,14 @@ class EventsGroupTests(unittest.TestCase):
 
     def setUp(self):
         fixture.LessonCreationTests.setUp(self)
-        for name in ['calendar_events.php','calendar_events_api.php','lesson_group_move_api.php','board_guides_api.php']:
+        for name in ['calendar_events.php','calendar_events_api.php','lesson_group_move_api.php','board_guides_api.php','schedule_confirmed_api.php']:
             shutil.copyfile(fixture.ROOT/name,self.root/name)
         self.write('student_master.json',[{'生徒名':'検証生徒A','クラス':'検証クラス'}, {'生徒名':'検証生徒B','クラス':'別クラス'}])
         self.write('directory_state.json',{});self.write('lesson_visibility.json',{'hidden':[]})
         self.write('student_profiles.php',{'検証生徒A':{'school':'検証学校A'},'検証生徒B':{'school':'検証学校B'}})
         self.write('calendar_events.php',{'schema':1,'schools':{c:{'id':c,'name':'検証学校'+c.upper(),'archived':False} for c in ['a','b']},'events':{}})
         self.write('board_guides.php',{'schema':1,'days':{}})
+        self.write('schedule_confirmed.json',{'date':'2026-09-30'})
 
     def event(self,**kw):
         return dict(action='event_save',id='',requestId=secrets.token_hex(16),kind='school',schoolId='a',category='test',title='検証試験',startDate='2026-10-10',endDate='2026-10-11',body='検証用のお知らせ',published=True,archived=False,removeImage=False,**kw)
@@ -51,6 +52,21 @@ class EventsGroupTests(unittest.TestCase):
         self.assertEqual([e['id'] for e in self.public('検証生徒A')],[exam['id']])
         self.assertEqual([e['id'] for e in self.public('検証生徒B')],[mock['id']])
         self.assertNotIn('検証生徒',json.dumps(self.public('検証生徒A'),ensure_ascii=False))
+
+    def test_countdown_event_category_roundtrip(self):
+        event,_=self.calendar(kind='notice',schoolId='',category='event',title='検証イベント')
+        self.assertEqual(event['category'],'event')
+        self.assertEqual([e['id'] for e in self.public('検証生徒A')],[event['id']])
+
+    def test_private_start_update_preserves_confirmed_date(self):
+        code,j=self.post('schedule_confirmed_api.php',{'privateFrom':'2026-10-15'})
+        self.assertEqual(code,200,j)
+        self.assertEqual(j['date'],'2026-09-30')
+        self.assertEqual(j['privateFrom'],'2026-10-15')
+        code,j=self.post('schedule_confirmed_api.php',{'date':'2026-10-01'})
+        self.assertEqual(code,200,j)
+        self.assertEqual(j['date'],'2026-10-01')
+        self.assertEqual(j['privateFrom'],'2026-10-15')
 
     def test_ended_exempt_hidden_and_alias_memberships(self):
         self.calendar(kind='notice',schoolId='',category='exam',targetClasses=['検証クラス'])

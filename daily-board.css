@@ -41,3 +41,4 @@
 @media(max-width:650px){.daily-monitor .db-row{grid-template-columns:70px minmax(0,1fr)}.daily-monitor{--db-safe-x:20px;--db-safe-y:20px}.db-preview-status{flex-wrap:wrap}.db-row-controls .db-option{font-size:12px!important}}
 
 .daily-monitor .db-head{display:block}.daily-monitor .db-tools{margin-top:12px;justify-content:flex-end}.daily-monitor .db-head h1{overflow-wrap:anywhere}
+.db-clock{display:block;margin-top:6px;font-variant-numeric:tabular-nums;font-size:16px;font-weight:800;letter-spacing:.03em}.daily-monitor .db-clock{font-size:clamp(20px,2.4vw,36px);margin-top:10px}.daily-board[data-board-id="blue"] .db-clock{color:inherit}

@@ -296,7 +296,7 @@ body.compact-whole-schedule > .workspace-nav{position:sticky;top:0;z-index:40;bo
   <div><div class="eyebrow">進学教室 志学館</div><h1>2026 時間割 <span class="page-badge teacher">講師用</span></h1></div>
 <div class="topbar-links"><a href="lesson_records.html" class="data-generator-link record-list-link">授業カルテ一覧</a><a href="schedule_generator.php" class="data-generator-link" data-admin>データ生成ページ</a></div></header>
 <main>
-<div class="confirmed-date-bar">確定日 <input id="scheduleConfirmedDate" type="date"><span id="scheduleConfirmedStatus" class="confirmed-date-status"></span></div>
+<div class="confirmed-date-bar"><label>確定日 <input id="scheduleConfirmedDate" type="date"></label><span id="scheduleConfirmedStatus" class="confirmed-date-status"></span><label>生徒への非公開開始日 <input id="schedulePrivateFrom" type="date"></label><span id="schedulePrivateStatus" class="confirmed-date-status"></span></div>
 <details class="teacher-filter-details">
   <summary>絞り込み条件</summary>
   <section class="controls panel">
@@ -1082,8 +1082,8 @@ async function saveOpsAndClose(){
 })();
 </script>
 
-<script src="schedule-confirmed.js?v=20260910-r1"></script><script>(async()=>{const i=document.getElementById('scheduleConfirmedDate'),m=document.getElementById('scheduleConfirmedStatus');if(!i)return;try{i.value=await ScheduleConfirmed.load();m.textContent=i.value?'ここまで確定':'未設定';}catch(e){m.textContent='読込失敗';}i.addEventListener('change',async()=>{i.disabled=true;try{await ScheduleConfirmed.set(i.value);m.textContent=i.value?'✓ '+ScheduleConfirmed.label(i.value)+'まで確定':'✓ 確定日を解除';}catch(e){alert(e.message||e);}finally{i.disabled=false;}});})();</script>
-<script defer src="calendar-view.js?v=20260917-r55-ready"></script></body>
+<script src="schedule-confirmed.js?v=20260922-private"></script><script>(async()=>{const i=document.getElementById('scheduleConfirmedDate'),m=document.getElementById('scheduleConfirmedStatus'),p=document.getElementById('schedulePrivateFrom'),pm=document.getElementById('schedulePrivateStatus');if(!i||!p)return;try{const s=await ScheduleConfirmed.loadSettings();i.value=s.date;p.value=s.privateFrom;m.textContent=i.value?'ここまで確定':'未設定';pm.textContent=p.value?'この日以降は確定授業だけ公開':'すべて公開';}catch(e){m.textContent=pm.textContent='読込失敗';}i.addEventListener('change',async()=>{i.disabled=true;try{await ScheduleConfirmed.set(i.value);m.textContent=i.value?'✓ '+ScheduleConfirmed.label(i.value)+'まで確定':'✓ 確定日を解除';}catch(e){alert(e.message||e);}finally{i.disabled=false;}});p.addEventListener('change',async()=>{p.disabled=true;try{await ScheduleConfirmed.setPrivateFrom(p.value);pm.textContent=p.value?'✓ '+ScheduleConfirmed.label(p.value)+'以降は確定授業だけ公開':'✓ 全日程を公開';}catch(e){alert(e.message||e);}finally{p.disabled=false;}});})();</script>
+<script defer src="calendar-view.js?v=20260922-events"></script></body>
 </html>
 <style id="school-holiday-layout-v63">
 /* v63: 休講チェックを日付と重ねず、メモ行の上に独立表示 */

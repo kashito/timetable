@@ -398,6 +398,7 @@ window.SharedClassState=(()=>{
   window.isStudentManagementPreview=managementPreview;
   let renderedRows = [];
   let lessonRecords = {};
+  let schedulePrivateFrom = '';
 
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -754,7 +755,11 @@ window.SharedClassState=(()=>{
 
     // Student's own schedule before optional filters. Exempt lessons are not part of the individual schedule.
     const studentNormalRaw = allNormal.filter(r => belongsToStudent(r) && !isExemptForSelectedStudent(r));
-    const studentNormal = resolvePriorityConflicts(studentNormalRaw);
+    const resolvedStudentNormal = resolvePriorityConflicts(studentNormalRaw);
+    const hideTentative = !StaffAuth.user && schedulePrivateFrom;
+    const studentNormal = hideTentative
+      ? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))
+      : resolvedStudentNormal;
     // Visible schedule after optional filters.
     const visibleNormal = studentNormal;
     renderedRows = visibleNormal;
@@ -838,6 +843,7 @@ window.SharedClassState=(()=>{
       const studentEvents = studentNormal
         .filter(r => r.date === date)
         .sort((a,b)=>(a.start+a.cls).localeCompare(b.start+b.cls));
+      const privatePending = !!(hideTentative && date >= schedulePrivateFrom);
 
       const visibleEvents = LinkedSchedule.merge(visibleNormal.filter(r => r.date === date),lessonRoomKey,effectiveRoom);
 
@@ -864,9 +870,13 @@ window.SharedClassState=(()=>{
         }).join('');
       }
 
+      if (privatePending) {
+        html += `<div class="special student-schedule-adjusting">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;
+      }
+
       if (selectedStudent && studentEvents.length === 0) {
         // 予定がない日の案内。休講日指定を優先し、未確定の予定をOFFと案内しない。
-        if (!special) html += `<div class="special off-day">${esc(SchoolHolidays.emptyDayLabel(date))}</div>`;
+        if (!special && !privatePending) html += `<div class="special off-day">${esc(SchoolHolidays.emptyDayLabel(date))}</div>`;
       } else if (visibleEvents.length === 0 && studentEvents.length > 0) {
         // Student has a class, but current optional filters hide it.
         html += `<div class="empty">絞り込み条件に一致する予定はありません。</div>`;
@@ -1159,6 +1169,11 @@ window.SharedClassState=(()=>{
 
       students = [...grouped.values()];
       await SharedClassState.loadAll();
+      try{
+        const publicSettings=await (await fetch('schedule_confirmed_api.php?t='+Date.now(),{cache:'no-store'})).json();
+        schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';
+      }catch(e){console.warn('生徒向け公開設定の読込失敗',e);schedulePrivateFrom='';}
+      if(window.LessonFixed)await LessonFixed.ready;
       try{const lr=await (await fetch('lesson_record_api.php?action=homework&v='+Date.now(),{cache:'no-store'})).json();lessonRecords=(lr&&lr.records)||{};}catch(e){console.warn('宿題データ読込失敗',e);lessonRecords={};}
 
       render();
@@ -1506,7 +1521,7 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 
 
 
-<script src="schedule-confirmed.js?v=20260910-r1"></script>
+<script src="schedule-confirmed.js?v=20260922-private"></script>
 <script id="student-confirm-fullschedule-v49">
 (function(){
   'use strict';
@@ -1609,5 +1624,5 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 <script id="student-card-send-v67">
 (function(){document.addEventListener('click',async function(e){const b=e.target.closest('.student-card-send-btn');if(!b)return;e.preventDefault();e.stopPropagation();const input=document.createElement('input');input.type='file';input.multiple=true;input.style.display='none';document.body.appendChild(input);input.onchange=async()=>{const fs=[...input.files];if(!fs.length){input.remove();return;}b.disabled=true;const old=b.textContent;b.textContent='送信中…';try{for(const f of fs)await StudentAttachments.upload(b.dataset.sendKey,f,{sender:'student',senderName:(window.selectedStudent&&selectedStudent.name)||''});await StudentAttachments.loadAll();if(typeof window.applyStudentAttachments==='function')await window.applyStudentAttachments();b.textContent='✓ 送信しました';setTimeout(()=>{b.textContent=old;b.disabled=false},1400);}catch(err){alert('送信できませんでした：'+(err.message||err));b.textContent=old;b.disabled=false;}finally{input.remove();}};input.click();});})();
 </script>
-<script defer src="calendar-view.js?v=20260920-events-group"></script></body>
+<script defer src="calendar-view.js?v=20260922-events"></script></body>
 </html>

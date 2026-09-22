@@ -33,7 +33,7 @@ if($action==='school_save'){
  if($kind==='school'&&(!isset($d['schools'][$schoolId])||(!empty($d['schools'][$schoolId]['archived'])&&(!$r||$schoolId!==$r['schoolId']))))staffFail('表示中の学校を選択してください。',400);
  $start=ceDate($in['startDate']??null);$end=ceDate($in['endDate']??null);if($end<$start)staffFail('終了日は開始日以降にしてください。',400);
  foreach(['published','archived','removeImage'] as $flag)if(!is_bool($in[$flag]??null))staffFail('公開・非表示・画像の設定を確認してください。',400);
- $category=ceText($in,'category',40);if(!in_array($category,['test','exam','mock','trip','festival','other','closure','announcement'],true))staffFail('行事の種類を確認してください。',400);
+ $category=ceText($in,'category',40);if(!in_array($category,['test','exam','mock','event','trip','festival','other','closure','announcement'],true))staffFail('行事の種類を確認してください。',400);
  $targets=$in['targetClasses']??($r['targetClasses']??[]);
  if(!is_array($targets)||$targets!==array_values($targets)||count($targets)>200)staffFail('対象クラスを確認してください。',400);
  $allowed=array_merge(ceClasses(),$r['targetClasses']??[]);foreach($targets as $c)if(!is_string($c)||!in_array($c,$allowed,true))staffFail('対象クラスを選び直してください。',400);

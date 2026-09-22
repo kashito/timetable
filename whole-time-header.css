@@ -4,11 +4,15 @@ body.compact-whole-schedule > .topbar{position:static!important}
 #wholeTimeHeader{position:fixed;top:0;z-index:40;overflow:hidden;background:#f8fafc;pointer-events:none;box-shadow:0 3px 6px #18314b25}
 #wholeTimeHeader[hidden]{display:none}
 #wholeTimeHeader .whole-time-row{display:grid;align-items:stretch}
-#wholeTimeHeader .cell.head{position:relative!important;top:auto!important;left:auto!important;z-index:1!important;box-sizing:border-box;min-height:0!important;height:100%!important;padding:5px 3px!important;border-right:1px solid #dfe5ee;border-bottom:1px solid #dfe5ee;background:#f8fafc;text-align:center;line-height:1.15}
+#wholeTimeHeader .cell.head{position:relative!important;top:auto!important;left:auto!important;z-index:1!important;box-sizing:border-box;min-height:0!important;height:100%!important;padding:10px 3px 12px!important;border-right:1px solid #dfe5ee;border-bottom:1px solid #dfe5ee;background:#f8fafc;text-align:center;line-height:1.15}
 #wholeTimeHeader .head:first-child{z-index:2!important}
 #wholeTimeHeader strong{display:block;font-size:14px;font-weight:900;line-height:1.15}
 #wholeTimeHeader small{display:block;font-size:10px;font-weight:500;line-height:1.2;margin-top:2px;color:#64748b}
 
 body:has(#gridWrap) #wholeTimeHeader .head:first-child{display:flex;align-items:center;justify-content:center}
+body:has(#gridWrap) #grid>.generator-grid>.cell.head{padding-top:10px!important;padding-bottom:12px!important}
+body:has(#gridWrap)>.workspace-nav{margin-top:12px!important;margin-bottom:12px!important}
+body:has(#gridWrap) .confirmed-date-bar{margin-top:14px;margin-bottom:14px;gap:10px 14px;flex-wrap:wrap}
+body:has(#gridWrap) .confirmed-date-bar label{display:inline-flex;align-items:center;gap:7px}
 #wholeMoreDays{display:block;margin:12px auto;padding:12px 24px;border:1px solid #94a3b8;border-radius:8px;background:white;color:#173b54;cursor:pointer}
 #wholeMoreDays[hidden]{display:none}
