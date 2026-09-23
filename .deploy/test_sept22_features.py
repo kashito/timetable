@@ -60,6 +60,16 @@ class September22FeatureTests(unittest.TestCase):
         self.assertNotIn('tag tag-class', student)
         self.assertIn('@media(max-width:520px)', student)
 
+    def test_availability_headers_show_ten_minute_early_arrival(self):
+        script = self.text("availability.js")
+        page = self.text("availability.html")
+        self.assertIn("const arrivalTimes=['13:20','14:10','15:00','15:50','16:40','17:30','18:20','19:10','20:00','20:50','21:40']", script)
+        self.assertIn('class="ng-slot-arrival"', script)
+        self.assertIn('（${arrivalTimes[i]}入）', script)
+        self.assertIn('${arrivalTimes[slots.indexOf(s)]}入', script)
+        self.assertIn('.ng-slot-arrival{', page)
+        self.assertIn('availability.js?v=20260924-arrival', page)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
