@@ -331,6 +331,19 @@ window.SharedClassState=(()=>{
 .student-prev-gap strong{color:#0f172a;}
 </style>
 
+<style id="student-readability-v73">
+.event-card{padding:0;border-top:1px solid rgba(15,23,42,.08);box-shadow:0 3px 10px rgba(15,23,42,.08)}
+.event-top{padding:12px 13px 9px;background:rgba(255,255,255,.34);border-bottom:1px solid rgba(15,23,42,.10);border-radius:11px 11px 0 0}
+.event-time{font-size:14px;letter-spacing:.01em}.event-class{font-size:17px;line-height:1.35;margin-top:4px}.event-icon{font-size:18px;line-height:1}
+.event-card>.event-sub,.event-card>.student-homework,.event-card>.student-prev-gap,.event-card>.shared-public-note,.event-card>.lesson-countdown,.event-card>.tags,.event-card>.student-card-actions,.event-card>.student-sent-files,.event-card>.student-attachment-box,.event-card>.shared-public-note{margin-left:13px!important;margin-right:13px!important}
+.event-card>.event-sub{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;color:#334155;font-weight:700}
+.student-prev-gap{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px!important;margin-bottom:6px!important;padding:6px 9px;text-align:left;font-size:12px;background:rgba(255,255,255,.6)}
+.student-prev-gap strong{font-size:13px;white-space:nowrap}.lesson-countdown{display:inline-flex;align-items:center;min-height:28px;margin-top:3px!important;margin-bottom:2px!important;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,.55);font-size:12px;line-height:1.35}
+.tags{margin-top:6px!important}.tag{padding:4px 7px}.student-card-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px!important;margin-bottom:11px!important;padding-top:8px;border-top:1px solid rgba(15,23,42,.10)}
+.student-card-actions .sc-card-actions{display:flex;gap:7px;flex-wrap:wrap}.student-card-actions .student-card-send-btn{margin-top:0}.student-card-actions button{min-height:38px}
+@media(max-width:520px){.event-card{border-radius:11px}.event-top{padding:11px 10px 8px}.event-card>.event-sub,.event-card>.student-homework,.event-card>.student-prev-gap,.event-card>.shared-public-note,.event-card>.lesson-countdown,.event-card>.tags,.event-card>.student-card-actions,.event-card>.student-sent-files,.event-card>.student-attachment-box{margin-left:10px!important;margin-right:10px!important}.student-card-actions{display:grid;grid-template-columns:1fr 1fr}.student-card-actions .sc-card-actions{display:contents}.student-card-actions button{width:100%;padding-left:8px;padding-right:8px}.student-card-actions .sc-card-status[hidden]{display:none}.student-card-actions .student-card-send-btn:last-child:nth-child(2){grid-column:2}.day-title{top:0}}
+</style>
+
 <style id="student-school-holiday-v62">
 .day-group.is-school-holiday .day-title{background:#f9a8d4!important;color:#831843!important}.day-group.is-school-holiday .day-title .day-title-summary{color:#831843!important}.school-holiday-label{display:inline-block;margin-left:9px;padding:2px 7px;border-radius:999px;background:#fff;color:#9d174d;font-size:11px;font-weight:900;vertical-align:1px}
 </style>
@@ -906,21 +919,19 @@ window.SharedClassState=(()=>{
                 <div class="event-time">${esc(LinkedSchedule.label(r))} ${esc(r.start)}–${esc(r.end)}</div>
                 <div class="event-class">${esc(r.cls || type)}</div>
               </div>
-              <div>${icon}</div>
+              <div class="event-icon" aria-hidden="true">${icon}</div>
             </div>
             ${optionalNote(r)}
             <div class="event-sub">${r._linked?.mealBreak?'<p class="linked-meal-notice">途中で食事休憩が入ります</p>':''}${r.teacher ? `担当 ${esc(r.teacher)}` : ''}</div>
             ${homeworkForKey.get(lessonRoomKey(r)) ? `<div class="student-homework"><strong>📚 宿題</strong>${esc(homeworkForKey.get(lessonRoomKey(r)))}</div>` : ''}
-            ${previousSameTitleGap.get(lessonRoomKey(r)) ? `<div class="student-prev-gap">前回の「${esc(r.cls || type)}」から <strong>${esc(previousSameTitleGap.get(lessonRoomKey(r)))}</strong> 空いています</div>` : ''}
+            ${previousSameTitleGap.get(lessonRoomKey(r)) ? `<div class="student-prev-gap"><span>前回の授業から</span><strong>${esc(previousSameTitleGap.get(lessonRoomKey(r)))}</strong></div>` : ''}
             ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
             <div class="lesson-countdown" data-countdown></div>
             <div class="tags">
-              ${r.cls ? `<span class="tag tag-class">${esc(r.cls)}</span>` : ''}
               ${type ? `<span class="tag tag-type">${icon} ${esc(type)}</span>` : ''}
               ${actualRoom ? `<span class="tag tag-room">🏫 ${esc(actualRoom)}</span>` : ''}
             </div>
-            ${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡（β版）</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}
-            <button type="button" class="student-card-send-btn" data-send-key="${esc(lessonRoomKey(r))}">📤 先生へ資料を送る</button>
+            <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡（β版）</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}<button type="button" class="student-card-send-btn" data-send-key="${esc(lessonRoomKey(r))}">📤 先生へ資料を送る</button></div>
             ${(()=>{
               const sent=(window.StudentAttachments?StudentAttachments.get(lessonRoomKey(r)):[]).filter(a=>a.sender==='student'&&a.canDelete);
               return sent.length ? `<div class="student-sent-files"><strong>送信済み資料</strong>${sent.map(a=>`<div class="student-sent-file"><a href="${StudentAttachments.rawUrl(a)}" download="${esc(a.name)}" target="_blank" rel="noopener">${esc(a.name)}</a><button type="button" class="student-file-delete-btn" data-delete-key="${esc(lessonRoomKey(r))}" data-delete-id="${esc(a.id)}">削除</button></div>`).join('')}</div>` : '';

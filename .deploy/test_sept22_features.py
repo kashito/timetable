@@ -52,6 +52,14 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("padding:10px 3px 12px", css)
         self.assertIn("margin-top:12px", css)
 
+    def test_student_cards_remove_duplicate_class_tag_and_group_actions(self):
+        student = self.text("student.html")
+        self.assertIn('id="student-readability-v73"', student)
+        self.assertIn('class="student-card-actions"', student)
+        self.assertIn('<span>前回の授業から</span>', student)
+        self.assertNotIn('tag tag-class', student)
+        self.assertIn('@media(max-width:520px)', student)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
