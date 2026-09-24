@@ -70,6 +70,20 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn('.ng-slot-arrival{', page)
         self.assertIn('availability.js?v=20260924-arrival', page)
 
+    def test_linked_lesson_autosaves_and_shows_last_saved_time(self):
+        script = self.text("lesson-group.js")
+        page = self.text("lesson_group.html")
+        css = self.text("lesson-detail-layout.css")
+        self.assertIn('setInterval(autoSave,60000)', script)
+        self.assertIn("message('自動保存中…')", script)
+        self.assertIn("changeRevision===revision", script)
+        self.assertIn("Object.hasOwn(current.attendance", script)
+        self.assertIn("'groupSharedMemo'", script)
+        self.assertIn('id="groupLastSaved"', page)
+        self.assertIn('lesson-group.js?v=20260924-autosave', page)
+        self.assertIn('lesson-detail-layout.css?v=20260924-autosave', page)
+        self.assertIn('.group-last-saved{', css)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
