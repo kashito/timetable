@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "system_name": "timetable",
+  "display_name": "時間割システム",
+  "version": "production-2026-09-26",
+  "updated_at": "2026-09-26T10:30:00Z",
+  "production_url": "https://224236.com/2026summer/",
+  "status": "production",
+  "description": "講師・生徒の時間割、講師NG、今日の動き、授業管理を扱うシステム。",
+  "pages": [
+    {"name": "講師NG", "url": "https://224236.com/2026summer/teacher_ng.html", "status": "production", "roles": ["teacher", "admin"], "buttons": ["保存"]},
+    {"name": "今日の動き", "url": "https://224236.com/2026summer/daily_board.html", "status": "production", "roles": ["teacher", "admin"], "buttons": []},
+    {"name": "生徒予定表", "url": "https://224236.com/2026summer/student.html", "status": "production", "roles": ["student", "teacher", "admin"], "buttons": []}
+  ],
+  "features": ["時間割", "講師NG", "今日の動き", "生徒予定表"],
+  "operations": [
+    {
+      "id": "teacher-ng",
+      "question": "時間割で講師NG日を入力するには？",
+      "answer": "講師NG入力画面を開き、対象の講師とNGにする日付または時間帯を選んで保存します。",
+      "steps": ["講師アカウントでログイン", "メニューから「講師NG」を開く", "対象の講師と日付・時間帯を選ぶ", "保存する", "時間割画面で反映を確認する"],
+      "page": "講師NG", "url": "https://224236.com/2026summer/teacher_ng.html",
+      "roles": ["teacher", "admin"], "buttons": ["保存"], "status": "production",
+      "keywords": ["講師NG", "NG日", "不可日", "休み", "入れない日"]
+    },
+    {
+      "id": "today-timetable",
+      "question": "今日の時間割はどこ？",
+      "answer": "メニューから「今日の動き」を開くと、当日の授業と連絡を確認できます。",
+      "steps": ["ログイン", "メニューから「今日の動き」を開く", "必要なら日付を今日に戻す"],
+      "page": "今日の動き", "url": "https://224236.com/2026summer/daily_board.html",
+      "roles": ["teacher", "admin"], "buttons": ["今日の動き"], "status": "production",
+      "keywords": ["今日", "時間割", "本日", "予定"]
+    }
+  ],
+  "faq": [],
+  "known_issues": ["ログイン後の業務操作全体は自動HTTPテストの対象外です。"],
+  "recent_changes": [{"date": "2026-09-26", "feature": "AI guide", "change": "現行画面とルートから初期ガイドを作成"}]
+}
+
