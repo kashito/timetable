@@ -27,6 +27,9 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("生徒への非公開開始日", self.text("teacher2026summer.html"))
         self.assertIn("現在調整中", student)
         self.assertIn("LessonFixed?.isFixed", student)
+        self.assertNotIn(".confirmed-date-bar{display:none", self.text("workspace-ui.css"))
+        for page in ("schedule_generator.php", "teacher2026summer.html"):
+            self.assertIn("workspace-ui.css?v=20260926-public-visibility", self.text(page))
 
     def test_countdown_supports_event_and_ten_readable_themes(self):
         api = self.text("calendar_events_api.php")
