@@ -1,0 +1,190 @@
+{
+  "schema_version": "1.0.0",
+  "system_name": "timetable",
+  "display_name": "時間割システム",
+  "version": "production-2026-09-20",
+  "updated_at": "2026-09-26T10:21:34Z",
+  "production_url": "https://224236.com/2026summer/",
+  "status": "production",
+  "description": "講師・生徒の時間割、講師NG、今日の動き、授業管理を扱うシステム。",
+  "pages": [
+    {
+      "name": "2026 時間割",
+      "url": "https://224236.com/2026summer/index.html",
+      "source": "index.html",
+      "buttons": [],
+      "status": "production"
+    },
+    {
+      "name": "講師縦2026",
+      "url": "https://224236.com/2026summer/teacher2026summer_vertical.html",
+      "source": "teacher2026summer_vertical.html",
+      "buttons": [
+        "絞り込み解除",
+        "×",
+        "この授業のカルテ一覧を見る",
+        "宿題なしを入力",
+        "📎 ファイルを追加",
+        "共有メモを投稿",
+        "教室を保存",
+        "全員出席にする",
+        "未入力を一括で不明にする",
+        "前の授業と同じ出席",
+        "保存",
+        "$ $ $",
+        "削除",
+        "保存して閉じる",
+        "保存せず閉じる",
+        "この授業の全予定",
+        "カルテ一覧",
+        "参加生徒"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "生徒個人2026",
+      "url": "https://224236.com/2026summer/student.html",
+      "source": "student.html",
+      "buttons": [
+        "☰ 日付・メニュー",
+        "📋 今日の動き",
+        "🔔 塾からのお知らせ",
+        "決定",
+        "×",
+        "遅刻・欠席を連絡（β版）",
+        "📤 先生へ資料を送る",
+        "$",
+        "削除",
+        "この授業の連絡を確認",
+        "$ ⬇ $",
+        "送信"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "今日の動き｜志学館",
+      "url": "https://224236.com/2026summer/daily_board.html",
+      "source": "daily_board.html",
+      "buttons": [],
+      "status": "production"
+    },
+    {
+      "name": "講師NG管理",
+      "url": "https://224236.com/2026summer/teacher_ng.html",
+      "source": "teacher_ng.html",
+      "buttons": [
+        "コマ生成へ戻る",
+        "全体スケへ戻る",
+        "NGを登録・更新",
+        "選択日を一括NG",
+        "‹",
+        "›",
+        "選択解除",
+        "絞り込み解除",
+        "削除",
+        "$"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "勤務できる日時・NG",
+      "url": "https://224236.com/2026summer/availability.html",
+      "source": "availability.html",
+      "buttons": [
+        "期間を表示",
+        "この期間をすべてNGにする",
+        "この期間をすべてOKにする",
+        "表示中の期間を保存する",
+        "カレンダーから複数日をまとめて登録する"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "管理者ページへ移動",
+      "url": "https://224236.com/2026summer/class_manage.html",
+      "source": "class_manage.html",
+      "buttons": [
+        "管理者ページを開く"
+      ],
+      "status": "production"
+    }
+  ],
+  "features": [
+    "今日の動き",
+    "講師NG"
+  ],
+  "operations": [
+    {
+      "id": "teacher-ng",
+      "question": "時間割で講師NG日を入力するには？",
+      "answer": "講師NG入力画面を開き、講師を選び、NGにする日付または時間帯を選択して保存します。",
+      "steps": [
+        "講師アカウントでログイン",
+        "メニューから「講師NG」を開く",
+        "対象の講師と日付・時間帯を選ぶ",
+        "NGとして保存する",
+        "時間割画面で反映を確認する"
+      ],
+      "page": "講師NG",
+      "url": "https://224236.com/2026summer/teacher_ng.html",
+      "roles": [
+        "teacher",
+        "admin"
+      ],
+      "buttons": [
+        "講師NG",
+        "保存"
+      ],
+      "status": "production",
+      "keywords": [
+        "講師NG",
+        "NG日",
+        "不可日",
+        "休み",
+        "入れない日"
+      ]
+    },
+    {
+      "id": "today-timetable",
+      "question": "今日の時間割はどこ？",
+      "answer": "メニューから「今日の動き」を開くと、当日の授業と連絡を確認できます。全体の時間割は時間割画面を開いてください。",
+      "steps": [
+        "ログイン",
+        "メニューから「今日の動き」を開く",
+        "必要なら日付を今日に戻す"
+      ],
+      "page": "今日の動き",
+      "url": "https://224236.com/2026summer/daily_board.html",
+      "roles": [
+        "teacher",
+        "admin"
+      ],
+      "buttons": [
+        "今日の動き"
+      ],
+      "status": "production",
+      "keywords": [
+        "今日",
+        "時間割",
+        "本日",
+        "予定"
+      ]
+    }
+  ],
+  "faq": [],
+  "known_issues": [
+    "ログイン後の業務操作全体は自動HTTPテストの対象外です。"
+  ],
+  "recent_changes": [
+    {
+      "date": "2026-09-26",
+      "feature": "AI guide",
+      "change": "コード・画面を基準にガイドを再生成"
+    }
+  ],
+  "source": {
+    "kind": "generated",
+    "source_available": true
+  }
+}
+

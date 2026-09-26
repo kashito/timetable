@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0.0",
+  "system_name": "sendreturn",
+  "display_name": "SendReturn",
+  "version": "0.6.0",
+  "updated_at": "2026-09-26T10:21:34Z",
+  "production_url": "https://romantic-yonakunijima-0168.lolipop.io/",
+  "status": "testing",
+  "description": "カード作成、先生の添削、教室・招待、教材、即席テストを扱う新SendReturn Preview。現行旧本番ではありません。",
+  "pages": [
+    {
+      "name": "page",
+      "url": "https://romantic-yonakunijima-0168.lolipop.io/",
+      "source": "src/app/page.tsx",
+      "buttons": [],
+      "status": "testing"
+    }
+  ],
+  "features": [
+    "教室",
+    "検索",
+    "試用アカウント一括作成"
+  ],
+  "operations": [
+    {
+      "id": "issue-teacher-account",
+      "question": "SendReturnで新しい先生にアカウントを発行するには？",
+      "answer": "管理者で「ツール」→「試用アカウント一括作成」を開き、先生の人数を指定して作成し、CSVを安全に本人へ渡します。これは新SendReturn Previewの試用アカウント機能です。",
+      "steps": [
+        "管理者アカウントでログイン",
+        "「ツール」を開く",
+        "「試用アカウント一括作成」を開く",
+        "先生の人数を入力",
+        "「試用アカウントを作成」を押す",
+        "CSV出力し、ログインIDと一時パスワードを本人へ安全に渡す"
+      ],
+      "page": "試用アカウント一括作成",
+      "url": "https://romantic-yonakunijima-0168.lolipop.io/",
+      "roles": [
+        "admin"
+      ],
+      "buttons": [
+        "ツール",
+        "試用アカウント一括作成",
+        "CSV出力"
+      ],
+      "status": "testing",
+      "keywords": [
+        "先生アカウント",
+        "アカウント発行",
+        "試用アカウント",
+        "一時パスワード"
+      ]
+    },
+    {
+      "id": "invite-teacher",
+      "question": "既存のSendReturnアカウントを先生として教室に招待するには？",
+      "answer": "教室の管理者が「ツール」→「教室」を開き、役割を「先生」にして招待コードを発行します。相手は自分のアカウントで「招待で参加する」にコードを入力します。",
+      "steps": [
+        "管理者で「ツール」→「教室」を開く",
+        "招待コード欄で役割を「先生」にする",
+        "招待コードを発行する",
+        "相手が自分のアカウントで「招待で参加する」にコードを入力する"
+      ],
+      "page": "教室",
+      "url": "https://romantic-yonakunijima-0168.lolipop.io/",
+      "roles": [
+        "admin",
+        "teacher"
+      ],
+      "buttons": [
+        "教室",
+        "招待コードを発行",
+        "招待で参加する"
+      ],
+      "status": "testing",
+      "keywords": [
+        "先生を紐付け",
+        "先生を招待",
+        "招待コード",
+        "教室"
+      ]
+    },
+    {
+      "id": "search-cards",
+      "question": "SendReturnでカード本文を検索するには？",
+      "answer": "画面下部の「検索」を開き、「カードを検索」に本文中の語を入力します。必要なら「詳細条件・保存検索」でタグや期間を絞ります。",
+      "steps": [
+        "「検索」を開く",
+        "「カードを検索」に語句を入力",
+        "必要なら「詳細条件・保存検索」を開く",
+        "タグ・期間・状態を指定して「この条件で検索」を押す"
+      ],
+      "page": "検索",
+      "url": "https://romantic-yonakunijima-0168.lolipop.io/",
+      "roles": [
+        "student",
+        "teacher",
+        "admin"
+      ],
+      "buttons": [
+        "検索",
+        "詳細条件・保存検索",
+        "この条件で検索"
+      ],
+      "status": "testing",
+      "keywords": [
+        "本文検索",
+        "カード検索",
+        "教材検索",
+        "検索条件"
+      ]
+    }
+  ],
+  "faq": [],
+  "known_issues": [
+    "このURLは新SendReturn Previewです。旧SendReturn本番の操作として案内しないでください。"
+  ],
+  "recent_changes": [
+    {
+      "date": "2026-09-26",
+      "feature": "AI guide",
+      "change": "コード・画面を基準にガイドを再生成"
+    }
+  ],
+  "source": {
+    "kind": "generated",
+    "source_available": true
+  }
+}
+

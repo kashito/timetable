@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "system_name": "attendance-checker",
+  "display_name": "Attendance Checker",
+  "version": "unknown",
+  "updated_at": "2026-09-26T10:21:34Z",
+  "production_url": "",
+  "status": "development",
+  "description": "Attendance Checker。今回のローカル調査では正本ソースと本番URLを特定できていません。",
+  "pages": [],
+  "features": [],
+  "operations": [],
+  "faq": [],
+  "known_issues": [
+    "ソース未接続のため、現在の操作方法を確定できません。"
+  ],
+  "recent_changes": [
+    {
+      "date": "2026-09-26",
+      "feature": "AI guide",
+      "change": "コード・画面を基準にガイドを再生成"
+    }
+  ],
+  "source": {
+    "kind": "generated",
+    "source_available": false
+  }
+}
+

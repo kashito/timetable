@@ -10,6 +10,7 @@
 公開先: https://224236.com/2026summer/  
 
 GPT向けの現在仕様は `ai-guide.json` で公開します。画面、ボタン、URL、権限または操作方法を変更するときは、同ファイルの更新と `.deploy/test_ai_guide.py` の成功を完了条件に含めます。
+全システムの中央索引と質問検索APIは `ai/ai-systems.json` と `ai/api/ai-help.php` です。
 リポジトリ: `kashito/timetable` / 運用ブランチ: `main`
 
 ## 本番反映方法

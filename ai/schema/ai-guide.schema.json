@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://224236.com/2026summer/ai/schema/ai-guide.schema.json",
+  "title": "Shigakukan AI Guide",
+  "type": "object",
+  "required": ["schema_version", "system_name", "display_name", "version", "updated_at", "production_url", "status", "description", "pages", "features", "operations", "faq", "known_issues", "recent_changes"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "system_name": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "display_name": {"type": "string"},
+    "version": {"type": "string"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "production_url": {"type": "string"},
+    "status": {"enum": ["production", "testing", "development", "deprecated"]},
+    "description": {"type": "string"},
+    "pages": {"type": "array"},
+    "features": {"type": "array"},
+    "operations": {"type": "array"},
+    "faq": {"type": "array"},
+    "known_issues": {"type": "array"},
+    "recent_changes": {"type": "array"}
+  },
+  "additionalProperties": true
+}
+

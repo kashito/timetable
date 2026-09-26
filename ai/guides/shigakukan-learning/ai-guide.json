@@ -1,0 +1,248 @@
+{
+  "schema_version": "1.0.0",
+  "system_name": "shigakukan-learning",
+  "display_name": "志学館 学習アプリ／WEB問題集",
+  "version": "v104",
+  "updated_at": "2026-09-26T10:21:34Z",
+  "production_url": "https://224236.com/2026history/",
+  "status": "production",
+  "description": "教科別問題、固定テスト、印刷用テストPDF、ランキング、学習履歴を扱う学習アプリ。",
+  "pages": [
+    {
+      "name": "WEBトレ（仮） | 志学館",
+      "url": "https://224236.com/2026history/illustrations.html",
+      "source": "illustrations.html",
+      "buttons": [
+        "学 WEBトレ（仮） 進学教室 志学館 · 毎日の「わかった」を増やそう",
+        "教室の問題",
+        "ラボ",
+        "カード並べ替え",
+        "演習する",
+        "プリントをつくる",
+        "問題データ",
+        "問題一覧・一括非表示",
+        "非表示の問題",
+        "GPT用 修正メモ一覧",
+        "管理設定",
+        "テスト番号で開く",
+        "資料・地図・一問一答",
+        "リセット",
+        "出題条件を開く",
+        "すべて選択",
+        "解除",
+        "集計を再接続",
+        "−",
+        "＋",
+        "管理画面へ",
+        "トレーニング開始 開始する",
+        "中止する",
+        "ランキングを見る",
+        "問題をプレビュー",
+        "この条件で毎回出題するURL",
+        "同じ問題のテストを作る",
+        "答えを見る",
+        "出題セットを作成",
+        "このセットを保存・URL発行",
+        "生徒用URLをコピー",
+        "同じテストを画面で開く",
+        "問題＋解答を1つのPDFでDL",
+        "問題・解答をまとめてZIPでDL",
+        "問題PDFをダウンロード",
+        "解答PDFをダウンロード",
+        "一覧を更新",
+        "Excelをダウンロード",
+        "配布用 illustration-bank.js をダウンロード",
+        "初期問題の収録用語一覧を見る（答え・解説を含みます）"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "テストを開く | 志学館 学習アプリ",
+      "url": "https://224236.com/2026history/test.html",
+      "source": "test.html",
+      "buttons": [
+        "学習アプリへ",
+        "開く",
+        "同じ問題でトレーニング",
+        "解答・解説PDFを保存",
+        "問題PDFを保存",
+        "解答・解説をテキストで保存",
+        "続きを表示"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "教室の問題 | 志学館",
+      "url": "https://224236.com/2026history/classroom-questions.html",
+      "source": "classroom-questions.html",
+      "buttons": [
+        "志学館",
+        "‹ 共通の問題へ",
+        "最新にする",
+        "＋ 問題を追加",
+        "教室に参加",
+        "教室をつくる",
+        "一覧にもどる",
+        "漢字の読み",
+        "漢字の書き",
+        "英文法・空所補充",
+        "英文法・並べ替え",
+        "自由に作る",
+        "1問ずつ入力",
+        "まとめて貼り付け",
+        "入力例を入れる",
+        "内容を確認",
+        "保存して公開"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "ラボ | 志学館",
+      "url": "https://224236.com/2026history/lab.html",
+      "source": "lab.html",
+      "buttons": [
+        "志学館",
+        "‹ 演習に戻る",
+        "英語並べ替え",
+        "化学モデル",
+        "問題を編集",
+        "この英文で始める",
+        "答え合わせ",
+        "ヒント",
+        "模範解答",
+        "もう一度",
+        "化学式を編集",
+        "モデルをつくる"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "カード並べ替え | 志学館",
+      "url": "https://224236.com/2026history/card-lab.html",
+      "source": "card-lab.html",
+      "buttons": [
+        "演習ページを開く",
+        "旧版で保存した途中の作業を開く"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "ランキング｜資料で強くなる中学歴史",
+      "url": "https://224236.com/2026history/rankings.html",
+      "source": "rankings.html",
+      "buttons": [
+        "史 資料で強くなる中学歴史 志学館",
+        "演習に戻る",
+        "更新",
+        "前へ",
+        "次へ",
+        "同じ条件でトレーニングする"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "管理人ログイン｜資料で強くなる中学歴史",
+      "url": "https://224236.com/2026history/admin.html",
+      "source": "admin.html",
+      "buttons": [
+        "資料で強くなる中学歴史",
+        "ログイン",
+        "イラスト・地図問題を開く",
+        "問題一覧・公開設定を開く",
+        "ログアウト",
+        "パスワードを変更"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "修正メモ一覧 | 志学館",
+      "url": "https://224236.com/2026history/correction-export-v85.html",
+      "source": "correction-export-v85.html",
+      "buttons": [
+        "問題画面へ戻る",
+        "管理人としてログイン",
+        "更新",
+        "表示中のメモをまとめてコピー",
+        "画像とメモをZIPでまとめる",
+        "従来の修正指示一覧・地図調整を開く"
+      ],
+      "status": "production"
+    }
+  ],
+  "features": [
+    "テスト番号入力",
+    "学習ページ／印刷テスト"
+  ],
+  "operations": [
+    {
+      "id": "create-test-pdf",
+      "question": "WEB問題集からテストPDFを作るには？",
+      "answer": "学習ページで出題条件を選び、印刷テスト機能を開いて問題を選択し、PDFを生成します。",
+      "steps": [
+        "学習ページを開く",
+        "教科・単元などの出題条件を選ぶ",
+        "印刷テストを開く",
+        "問題数と解答・解説の有無を設定する",
+        "PDFを生成して内容を確認する"
+      ],
+      "page": "学習ページ／印刷テスト",
+      "url": "https://224236.com/2026history/illustrations.html",
+      "roles": [
+        "student",
+        "teacher",
+        "admin"
+      ],
+      "buttons": [
+        "印刷テスト",
+        "PDF"
+      ],
+      "status": "production",
+      "keywords": [
+        "テストPDF",
+        "PDF",
+        "印刷",
+        "問題用紙",
+        "解答解説"
+      ]
+    },
+    {
+      "id": "fixed-test",
+      "question": "固定テストを受けるには？",
+      "answer": "テスト番号入力ページで先生から受け取った番号を入力して開始します。",
+      "steps": [
+        "テスト番号入力ページを開く",
+        "先生から案内された番号を入力する",
+        "表示されたテスト名を確認する",
+        "開始する"
+      ],
+      "page": "テスト番号入力",
+      "url": "https://224236.com/2026history/test.html",
+      "roles": [
+        "student"
+      ],
+      "buttons": [
+        "開始"
+      ],
+      "status": "production",
+      "keywords": [
+        "固定テスト",
+        "テスト番号",
+        "受験"
+      ]
+    }
+  ],
+  "faq": [],
+  "known_issues": [],
+  "recent_changes": [
+    {
+      "date": "2026-09-26",
+      "feature": "AI guide",
+      "change": "コード・画面を基準にガイドを再生成"
+    }
+  ],
+  "source": {
+    "kind": "generated",
+    "source_available": true
+  }
+}
+

@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0.0",
+  "name": "shigakukan-ai-guide",
+  "display_name": "志学館システム総合AIインデックス",
+  "updated_at": "2026-09-26T10:21:34Z",
+  "search_url": "https://224236.com/2026summer/ai/api/ai-help.php?q={query}",
+  "systems": [
+    {
+      "name": "timetable",
+      "display_name": "時間割システム",
+      "status": "production",
+      "version": "production-2026-09-20",
+      "production_url": "https://224236.com/2026summer/",
+      "guide_url": "https://224236.com/2026summer/ai-guide.json",
+      "source_available": true,
+      "guide_sha256": "00c2e2ee33d582156b038de51f7b53c3226c3d992dc129dea3b940b50a4edb19"
+    },
+    {
+      "name": "shigakukan-learning",
+      "display_name": "志学館 学習アプリ／WEB問題集",
+      "status": "production",
+      "version": "v104",
+      "production_url": "https://224236.com/2026history/",
+      "guide_url": "https://224236.com/2026history/ai-guide.json",
+      "source_available": true,
+      "guide_sha256": "25e6484198e0cff18d667c378dc2ad8ab5e5bc142cbeae1f4fa00641be1ab538"
+    },
+    {
+      "name": "sendreturn",
+      "display_name": "SendReturn",
+      "status": "testing",
+      "version": "0.6.0",
+      "production_url": "https://romantic-yonakunijima-0168.lolipop.io/",
+      "guide_url": "https://romantic-yonakunijima-0168.lolipop.io/ai-guide.json",
+      "source_available": true,
+      "guide_sha256": "6b1e15e6b43f8c83b9ee8bcc0a1c79f032eee980c2ae9384a7e7fb0d8b5331df"
+    },
+    {
+      "name": "material-library",
+      "display_name": "教材ライブラリ",
+      "status": "development",
+      "version": "unknown",
+      "production_url": "",
+      "guide_url": "https://224236.com/2026summer/ai/guides/material-library/ai-guide.json",
+      "source_available": false,
+      "guide_sha256": "bc56080b23d946658a6dbea477b7d4eefefda1883634b7135fc272a78886d1ca"
+    },
+    {
+      "name": "weborad",
+      "display_name": "WEBORAD",
+      "status": "development",
+      "version": "unknown",
+      "production_url": "",
+      "guide_url": "https://224236.com/2026summer/ai/guides/weborad/ai-guide.json",
+      "source_available": false,
+      "guide_sha256": "27e28e22836a1d37f0aba167ccb9153907c04192b887520f0c2a7709994a678a"
+    },
+    {
+      "name": "attendance-checker",
+      "display_name": "Attendance Checker",
+      "status": "development",
+      "version": "unknown",
+      "production_url": "",
+      "guide_url": "https://224236.com/2026summer/ai/guides/attendance-checker/ai-guide.json",
+      "source_available": false,
+      "guide_sha256": "2e490053ad5785571e380bfc26886585d9920e320854182259b6c734a0ea247f"
+    }
+  ]
+}
+
