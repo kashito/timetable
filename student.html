@@ -935,21 +935,15 @@ window.SharedClassState=(()=>{
       if (special) {
         html += daySpecials.map(item => {
           const originalLabel=specialDayLabel(item);
-          const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;
-          return `<div class="special special-day">${esc(label)}${item.note ? `<small>${esc(item.note)}</small>` : ''}</div>`;
+          if(/^OFF$/i.test(originalLabel)){
+            return item.note?`<div class="special special-day">休講のお知らせ<small>${esc(item.note)}</small></div>`:'';
+          }
+          return `<div class="special special-day">${esc(originalLabel)}${item.note ? `<small>${esc(item.note)}</small>` : ''}</div>`;
         }).join('');
       }
 
-      if (privatePending && !todayFinalizedAsOff) {
-        html += `<div class="special student-schedule-adjusting">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;
-      }
-
       if (selectedStudent && studentEvents.length === 0) {
-        // 予定がない日の案内。未来の未確定日は調整中、当日は午前6時からOFFと案内する。
-        if (!special && (!privatePending || todayFinalizedAsOff)) {
-          const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;
-          html += `<div class="special off-day">${esc(emptyLabel)}</div>`;
-        }
+        // 予定なし・調整中・当日午前6時以降のOFFは、日付直下の要約に一度だけ表示する。
       } else if (visibleEvents.length === 0 && studentEvents.length > 0) {
         // Student has a class, but current optional filters hide it.
         html += `<div class="empty">絞り込み条件に一致する予定はありません。</div>`;

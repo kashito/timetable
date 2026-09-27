@@ -217,7 +217,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1243,
+          "line": 1238,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
@@ -247,8 +247,8 @@
         },
         {
           "file": "student.html",
-          "line": 944,
-          "code": "html += `<div class=\"special student-schedule-adjusting\">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;"
+          "line": 920,
+          "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
           "file": "lesson-fixed.js",
@@ -282,9 +282,9 @@
       "exact_predicates": {
         "off": "if(isHoliday(d)||d<today)return 'OFF';",
         "date_window": "return days>=0&&days<=14?'現在調整中':'未定';",
-        "empty_day_guard": "if (!special && (!privatePending || todayFinalizedAsOff)) {",
-        "today_off_label": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;",
-        "special_off_conversion": "const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;"
+        "empty_day_guard": "if (selectedStudent && studentEvents.length === 0) {",
+        "today_off_label": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);",
+        "special_off_conversion": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
       },
       "source": [
         {
@@ -294,18 +294,18 @@
         },
         {
           "file": "student.html",
-          "line": 949,
-          "code": "if (!special && (!privatePending || todayFinalizedAsOff)) {"
+          "line": 946,
+          "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 950,
-          "code": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;"
+          "line": 918,
+          "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 938,
-          "code": "const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;"
+          "line": 919,
+          "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
           "file": "school-holidays.js",
@@ -331,7 +331,7 @@
       "message": "日ごとの状態・来室時刻・終了時刻を先に表示",
       "behavior": [
         "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
-        "一部だけ確定している日は「授業あり・ほかは現在調整中」と表示し、全予定が確定したように見せない",
+        "一部だけ確定している日は「授業あり・現在調整中（確定した授業のみ表示）」と表示し、全予定が確定したように見せない",
         "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
         "宿題は常時表示し、空欄は「宿題の記録はまだありません」、長文は「続きを読む」で全文を表示する",
         "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
@@ -361,12 +361,12 @@
         },
         {
           "file": "student.html",
-          "line": 999,
+          "line": 994,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 1002,
+          "line": 997,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {
@@ -386,7 +386,7 @@
   "generated_sections": {
     "display_rules": {
       "generator": ".deploy/generate_ai_guide_states.py",
-      "source_digest_sha256": "b3a43f8337ac1b1deff1de340d96f31733f66eb7142863388fb1c94e9f283465",
+      "source_digest_sha256": "f7fd04a6c664ab22ca053edc93c13c1c25bdc7e555800bbe147c3cbe7b7c7e94",
       "sources": [
         "student.html",
         "school-holidays.js",

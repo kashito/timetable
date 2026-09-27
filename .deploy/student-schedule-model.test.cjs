@@ -6,9 +6,10 @@ const model=require('../student-schedule-model.js');
 test('day status distinguishes lessons, OFF, pending, and partially confirmed days',()=>{
   assert.equal(model.dayState({eventCount:1}).label,'授業あり');
   assert.equal(model.dayState({todayFinalizedAsOff:true}).label,'OFF（授業なし）');
+  assert.equal(model.dayState({schoolHoliday:true,privatePending:true,eventCount:0}).label,'OFF（授業なし）');
   assert.equal(model.dayState({privatePending:true,eventCount:0}).label,'現在調整中');
   assert.deepEqual(model.dayState({privatePending:true,eventCount:1}),{
-    label:'授業あり・ほかは現在調整中',tone:'pending',partial:true
+    label:'授業あり・現在調整中（確定した授業のみ表示）',tone:'pending',partial:true
   });
   assert.equal(model.dayState({emptyLabel:'未定'}).label,'未定');
   assert.equal(model.dayState({}).label,'予定を確認できません');
