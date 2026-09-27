@@ -34,6 +34,14 @@ def generated_content():
         "off": source_ref("school-holidays.js", "if(isHoliday(d)||d<today)return 'OFF';"),
         "setting": source_ref("student.html", "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"),
         "fixed": source_ref("lesson-fixed.js", "const isFixed=key=>!!lessons[key]?.fixed;"),
+        "overview": source_ref("student.html", "<div class=\"day-overview\">"),
+        "gaps": source_ref("student-schedule-model.js", "function gaps(events)"),
+        "day_state": source_ref("student-schedule-model.js", "function dayState(input)"),
+        "homework": source_ref("student-schedule-model.js", "function homework(text,limit=88)"),
+        "materials": source_ref("student.html", "class=\"student-materials-view\""),
+        "other": source_ref("student.html", "<details class=\"student-other-info\">"),
+        "themes": source_ref("student-display-settings.js", "const themes=["),
+        "theme_storage": source_ref("student-display-settings.js", "const STORAGE='student-schedule-theme-v1';"),
     }
     digest = hashlib.sha256("\n".join(ref["code"] for ref in refs.values()).encode()).hexdigest()
     rules = [
@@ -107,6 +115,24 @@ def generated_content():
             },
             "source": [refs[k] for k in ("today_off", "empty", "empty_label", "special", "off", "label")],
             "generated_by": GENERATOR
+        },
+        {
+            "id": "student-schedule-priority-layout",
+            "audience": ["student", "guardian"],
+            "page": "生徒予定表",
+            "status": "production",
+            "message": "日ごとの状態・来室時刻・終了時刻を先に表示",
+            "behavior": [
+                "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
+                "一部だけ確定している日は「授業あり・ほかは現在調整中」と表示し、全予定が確定したように見せない",
+                "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
+                "宿題は常時表示し、空欄は「宿題の記録はまだありません」、長文は「続きを読む」で全文を表示する",
+                "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
+                "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
+                "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
+            ],
+            "source": [refs[k] for k in ("overview", "day_state", "gaps", "homework", "materials", "other", "themes", "theme_storage")],
+            "generated_by": GENERATOR
         }
     ]
     faq = {
@@ -117,20 +143,48 @@ def generated_content():
         "status": "production",
         "generated_by": GENERATOR
     }
-    return rules, faq, digest
+    operation = {
+        "id": "student-schedule-display-settings",
+        "question": "生徒予定表の色テーマを変更するには？",
+        "answer": "生徒予定表の上部にある「表示設定」を開き、色見本と色名から選びます。選択はその端末のブラウザーに保存され、先生やほかの利用者の画面には影響しません。",
+        "steps": [
+            "生徒予定表を開く",
+            "上部の「表示設定」を押す",
+            "20色から好みの色を選ぶ",
+            "元へ戻す場合は「標準に戻す」を押す"
+        ],
+        "page": "生徒予定表",
+        "url": "https://224236.com/2026summer/student.html",
+        "roles": ["student", "guardian"],
+        "buttons": ["表示設定", "標準に戻す"],
+        "status": "production",
+        "keywords": ["テーマ", "色", "表示設定", "20色", "標準に戻す"],
+        "generated_by": GENERATOR
+    }
+    recent = {
+        "date": "2026-09-27",
+        "feature": "生徒・保護者向け予定確認画面",
+        "change": "日ごとの状態・来室/終了時刻・空き時間を要約し、宿題・資料操作を優先表示。20色の端末別テーマを追加",
+        "generated_by": GENERATOR
+    }
+    return rules, faq, operation, recent, digest
 
 
 def expected_guide(path):
     guide = json.loads(path.read_text(encoding="utf-8"))
-    rules, faq, digest = generated_content()
+    rules, faq, operation, recent, digest = generated_content()
     guide["display_rules"] = rules
     guide["faq"] = [item for item in guide.get("faq", []) if item.get("generated_by") != GENERATOR]
     guide["faq"].append(faq)
+    guide["operations"] = [item for item in guide.get("operations", []) if item.get("generated_by") != GENERATOR]
+    guide["operations"].append(operation)
+    guide["recent_changes"] = [item for item in guide.get("recent_changes", []) if item.get("generated_by") != GENERATOR]
+    guide["recent_changes"].insert(0, recent)
     guide["generated_sections"] = {
         "display_rules": {
             "generator": GENERATOR,
             "source_digest_sha256": digest,
-            "sources": ["student.html", "school-holidays.js", "lesson-fixed.js"]
+            "sources": ["student.html", "school-holidays.js", "lesson-fixed.js", "student-schedule-model.js", "student-display-settings.js"]
         }
     }
     return guide

@@ -6,6 +6,7 @@
 <title>生徒個人2026</title>
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="student-attachments.js?v=20260910-r5"></script>
+<script src="student-schedule-model.js?v=20260927-priority-ui"></script>
 <style>
 :root{
   --ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;--white:#fff;
@@ -356,7 +357,7 @@ window.SharedClassState=(()=>{
 <div class="app">
   <header class="student-header" id="studentHeader">
     <div class="student-header-main"><div class="student-identity"><span class="student-brand">志学館 · 時間割</span><strong id="studentDisplayName">生徒の予定表</strong><small id="studentRegistrationNumber" hidden></small></div><button id="studentHeaderToggle" type="button" aria-expanded="false" aria-controls="studentHeaderDetails" title="日付・メニューを開く">☰<span>日付・メニュー</span></button></div>
-    <nav class="student-quick-links" aria-label="生徒の連絡・お知らせ"><a id="studentDailyLink" href="daily_board.html" title="今日の動きを別ページで開く"><span aria-hidden="true">📋</span> 今日の動き</a><a id="studentNoticeLink" href="system_updates.php" title="塾からのお知らせを別ページで開く"><span aria-hidden="true">🔔</span> 塾からのお知らせ<span id="studentNoticeCount" class="student-notice-count" hidden></span></a></nav>
+    <nav class="student-quick-links" aria-label="生徒の連絡・お知らせ"><a id="studentDailyLink" href="daily_board.html" title="今日の動きを別ページで開く"><span aria-hidden="true">📋</span> 今日の動き</a><a id="studentNoticeLink" href="system_updates.php" title="塾からのお知らせを別ページで開く"><span aria-hidden="true">🔔</span> 塾からのお知らせ<span id="studentNoticeCount" class="student-notice-count" hidden></span></a><button id="studentDisplaySettings" type="button" title="色テーマを変更する"><span aria-hidden="true">🎨</span> 表示設定</button></nav>
     <div id="studentHeaderDetails" hidden><div id="studentDateTools"></div><div id="studentExtraTools"></div><div id="studentOtherMenu"></div></div>
   </header>
 
@@ -388,6 +389,15 @@ window.SharedClassState=(()=>{
     <div id="modalBody"></div>
   </div>
 </div>
+
+<dialog id="studentThemeDialog" aria-labelledby="studentThemeTitle">
+  <div class="student-theme-head"><h2 id="studentThemeTitle">表示設定</h2><button id="studentThemeClose" type="button" aria-label="閉じる">×</button></div>
+  <div class="student-theme-body">
+    <p>見出しやボタンの色を選べます。この端末だけに保存され、先生やほかの利用者の画面は変わりません。</p>
+    <div id="studentThemeGrid" class="student-theme-grid" aria-label="20色のテーマ"></div>
+    <div class="student-theme-foot"><span id="studentThemeCurrent"></span><button id="studentThemeReset" type="button">標準に戻す</button></div>
+  </div>
+</dialog>
 
 <script src="school-holidays.js?v=20260912-r23"></script>
 <script>
@@ -679,6 +689,21 @@ window.SharedClassState=(()=>{
     return m?Number(m[1])*60+Number(m[2]):0;
   }
 
+  function homeworkMarkup(value){
+    const item=StudentScheduleModel.homework(value);
+    if(item.state==='unrecorded'){
+      return `<div class="student-homework is-unrecorded"><strong>📚 宿題</strong><span>${esc(item.preview)}</span></div>`;
+    }
+    if(!item.long){
+      return `<div class="student-homework"><strong>📚 宿題</strong><span>${esc(item.full)}</span></div>`;
+    }
+    return `<div class="student-homework"><strong>📚 宿題</strong><span>${esc(item.preview)}</span><details><summary>続きを読む</summary><div class="student-homework-full">${esc(item.full)}</div></details></div>`;
+  }
+
+  function gapMarkup(gap,className='student-free-gap'){
+    return `<div class="${className}"><span>${esc(gap.start)}〜${esc(gap.end)}</span><strong>空き${gap.minutes}分</strong></div>`;
+  }
+
   function lessonDateTime(date,time){
     const m=String(time||'').match(/^(\d{1,2}):(\d{2})/);
     if(!date || !m) return null;
@@ -882,19 +907,28 @@ window.SharedClassState=(()=>{
       const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);
 
       const visibleEvents = LinkedSchedule.merge(visibleNormal.filter(r => r.date === date),lessonRoomKey,effectiveRoom);
-
-      const dayMeetingStart = studentEvents.length ? studentEvents[0].start : '';
-      const dayMeetingEnd = studentEvents.length ? studentEvents.reduce((latest, item) =>
-        timeMinutes(item.end) > timeMinutes(latest) ? item.end : latest, studentEvents[0].end) : '';
-      const dayTimeSummary = dayMeetingStart && dayMeetingEnd
-        ? `<span class="day-title-summary">集合 ${esc(dayMeetingStart)} ／ 終了 ${esc(dayMeetingEnd)}</span>`
-        : '';
-
       const isOffDay = !special && selectedStudent && studentEvents.length === 0;
       const specialClassName = special ? ' has-special-day' : '';
       const schoolHoliday=!!(window.SchoolHolidays&&SchoolHolidays.isHoliday(date));
+      const dayMeetingStart = visibleEvents.length ? visibleEvents.reduce((earliest,item)=>
+        timeMinutes(item.start)<timeMinutes(earliest)?item.start:earliest,visibleEvents[0].start) : '';
+      const dayMeetingEnd = visibleEvents.length ? visibleEvents.reduce((latest,item)=>
+        timeMinutes(item.end)>timeMinutes(latest)?item.end:latest,visibleEvents[0].end) : '';
+      const dayGaps=StudentScheduleModel.gaps(visibleEvents);
+      const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);
+      const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';
+      const dayState=StudentScheduleModel.dayState({
+        eventCount:visibleEvents.length,privatePending,todayFinalizedAsOff,schoolHoliday,
+        specialLabel:overviewSpecial,emptyLabel:emptyDayLabel
+      });
       html += `<section class="day-group${isOffDay ? ' has-off-day' : ''}${specialClassName}${schoolHoliday ? ' is-school-holiday' : ''}" data-date="${esc(date)}">
-        <div class="day-title"><span>${esc(date.slice(5).replace('-','/'))}（${dayName(date)}）${schoolHoliday?'<b class="school-holiday-label">休講日</b>':''}</span>${dayTimeSummary}</div><div class="ce-day-events" data-calendar-date="${esc(date)}"></div>`;
+        <div class="day-title${date===today?' is-today':''}"><span class="day-title-date">${esc(date.slice(5).replace('-','/'))}（${dayName(date)}）${schoolHoliday?'<b class="school-holiday-label">休講日</b>':''}</span></div>
+        <div class="day-overview">
+          <strong class="day-state state-${esc(dayState.tone)}">${esc(dayState.label)}</strong>
+          ${dayMeetingStart&&dayMeetingEnd?`<div class="day-times"><span>教室に来る <strong>${esc(dayMeetingStart)}</strong></span><span>終了 <strong>${esc(dayMeetingEnd)}</strong></span></div>`:''}
+          ${dayGaps.length?`<div class="day-gaps">${dayGaps.map(gap=>gapMarkup(gap,'day-gap-summary')).join('')}</div>`:''}
+        </div>
+        <div class="ce-day-events" data-calendar-date="${esc(date)}"></div>`;
 
       // 特別日（サマーキャンプ・休講日など）の表示と、同日に入っている授業表示は両立させる。
       // 特別日があることを理由に授業カードを隠さない。
@@ -913,7 +947,7 @@ window.SharedClassState=(()=>{
       if (selectedStudent && studentEvents.length === 0) {
         // 予定がない日の案内。未来の未確定日は調整中、当日は午前6時からOFFと案内する。
         if (!special && (!privatePending || todayFinalizedAsOff)) {
-          const emptyLabel = todayFinalizedAsOff ? 'OFF' : SchoolHolidays.emptyDayLabel(date);
+          const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;
           html += `<div class="special off-day">${esc(emptyLabel)}</div>`;
         }
       } else if (visibleEvents.length === 0 && studentEvents.length > 0) {
@@ -923,6 +957,11 @@ window.SharedClassState=(()=>{
         let occupiedUntil=0;
         for (let eventIndex = 0; eventIndex < visibleEvents.length; eventIndex++) {
           const r = visibleEvents[eventIndex];
+          const eventStart=timeMinutes(r.start),eventEnd=timeMinutes(r.end);
+          if(eventIndex>0&&eventStart>occupiedUntil){
+            html+=gapMarkup({start:StudentScheduleModel.clock(occupiedUntil),end:r.start,minutes:eventStart-occupiedUntil});
+          }
+          occupiedUntil=Math.max(occupiedUntil,eventEnd);
           const type = studentType(r);
           const icon = type === '補習' ? '🧩' : '📘';
           const specialClass =
@@ -932,48 +971,40 @@ window.SharedClassState=(()=>{
           const cardStyle=specialClass.includes('is-break')
             ? ''
             : roomInlineStyle(actualRoom);
+          const key=lessonRoomKey(r);
+          const homework=homeworkForKey.get(key)||'';
+          const subject=(r.subjects||[]).join('・');
+          const lessonTitle=subject||r.cls||type||'授業';
+          const courseLabel=subject&&r.cls?r.cls:(type&&lessonTitle!==type?type:'');
 
           html += `<article class="event-card ${roomVisualClass(actualRoom)}${specialClass}"
             style="${cardStyle}"
-            data-key="${esc(lessonRoomKey(r))}" ${LinkedSchedule.attributes(r)}
+            data-key="${esc(key)}" ${LinkedSchedule.attributes(r)}
             data-series-id="${esc(r.id)}"
             data-room="${esc(actualRoom)}"
             data-date="${esc(r.date)}"
+            data-start="${esc(r.start)}" data-end="${esc(r.end)}"
             data-time="${esc(r.start)}-${esc(r.end)}">
             <div class="event-top">
               <div>
-                <div class="event-time">${esc(LinkedSchedule.label(r))} ${esc(r.start)}–${esc(r.end)}</div>
-                <div class="event-class">${esc(r.cls || type)}</div>
+                <div class="event-time">${esc(r.start)}–${esc(r.end)} <small>${esc(LinkedSchedule.label(r))}</small></div>
+                <div class="event-class">${esc(lessonTitle)}</div>
+                ${courseLabel?`<div class="event-course">${esc(courseLabel)}</div>`:''}
               </div>
               <div class="event-icon" aria-hidden="true">${icon}</div>
             </div>
             ${optionalNote(r)}
-            <div class="event-sub">${r._linked?.mealBreak?'<p class="linked-meal-notice">途中で食事休憩が入ります</p>':''}${r.teacher ? `担当 ${esc(r.teacher)}` : ''}</div>
-            ${homeworkForKey.get(lessonRoomKey(r)) ? `<div class="student-homework"><strong>📚 宿題</strong>${esc(homeworkForKey.get(lessonRoomKey(r)))}</div>` : ''}
-            ${previousSameTitleGap.get(lessonRoomKey(r)) ? `<div class="student-prev-gap"><span>前回の授業から</span><strong>${esc(previousSameTitleGap.get(lessonRoomKey(r)))}</strong></div>` : ''}
+            <div class="event-sub">${actualRoom?`<span>🏫 教室 ${esc(actualRoom)}</span>`:'<span>🏫 教室 未設定</span>'}${r.teacher?`<span>担当 ${esc(r.teacher)}</span>`:''}${r._linked?.mealBreak?'<span class="linked-meal-notice">途中で食事休憩が入ります</span>':''}</div>
+            ${homeworkMarkup(homework)}
+            <div class="student-material-actions"><button type="button" class="student-materials-view" data-material-key="${esc(key)}" aria-expanded="false">資料を見る <span>確認中</span></button><button type="button" class="student-card-send-btn" data-send-key="${esc(key)}">資料を送る</button></div>
             ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
-            <div class="lesson-countdown" data-countdown></div>
-            <div class="tags">
-              ${type ? `<span class="tag tag-type">${icon} ${esc(type)}</span>` : ''}
-              ${actualRoom ? `<span class="tag tag-room">🏫 ${esc(actualRoom)}</span>` : ''}
-            </div>
-            <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡（β版）</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}<button type="button" class="student-card-send-btn" data-send-key="${esc(lessonRoomKey(r))}">📤 先生へ資料を送る</button></div>
-            ${(()=>{
-              const sent=(window.StudentAttachments?StudentAttachments.get(lessonRoomKey(r)):[]).filter(a=>a.sender==='student'&&a.canDelete);
-              return sent.length ? `<div class="student-sent-files"><strong>送信済み資料</strong>${sent.map(a=>`<div class="student-sent-file"><a href="${StudentAttachments.rawUrl(a)}" download="${esc(a.name)}" target="_blank" rel="noopener">${esc(a.name)}</a><button type="button" class="student-file-delete-btn" data-delete-key="${esc(lessonRoomKey(r))}" data-delete-id="${esc(a.id)}">削除</button></div>`).join('')}</div>` : '';
-            })()}
+            <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}</div>
+            <details class="student-other-info"><summary>その他の情報</summary><div class="student-other-info-body">
+              ${previousSameTitleGap.get(key)?`<div class="student-prev-gap"><span>前回の授業から</span><strong>${esc(previousSameTitleGap.get(key))}</strong></div>`:''}
+              <div class="lesson-countdown" data-countdown></div>
+              ${type?`<div class="tags"><span class="tag tag-type">${icon} ${esc(type)}</span></div>`:''}
+            </div></details>
           </article>`;
-
-          // 個人ページ：連続する授業の間に空き時間を表示する。
-          // 既存の授業表示・絞り込み・保存処理には影響させない表示専用処理。
-          occupiedUntil=Math.max(occupiedUntil,timeMinutes(r.end));
-          const nextEvent = visibleEvents[eventIndex + 1];
-          if (nextEvent) {
-            const gapMinutes = timeMinutes(nextEvent.start) - occupiedUntil;
-            if (gapMinutes > 0) {
-              html += `<div class="student-free-gap">空き ${gapMinutes}分</div>`;
-            }
-          }
         }
       }
 
@@ -995,7 +1026,7 @@ window.SharedClassState=(()=>{
 
   function bindCards() {
     document.querySelectorAll('.event-card').forEach(card => {
-      card.addEventListener('click', (e) => { if(e.target.closest('[data-contact-open],[data-contact-history],.student-card-send-btn,.student-file-delete-btn,.student-sent-files a')) return; showDetail(card.dataset.key); });
+      card.addEventListener('click', (e) => { if(e.target.closest('[data-contact-open],[data-contact-history],.student-card-send-btn,.student-materials-view,.student-file-delete-btn,.student-attachment-box')) return; showDetail(card.dataset.key); });
     });
     document.querySelectorAll('.student-file-delete-btn').forEach(btn=>{
       btn.addEventListener('click', async (e)=>{
@@ -1627,27 +1658,48 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 <script id="student-attachment-render-v44">
 (function(){
   function escText(v){ return String(v??''); }
+  function ensurePanel(card){
+    let panel=card.querySelector('.student-attachment-box');
+    if(!panel){
+      panel=document.createElement('div');panel.className='student-attachment-box';panel.hidden=true;
+      const actions=card.querySelector('.student-material-actions');
+      if(actions)actions.insertAdjacentElement('afterend',panel);else card.appendChild(panel);
+    }
+    return panel;
+  }
+  function setButton(card,count,label){
+    const button=card.querySelector('.student-materials-view');if(!button)return;
+    const suffix=label||`${count}件`;
+    button.innerHTML=`資料を見る <span>${suffix}</span>`;
+  }
   async function applyStudentAttachments(){
     try{
       await StudentAttachments.loadAll();
       document.querySelectorAll('.event-card[data-key]').forEach(card=>{
         const key=card.dataset.key||'';
         const items=StudentAttachments.get(key)||[];
-        let box=card.querySelector('.student-attachment-box');
-        let badge=card.querySelector('.student-attachment-badge');
-        if(items.length){
-          if(!badge){
-            badge=document.createElement('span'); badge.className='student-attachment-badge'; badge.textContent='📎 '+items.length; badge.title='ダウンロードできる添付ファイルがあります';
-            const top=card.querySelector('.event-top>div:last-child')||card.querySelector('.event-top'); if(top) top.appendChild(badge);
-          }else badge.textContent='📎 '+items.length;
-          if(!box){ box=document.createElement('div'); box.className='student-attachment-box'; const tags=card.querySelector('.tags'); if(tags) card.insertBefore(box,tags); else card.appendChild(box); }
-          box.innerHTML='';
-          const title=document.createElement('div'); title.className='student-attachment-title'; title.textContent='📎 このコマの資料'; box.appendChild(title);
-          items.forEach(a=>{ const link=document.createElement('a'); link.className='student-attachment-link'; link.href=StudentAttachments.rawUrl(a); link.download=a.name||'download'; link.target='_blank'; link.rel='noopener'; link.textContent=(a.sender==='student'?'📤 生徒から送信：':'⬇ 先生から：')+escText(a.name); link.addEventListener('click',e=>{e.stopPropagation();}); link.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true}); box.appendChild(link); });
-        }else{ if(box)box.remove(); if(badge)badge.remove(); }
+        const box=ensurePanel(card),expanded=card.querySelector('.student-materials-view')?.getAttribute('aria-expanded')==='true';
+        setButton(card,items.length);box.replaceChildren();box.hidden=!expanded;
+        const title=document.createElement('div');title.className='student-attachment-title';title.textContent='📎 この授業の資料';box.appendChild(title);
+        if(!items.length){
+          const empty=document.createElement('div');empty.className='student-attachment-empty';empty.textContent='この授業の資料はまだありません。';box.appendChild(empty);return;
+        }
+        items.forEach(a=>{
+          const row=document.createElement('div');row.className='student-detail-attachment';
+          const link=document.createElement('a');link.className='student-attachment-link';link.href=StudentAttachments.rawUrl(a);link.download=a.name||'download';link.target='_blank';link.rel='noopener';link.textContent=(a.sender==='student'?'送信済み：':'先生から：')+escText(a.name);link.addEventListener('click',e=>e.stopPropagation());row.appendChild(link);
+          if(a.sender==='student'&&a.canDelete){const del=document.createElement('button');del.type='button';del.className='student-file-delete-btn';del.textContent='削除';del.addEventListener('click',async e=>{e.stopPropagation();if(!confirm('この送信済み資料を削除しますか？'))return;del.disabled=true;try{await StudentAttachments.remove(key,a.id);await applyStudentAttachments();}catch(err){alert('削除できませんでした：'+(err.message||err));del.disabled=false;}});row.appendChild(del);}
+          box.appendChild(row);
+        });
       });
-    }catch(e){ console.error('添付ファイル表示失敗',e); }
+    }catch(e){
+      console.error('添付ファイル表示失敗',e);
+      document.querySelectorAll('.event-card[data-key]').forEach(card=>{const box=ensurePanel(card);setButton(card,0,'取得失敗');box.innerHTML='<div class="student-attachment-error">資料を読み込めませんでした。再読み込みしてください。</div>';});
+    }
   }
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('.student-materials-view');if(!button)return;
+    event.preventDefault();event.stopPropagation();const card=button.closest('.event-card'),panel=ensurePanel(card),open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));panel.hidden=!open;
+  });
   window.applyStudentAttachments=applyStudentAttachments;
   const run=()=>{setTimeout(applyStudentAttachments,120);setTimeout(applyStudentAttachments,700)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
@@ -1662,5 +1714,7 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 <script id="student-card-send-v67">
 (function(){document.addEventListener('click',async function(e){const b=e.target.closest('.student-card-send-btn');if(!b)return;e.preventDefault();e.stopPropagation();const input=document.createElement('input');input.type='file';input.multiple=true;input.style.display='none';document.body.appendChild(input);input.onchange=async()=>{const fs=[...input.files];if(!fs.length){input.remove();return;}b.disabled=true;const old=b.textContent;b.textContent='送信中…';try{for(const f of fs)await StudentAttachments.upload(b.dataset.sendKey,f,{sender:'student',senderName:(window.selectedStudent&&selectedStudent.name)||''});await StudentAttachments.loadAll();if(typeof window.applyStudentAttachments==='function')await window.applyStudentAttachments();b.textContent='✓ 送信しました';setTimeout(()=>{b.textContent=old;b.disabled=false},1400);}catch(err){alert('送信できませんでした：'+(err.message||err));b.textContent=old;b.disabled=false;}finally{input.remove();}};input.click();});})();
 </script>
+<link rel="stylesheet" href="student-schedule-v2.css?v=20260927-priority-ui">
+<script src="student-display-settings.js?v=20260927-priority-ui"></script>
 <script defer src="calendar-view.js?v=20260922-events"></script></body>
 </html>

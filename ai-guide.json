@@ -103,6 +103,36 @@
         "本日",
         "予定"
       ]
+    },
+    {
+      "id": "student-schedule-display-settings",
+      "question": "生徒予定表の色テーマを変更するには？",
+      "answer": "生徒予定表の上部にある「表示設定」を開き、色見本と色名から選びます。選択はその端末のブラウザーに保存され、先生やほかの利用者の画面には影響しません。",
+      "steps": [
+        "生徒予定表を開く",
+        "上部の「表示設定」を押す",
+        "20色から好みの色を選ぶ",
+        "元へ戻す場合は「標準に戻す」を押す"
+      ],
+      "page": "生徒予定表",
+      "url": "https://224236.com/2026summer/student.html",
+      "roles": [
+        "student",
+        "guardian"
+      ],
+      "buttons": [
+        "表示設定",
+        "標準に戻す"
+      ],
+      "status": "production",
+      "keywords": [
+        "テーマ",
+        "色",
+        "表示設定",
+        "20色",
+        "標準に戻す"
+      ],
+      "generated_by": ".deploy/generate_ai_guide_states.py"
     }
   ],
   "faq": [
@@ -112,7 +142,8 @@
       "answer": "2系統あります。①講師未ログインかつ生徒への非公開開始日が設定され、対象日が開始日以降なら表示します。この期間は未確定授業を隠し、個別に確定された授業だけを表示します。確定授業がその日に1件以上あれば「（確定した授業のみ表示しています）」が付きます。ただし、日本時間の当日午前6時以降に確定授業が0件なら「OFF」と表示します。②予定なし日の補助表示では、休講日でなく、日本時間の今日から14日後までなら表示します。過去日・休講日は「OFF」、15日後以降は「未定」です。",
       "related_display_rule_ids": [
         "student-currently-adjusting-private-window",
-        "student-currently-adjusting-empty-day"
+        "student-currently-adjusting-empty-day",
+        "student-schedule-priority-layout"
       ],
       "status": "production",
       "generated_by": ".deploy/generate_ai_guide_states.py"
@@ -122,6 +153,12 @@
     "ログイン後の業務操作全体は自動HTTPテストの対象外です。"
   ],
   "recent_changes": [
+    {
+      "date": "2026-09-27",
+      "feature": "生徒・保護者向け予定確認画面",
+      "change": "日ごとの状態・来室/終了時刻・空き時間を要約し、宿題・資料操作を優先表示。20色の端末別テーマを追加",
+      "generated_by": ".deploy/generate_ai_guide_states.py"
+    },
     {
       "date": "2026-09-27",
       "feature": "生徒・保護者向け状態表示ガイド",
@@ -180,37 +217,37 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1212,
+          "line": 1243,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
           "file": "student.html",
-          "line": 792,
+          "line": 817,
           "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
         },
         {
           "file": "student.html",
-          "line": 794,
+          "line": 819,
           "code": "? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
         },
         {
           "file": "student.html",
-          "line": 880,
+          "line": 905,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 882,
+          "line": 907,
           "code": "const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 433,
+          "line": 443,
           "code": "function scheduleSixAmPublicationRefresh(clock) {"
         },
         {
           "file": "student.html",
-          "line": 910,
+          "line": 944,
           "code": "html += `<div class=\"special student-schedule-adjusting\">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;"
         },
         {
@@ -246,28 +283,28 @@
         "off": "if(isHoliday(d)||d<today)return 'OFF';",
         "date_window": "return days>=0&&days<=14?'現在調整中':'未定';",
         "empty_day_guard": "if (!special && (!privatePending || todayFinalizedAsOff)) {",
-        "today_off_label": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : SchoolHolidays.emptyDayLabel(date);",
+        "today_off_label": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;",
         "special_off_conversion": "const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;"
       },
       "source": [
         {
           "file": "student.html",
-          "line": 882,
+          "line": 907,
           "code": "const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 915,
+          "line": 949,
           "code": "if (!special && (!privatePending || todayFinalizedAsOff)) {"
         },
         {
           "file": "student.html",
-          "line": 916,
-          "code": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : SchoolHolidays.emptyDayLabel(date);"
+          "line": 950,
+          "code": "const emptyLabel = todayFinalizedAsOff ? 'OFF' : emptyDayLabel;"
         },
         {
           "file": "student.html",
-          "line": 904,
+          "line": 938,
           "code": "const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;"
         },
         {
@@ -282,16 +319,80 @@
         }
       ],
       "generated_by": ".deploy/generate_ai_guide_states.py"
+    },
+    {
+      "id": "student-schedule-priority-layout",
+      "audience": [
+        "student",
+        "guardian"
+      ],
+      "page": "生徒予定表",
+      "status": "production",
+      "message": "日ごとの状態・来室時刻・終了時刻を先に表示",
+      "behavior": [
+        "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
+        "一部だけ確定している日は「授業あり・ほかは現在調整中」と表示し、全予定が確定したように見せない",
+        "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
+        "宿題は常時表示し、空欄は「宿題の記録はまだありません」、長文は「続きを読む」で全文を表示する",
+        "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
+        "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
+        "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
+      ],
+      "source": [
+        {
+          "file": "student.html",
+          "line": 926,
+          "code": "<div class=\"day-overview\">"
+        },
+        {
+          "file": "student-schedule-model.js",
+          "line": 36,
+          "code": "function dayState(input){"
+        },
+        {
+          "file": "student-schedule-model.js",
+          "line": 20,
+          "code": "function gaps(events){"
+        },
+        {
+          "file": "student-schedule-model.js",
+          "line": 50,
+          "code": "function homework(text,limit=88){"
+        },
+        {
+          "file": "student.html",
+          "line": 999,
+          "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
+        },
+        {
+          "file": "student.html",
+          "line": 1002,
+          "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
+        },
+        {
+          "file": "student-display-settings.js",
+          "line": 4,
+          "code": "const themes=["
+        },
+        {
+          "file": "student-display-settings.js",
+          "line": 3,
+          "code": "const STORAGE='student-schedule-theme-v1';"
+        }
+      ],
+      "generated_by": ".deploy/generate_ai_guide_states.py"
     }
   ],
   "generated_sections": {
     "display_rules": {
       "generator": ".deploy/generate_ai_guide_states.py",
-      "source_digest_sha256": "ede935ecc0198ca6f0537142cfd0663d12ea1fc37f71687a86c7150141757391",
+      "source_digest_sha256": "b3a43f8337ac1b1deff1de340d96f31733f66eb7142863388fb1c94e9f283465",
       "sources": [
         "student.html",
         "school-holidays.js",
-        "lesson-fixed.js"
+        "lesson-fixed.js",
+        "student-schedule-model.js",
+        "student-display-settings.js"
       ]
     }
   }
