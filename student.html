@@ -412,11 +412,31 @@ window.SharedClassState=(()=>{
   let renderedRows = [];
   let lessonRecords = {};
   let schedulePrivateFrom = '';
+  let publicationBoundaryTimer = 0;
 
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const normName = v => String(v ?? '').replace(/[\s　]+/g,'').toLowerCase();
   const dayName = d => ['日','月','火','水','木','金','土'][new Date(d + 'T00:00:00').getDay()];
+
+  function japanClock(now = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA',{
+      timeZone:'Asia/Tokyo',numberingSystem:'latn',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
+    }).formatToParts(now).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
+    return {
+      date:`${parts.year}-${parts.month}-${parts.day}`,
+      hour:Number(parts.hour),minute:Number(parts.minute),second:Number(parts.second)
+    };
+  }
+
+  function scheduleSixAmPublicationRefresh(clock) {
+    clearTimeout(publicationBoundaryTimer);
+    const elapsed = clock.hour * 3600 + clock.minute * 60 + clock.second;
+    const sixAm = 6 * 3600;
+    const seconds = elapsed < sixAm ? sixAm - elapsed : 86400 - elapsed + sixAm;
+    publicationBoundaryTimer = setTimeout(()=>{ publicationBoundaryTimer=0; render(); },seconds * 1000 + 500);
+  }
 
   function normalizeExcelTime(v) {
     if(v===''||v===null||v===undefined) return '';
@@ -843,7 +863,8 @@ window.SharedClassState=(()=>{
     // Even when a date has no row in Excel at all, it is still shown.
     // Empty days distinguish pending schedules from designated school holidays.
     const availableDates = [...new Set(rows.map(r => r.date).filter(Boolean))].sort();
-    const today = new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+    const japanNow = japanClock();
+    const today = japanNow.date;
     const rangeStart = window.HistoryWindow ? HistoryWindow.start() : today;
     const horizon = new Date((rangeStart>today?rangeStart:today)+'T00:00:00');horizon.setDate(horizon.getDate()+120);
     const rangeEnd = [availableDates[availableDates.length-1]||'',horizon.toLocaleDateString('sv-SE')].sort().at(-1);
@@ -857,6 +878,8 @@ window.SharedClassState=(()=>{
         .filter(r => r.date === date)
         .sort((a,b)=>(a.start+a.cls).localeCompare(b.start+b.cls));
       const privatePending = !!(hideTentative && date >= schedulePrivateFrom);
+      // 当日は午前6時を公開判断の締切とし、確定授業がなければ生徒にはOFFと案内する。
+      const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);
 
       const visibleEvents = LinkedSchedule.merge(visibleNormal.filter(r => r.date === date),lessonRoomKey,effectiveRoom);
 
@@ -878,18 +901,21 @@ window.SharedClassState=(()=>{
       if (special) {
         html += daySpecials.map(item => {
           const originalLabel=specialDayLabel(item);
-          const label=/^OFF$/i.test(originalLabel)?SchoolHolidays.emptyDayLabel(date):originalLabel;
+          const label=/^OFF$/i.test(originalLabel)?(todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)):originalLabel;
           return `<div class="special special-day">${esc(label)}${item.note ? `<small>${esc(item.note)}</small>` : ''}</div>`;
         }).join('');
       }
 
-      if (privatePending) {
+      if (privatePending && !todayFinalizedAsOff) {
         html += `<div class="special student-schedule-adjusting">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;
       }
 
       if (selectedStudent && studentEvents.length === 0) {
-        // 予定がない日の案内。休講日指定を優先し、未確定の予定をOFFと案内しない。
-        if (!special && !privatePending) html += `<div class="special off-day">${esc(SchoolHolidays.emptyDayLabel(date))}</div>`;
+        // 予定がない日の案内。未来の未確定日は調整中、当日は午前6時からOFFと案内する。
+        if (!special && (!privatePending || todayFinalizedAsOff)) {
+          const emptyLabel = todayFinalizedAsOff ? 'OFF' : SchoolHolidays.emptyDayLabel(date);
+          html += `<div class="special off-day">${esc(emptyLabel)}</div>`;
+        }
       } else if (visibleEvents.length === 0 && studentEvents.length > 0) {
         // Student has a class, but current optional filters hide it.
         html += `<div class="empty">絞り込み条件に一致する予定はありません。</div>`;
@@ -964,6 +990,7 @@ window.SharedClassState=(()=>{
     updateStickyContext();
 
     $('status').textContent = '';
+    scheduleSixAmPublicationRefresh(japanNow);
   }
 
   function bindCards() {

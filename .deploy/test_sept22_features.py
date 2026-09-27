@@ -27,6 +27,12 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("生徒への非公開開始日", self.text("teacher2026summer.html"))
         self.assertIn("現在調整中", student)
         self.assertIn("LessonFixed?.isFixed", student)
+        self.assertIn("const todayFinalizedAsOff", student)
+        self.assertIn("date === today && japanNow.hour >= 6 && studentEvents.length === 0", student)
+        self.assertIn("todayFinalizedAsOff ? 'OFF'", student)
+        self.assertIn("privatePending && !todayFinalizedAsOff", student)
+        self.assertIn("function scheduleSixAmPublicationRefresh", student)
+        self.assertIn("seconds * 1000 + 500", student)
         self.assertNotIn(".confirmed-date-bar{display:none", self.text("workspace-ui.css"))
         for page in ("schedule_generator.php", "teacher2026summer.html"):
             self.assertIn("workspace-ui.css?v=20260926-public-visibility", self.text(page))
