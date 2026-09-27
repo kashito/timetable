@@ -24,9 +24,12 @@ def generated_content():
         "hide": source_ref("student.html", "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"),
         "filter": source_ref("student.html", "resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom"),
         "pending": source_ref("student.html", "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"),
+        "today_off": source_ref("student.html", "const todayFinalizedAsOff = !!(privatePending && date === today"),
+        "six_refresh": source_ref("student.html", "function scheduleSixAmPublicationRefresh(clock)"),
         "banner": source_ref("student.html", "student-schedule-adjusting\">現在調整中"),
-        "empty": source_ref("student.html", "if (!special && !privatePending) html +="),
-        "special": source_ref("student.html", "SchoolHolidays.emptyDayLabel(date):originalLabel"),
+        "empty": source_ref("student.html", "if (!special && (!privatePending || todayFinalizedAsOff))"),
+        "empty_label": source_ref("student.html", "const emptyLabel = todayFinalizedAsOff ? 'OFF'"),
+        "special": source_ref("student.html", "todayFinalizedAsOff?'OFF':SchoolHolidays.emptyDayLabel(date)"),
         "label": source_ref("school-holidays.js", "return days>=0&&days<=14?'現在調整中':'未定';"),
         "off": source_ref("school-holidays.js", "if(isHoliday(d)||d<today)return 'OFF';"),
         "setting": source_ref("student.html", "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"),
@@ -47,7 +50,11 @@ def generated_content():
                 },
                 {
                     "text": "現在調整中",
-                    "condition": "その日について、公開対象として残った確定授業が0件"
+                    "condition": "公開対象として残った確定授業が0件で、対象日が今日の午前6時以降ではない"
+                },
+                {
+                    "text": "OFF",
+                    "condition": "対象日が日本時間の今日、午前6時以降、かつ公開対象として残った確定授業が0件"
                 }
             ],
             "all_conditions": [
@@ -59,15 +66,18 @@ def generated_content():
                 "privateFrom より前の授業は確定・未確定に関係なく表示対象になる",
                 "privateFrom 以降は未確定授業を除外する",
                 "privateFrom 以降でも lesson_fixed_api の fixed が真の授業だけは表示する",
+                "日本時間の当日午前6時以降に確定授業が0件なら「現在調整中」ではなく「OFF」を表示する",
+                "午前6時前から画面を開いていても、6時に表示を再計算する",
                 "privateFrom の設定取得に失敗した場合は空文字になり、この非公開処理とバナーは作動しない"
             ],
             "exact_predicates": {
                 "feature_enabled": refs["hide"]["code"],
                 "lesson_visibility": refs["filter"]["code"],
                 "banner_visibility": refs["pending"]["code"],
+                "today_off": refs["today_off"]["code"],
                 "fixed_definition": refs["fixed"]["code"]
             },
-            "source": [refs[k] for k in ("setting", "hide", "filter", "pending", "banner", "fixed")],
+            "source": [refs[k] for k in ("setting", "hide", "filter", "pending", "today_off", "six_refresh", "banner", "fixed")],
             "generated_by": GENERATOR
         },
         {
@@ -82,26 +92,27 @@ def generated_content():
                 "通常の予定なし表示では、選択中の生徒にその日の表示対象授業が0件",
                 "通常の予定なし表示では、特別日データがなく、非公開開始日バナーの対象でもない"
             ],
-            "alternate_trigger": "特別日の表示名が OFF の場合も emptyDayLabel を通るため、休講日登録がなく今日から14日後以内なら「現在調整中」に置換される",
+            "alternate_trigger": "特別日の表示名が OFF の場合も通常は emptyDayLabel を通る。ただし、生徒への非公開開始日以降で、当日午前6時以降かつ確定授業0件なら「OFF」を維持する",
             "priority_and_other_results": [
                 "休講日登録済み、または今日より前の日付は OFF",
                 "今日から15日後以降は 未定",
-                "非公開開始日バナー対象なら、予定なしラベルよりバナーが優先される"
+                "非公開開始日バナー対象でも、当日午前6時以降かつ確定授業0件なら OFF が優先される"
             ],
             "exact_predicates": {
                 "off": refs["off"]["code"],
                 "date_window": refs["label"]["code"],
                 "empty_day_guard": refs["empty"]["code"],
+                "today_off_label": refs["empty_label"]["code"],
                 "special_off_conversion": refs["special"]["code"]
             },
-            "source": [refs[k] for k in ("empty", "special", "off", "label")],
+            "source": [refs[k] for k in ("today_off", "empty", "empty_label", "special", "off", "label")],
             "generated_by": GENERATOR
         }
     ]
     faq = {
         "id": "student-currently-adjusting-exact-condition",
         "question": "生徒・保護者画面で「現在調整中」と表示される正確な条件は？",
-        "answer": "2系統あります。①講師未ログインかつ生徒への非公開開始日が設定され、対象日が開始日以降なら表示します。この期間は未確定授業を隠し、個別に確定された授業だけを表示します。確定授業がその日に1件以上あれば「（確定した授業のみ表示しています）」が付きます。②予定なし日の補助表示では、休講日でなく、日本時間の今日から14日後までなら表示します。過去日・休講日は「OFF」、15日後以降は「未定」です。",
+        "answer": "2系統あります。①講師未ログインかつ生徒への非公開開始日が設定され、対象日が開始日以降なら表示します。この期間は未確定授業を隠し、個別に確定された授業だけを表示します。確定授業がその日に1件以上あれば「（確定した授業のみ表示しています）」が付きます。ただし、日本時間の当日午前6時以降に確定授業が0件なら「OFF」と表示します。②予定なし日の補助表示では、休講日でなく、日本時間の今日から14日後までなら表示します。過去日・休講日は「OFF」、15日後以降は「未定」です。",
         "related_display_rule_ids": [rule["id"] for rule in rules],
         "status": "production",
         "generated_by": GENERATOR
