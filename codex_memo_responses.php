@@ -28,5 +28,6 @@ function cmResponses($id){
  $all['22f1b5464ca2d4aef35e6cee'][]=json_decode('{"id":"20260922-schedule-display-22f1b5464ca2d4aef35e6cee","release":"20260922-schedule-display","kind":"対応結果","by":"Codex","at":"2026-09-22T13:25:00+09:00","text":"授業ごとの予定を年月日とコマ番号で数値比較して並べるよう修正しました。月日がゼロ埋めされていないデータや⑨・⑩を含む場合も、日付の古い順、同日は①から⑪の順に表示します。"}',true);
  $all['ad07596cbefbf72d8fd284bd'][]=json_decode('{"id":"20260922-schedule-display-ad07596cbefbf72d8fd284bd","release":"20260922-schedule-display","kind":"対応結果","by":"Codex","at":"2026-09-22T13:25:00+09:00","text":"「今日の動き」と「青教室の指示」に、月日・曜日・時分秒の時計を追加しました。サーバー時刻に合わせて1秒ごとに更新し、モニター表示では大きく表示します。"}',true);
  $all['b25ddfb8541ef1db8461f129'][]=json_decode('{"id":"20260922-schedule-display-b25ddfb8541ef1db8461f129","release":"20260922-schedule-display","kind":"対応結果","by":"Codex","at":"2026-09-22T13:25:00+09:00","text":"学校行事・お知らせの種類に「カウントダウンイベント」を追加しました。テスト・入試・模試に加え、イベントもカウントダウン画面へ表示できます。カードは内容ごとに読みやすい背景色と文字色の10配色から自動選択し、同じイベントは同じ配色で表示します。"}',true);
+ $all['96a3f75472718a1a3826c980'][]=json_decode('{"id":"20260927-teacher-shift-sticky-96a3f75472718a1a3826c980","release":"20260927-teacher-shift-sticky","kind":"対応結果","by":"Codex","at":"2026-09-27T17:13:45+09:00","text":"全体時間割の日付を押すと、その日の講師OK・NGと授業配置を画面上部に表示します。時間割を下へスクロールしても上部に残るため、シフトを確認しながら各コマを見られます。「閉じる」で表示を消し、別の日付を押すとその日に切り替わります。"}',true);
  return $all[$id]??[];
 }

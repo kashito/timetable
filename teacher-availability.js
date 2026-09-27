@@ -68,14 +68,18 @@ function ensurePanel(){
   p=document.createElement(isGenerator?'dialog':'section');
   p.id='teacherAvailabilityPanel';
   p.className='teacher-availability-panel'+(isGenerator?' generator-availability-dialog':'');
+  p.addEventListener('click',e=>{
+    if(e.target.closest('[data-close-availability]')){
+      if(isGenerator)p.close();
+      else{selectedDate='';render();}
+      return;
+    }
+    if(!isGenerator||e.target!==p)return;
+    const r=p.getBoundingClientRect();
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)p.close();
+  });
   if(isGenerator){
     p.setAttribute('aria-labelledby','teacherAvailabilityHeading');
-    p.addEventListener('click',e=>{
-      if(e.target.closest('[data-close-availability]')){p.close();return;}
-      if(e.target!==p)return;
-      const r=p.getBoundingClientRect();
-      if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)p.close();
-    });
     document.body.appendChild(p);
     return p;
   }
@@ -90,7 +94,7 @@ function render(){
   if(!isGenerator)p.style.display='block';
   p.setAttribute('aria-busy',String(loading));
   const teachers=teacherList();
-  let html=`<div class="teacher-availability-head"><strong id="teacherAvailabilityHeading">${esc(selectedDate.replaceAll('-','/'))}（${wd(selectedDate)}） 講師OK・NG</strong>${isGenerator?'<button type="button" data-close-availability autofocus>閉じる</button>':''}<span>緑＝配置可能　灰＝授業あり　赤＝NG</span></div>`;
+  let html=`<div class="teacher-availability-head"><strong id="teacherAvailabilityHeading">${esc(selectedDate.replaceAll('-','/'))}（${wd(selectedDate)}） 講師OK・NG</strong><button type="button" data-close-availability ${isGenerator?'autofocus':''}>閉じる</button><span>緑＝配置可能　灰＝授業あり　赤＝NG</span></div>`;
   if(loading||loadError){html+=`<div class="teacher-availability-empty" role="status">${loading?'勤務OK・NGを読み込み中…':esc(loadError)+'　日付をクリックして開き直してください。'}</div>`;p.innerHTML=html;return;}
   if(!teachers.length){html+='<div class="teacher-availability-empty">講師が見つかりません。</div>';p.innerHTML=html;return;}
   html+='<div class="teacher-availability-list">';
