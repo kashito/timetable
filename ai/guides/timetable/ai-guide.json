@@ -1,9 +1,9 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "system_name": "timetable",
   "display_name": "時間割システム",
-  "version": "production-2026-09-20",
-  "updated_at": "2026-09-26T10:21:34Z",
+  "version": "production-2026-09-27",
+  "updated_at": "2026-09-27T00:00:00+09:00",
   "production_url": "https://224236.com/2026summer/",
   "status": "production",
   "description": "講師・生徒の時間割、講師NG、今日の動き、授業管理を扱うシステム。",
@@ -171,11 +171,28 @@
       ]
     }
   ],
-  "faq": [],
+  "faq": [
+    {
+      "id": "student-currently-adjusting-exact-condition",
+      "question": "生徒・保護者画面で「現在調整中」と表示される正確な条件は？",
+      "answer": "2系統あります。①講師未ログインかつ生徒への非公開開始日が設定され、対象日が開始日以降なら表示します。この期間は未確定授業を隠し、個別に確定された授業だけを表示します。確定授業がその日に1件以上あれば「（確定した授業のみ表示しています）」が付きます。②予定なし日の補助表示では、休講日でなく、日本時間の今日から14日後までなら表示します。過去日・休講日は「OFF」、15日後以降は「未定」です。",
+      "related_display_rule_ids": [
+        "student-currently-adjusting-private-window",
+        "student-currently-adjusting-empty-day"
+      ],
+      "status": "production",
+      "generated_by": ".deploy/generate_ai_guide_states.py"
+    }
+  ],
   "known_issues": [
     "ログイン後の業務操作全体は自動HTTPテストの対象外です。"
   ],
   "recent_changes": [
+    {
+      "date": "2026-09-27",
+      "feature": "生徒・保護者向け状態表示ガイド",
+      "change": "「現在調整中」の2系統の判定、確定授業の公開条件、OFF・未定との優先関係をコードから自動生成"
+    },
     {
       "date": "2026-09-26",
       "feature": "AI guide",
@@ -185,6 +202,139 @@
   "source": {
     "kind": "generated",
     "source_available": true
+  },
+  "display_rules": [
+    {
+      "id": "student-currently-adjusting-private-window",
+      "audience": [
+        "student",
+        "guardian"
+      ],
+      "page": "生徒予定表",
+      "status": "production",
+      "message": "現在調整中",
+      "message_variants": [
+        {
+          "text": "現在調整中（確定した授業のみ表示しています）",
+          "condition": "その日について、公開対象として残った確定授業が1件以上ある（studentEvents.length > 0）"
+        },
+        {
+          "text": "現在調整中",
+          "condition": "その日について、公開対象として残った確定授業が0件"
+        }
+      ],
+      "all_conditions": [
+        "講師セッションがない（!StaffAuth.user）。生徒・保護者の通常閲覧が該当する",
+        "schedule_confirmed_api.php が返す privateFrom（生徒への非公開開始日）が空でない",
+        "表示対象日 date が privateFrom 以降（date >= schedulePrivateFrom）"
+      ],
+      "behavior": [
+        "privateFrom より前の授業は確定・未確定に関係なく表示対象になる",
+        "privateFrom 以降は未確定授業を除外する",
+        "privateFrom 以降でも lesson_fixed_api の fixed が真の授業だけは表示する",
+        "privateFrom の設定取得に失敗した場合は空文字になり、この非公開処理とバナーは作動しない"
+      ],
+      "exact_predicates": {
+        "feature_enabled": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;",
+        "lesson_visibility": "? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))",
+        "banner_visibility": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);",
+        "fixed_definition": "const isFixed=key=>!!lessons[key]?.fixed;"
+      },
+      "source": [
+        {
+          "file": "student.html",
+          "line": 1185,
+          "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
+        },
+        {
+          "file": "student.html",
+          "line": 772,
+          "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
+        },
+        {
+          "file": "student.html",
+          "line": 774,
+          "code": "? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
+        },
+        {
+          "file": "student.html",
+          "line": 859,
+          "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
+        },
+        {
+          "file": "student.html",
+          "line": 887,
+          "code": "html += `<div class=\"special student-schedule-adjusting\">現在調整中${studentEvents.length?'（確定した授業のみ表示しています）':''}</div>`;"
+        },
+        {
+          "file": "lesson-fixed.js",
+          "line": 6,
+          "code": "const isFixed=key=>!!lessons[key]?.fixed;"
+        }
+      ],
+      "generated_by": ".deploy/generate_ai_guide_states.py"
+    },
+    {
+      "id": "student-currently-adjusting-empty-day",
+      "audience": [
+        "student",
+        "guardian"
+      ],
+      "page": "生徒予定表",
+      "status": "production",
+      "message": "現在調整中",
+      "all_conditions": [
+        "日本時間の今日を0日目として、表示対象日が0日後から14日後まで（両端を含む）",
+        "その日が休講日として登録されていない",
+        "通常の予定なし表示では、選択中の生徒にその日の表示対象授業が0件",
+        "通常の予定なし表示では、特別日データがなく、非公開開始日バナーの対象でもない"
+      ],
+      "alternate_trigger": "特別日の表示名が OFF の場合も emptyDayLabel を通るため、休講日登録がなく今日から14日後以内なら「現在調整中」に置換される",
+      "priority_and_other_results": [
+        "休講日登録済み、または今日より前の日付は OFF",
+        "今日から15日後以降は 未定",
+        "非公開開始日バナー対象なら、予定なしラベルよりバナーが優先される"
+      ],
+      "exact_predicates": {
+        "off": "if(isHoliday(d)||d<today)return 'OFF';",
+        "date_window": "return days>=0&&days<=14?'現在調整中':'未定';",
+        "empty_day_guard": "if (!special && !privatePending) html += `<div class=\"special off-day\">${esc(SchoolHolidays.emptyDayLabel(date))}</div>`;",
+        "special_off_conversion": "const label=/^OFF$/i.test(originalLabel)?SchoolHolidays.emptyDayLabel(date):originalLabel;"
+      },
+      "source": [
+        {
+          "file": "student.html",
+          "line": 892,
+          "code": "if (!special && !privatePending) html += `<div class=\"special off-day\">${esc(SchoolHolidays.emptyDayLabel(date))}</div>`;"
+        },
+        {
+          "file": "student.html",
+          "line": 881,
+          "code": "const label=/^OFF$/i.test(originalLabel)?SchoolHolidays.emptyDayLabel(date):originalLabel;"
+        },
+        {
+          "file": "school-holidays.js",
+          "line": 22,
+          "code": "if(isHoliday(d)||d<today)return 'OFF';"
+        },
+        {
+          "file": "school-holidays.js",
+          "line": 24,
+          "code": "return days>=0&&days<=14?'現在調整中':'未定';"
+        }
+      ],
+      "generated_by": ".deploy/generate_ai_guide_states.py"
+    }
+  ],
+  "generated_sections": {
+    "display_rules": {
+      "generator": ".deploy/generate_ai_guide_states.py",
+      "source_digest_sha256": "4dc19fefa3f06b31740369ceead2af315073aadb3753a722d9101ea66e93feb8",
+      "sources": [
+        "student.html",
+        "school-holidays.js",
+        "lesson-fixed.js"
+      ]
+    }
   }
 }
-

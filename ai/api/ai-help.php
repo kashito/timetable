@@ -41,17 +41,26 @@ foreach ($index['systems'] as $system) {
     if (!is_file($path)) continue;
     $guide = json_decode((string)file_get_contents($path), true);
     if (!is_array($guide)) continue;
-    foreach ($guide['operations'] as $operation) {
-        $haystack = mb_strtolower(json_encode([$guide['display_name'], $operation], JSON_UNESCAPED_UNICODE), 'UTF-8');
+    $collections = [
+        'operation' => $guide['operations'] ?? [],
+        'faq' => $guide['faq'] ?? [],
+        'display_rule' => $guide['display_rules'] ?? [],
+    ];
+    foreach ($collections as $kind => $entries) foreach ($entries as $entry) {
+        $haystack = mb_strtolower(json_encode([$guide['display_name'], $entry], JSON_UNESCAPED_UNICODE), 'UTF-8');
         $score = mb_strpos($haystack, mb_strtolower($query, 'UTF-8')) !== false ? 100 : 0;
         foreach ($needles as $needle) {
             if (mb_strpos($haystack, $needle) !== false) $score += mb_strlen($needle, 'UTF-8');
         }
         if ($score > 0) {
-            $results[] = [
+            $result = [
                 'score' => $score, 'system' => $guide['system_name'], 'display_name' => $guide['display_name'],
-                'system_status' => $guide['status'], 'operation' => $operation, 'guide_url' => $system['guide_url'],
+                'system_status' => $guide['status'], 'kind' => $kind, 'entry' => $entry,
+                'guide_url' => $system['guide_url'],
             ];
+            // Keep the original field for existing clients while adding typed entries.
+            if ($kind === 'operation') $result['operation'] = $entry;
+            $results[] = $result;
         }
     }
 }
@@ -60,5 +69,4 @@ respond(200, [
     'ok' => true, 'query' => $query, 'updated_at' => $index['updated_at'],
     'count' => min(10, count($results)), 'results' => array_slice($results, 0, 10),
 ]);
-
 

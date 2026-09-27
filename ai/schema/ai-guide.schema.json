@@ -17,9 +17,10 @@
     "features": {"type": "array"},
     "operations": {"type": "array"},
     "faq": {"type": "array"},
+    "display_rules": {"type": "array"},
+    "generated_sections": {"type": "object"},
     "known_issues": {"type": "array"},
     "recent_changes": {"type": "array"}
   },
   "additionalProperties": true
 }
-
