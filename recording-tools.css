@@ -8,5 +8,6 @@
 #groupDelete{border-color:#ce9292;color:#932b2b} .group-page-actions{align-items:center;flex-wrap:wrap}
 
 .recording-elapsed{display:block;margin-top:3px}.recording-tests{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 14px}.recording-tests [role=status]{font-size:13px;color:#5d6f80}.recording-test-warning{display:block;padding:9px 12px;background:#fff3d7;border:1px solid #ddbe7b;border-radius:7px;color:#79501b;font-weight:600;text-decoration:underline}.group-savebar #groupDelete[hidden]{display:none}
+.recording-homework-list{display:grid;gap:6px;margin:9px 0}.recording-homework-item{display:flex;align-items:flex-start;gap:9px;padding:8px 9px;border-radius:7px;background:#fff;color:#294e62;cursor:pointer}.recording-homework-item input{width:18px;height:18px;margin:1px 0 0;flex:none}.recording-homework-item span{white-space:pre-wrap;overflow-wrap:anywhere}.recording-homework-item.is-checked span{text-decoration:line-through;color:#71808d}.recording-previous-meta{display:block;margin-top:7px}.recording-homework-error{display:block;color:#a52f2f;font-weight:700;margin-top:7px}
 
 .record-test-previews{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}.record-test-link{color:#126780;text-decoration:underline;overflow-wrap:anywhere}

@@ -46,7 +46,7 @@ if($hasNote){
  $edits=readJsonStrict($dir.'/edited_lessons.json');
  foreach($rows as $r){$source=$r['_sourceKey'];$copy=$r;unset($copy['_sourceKey']);$copy['備考']=$in['publicNote'];$copy['_編集日時']=date('c');$edits[$source]=$copy;}
 }
-if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homework']=$homework;$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$key]=$record;
+if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homework']=$homework;$record['homeworkChecks']=$record['homeworkChecks']??[];foreach(recordingPreviousHomework($key,$records)['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>date('c'),'by'=>$actor['name']];$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$key]=$record;
 $attendance=$in['attendance']??[];if(!is_array($attendance))staffFail('出席の形式が不正です',400);foreach($attendance as $name=>$value)if(!in_array($value,['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'],true))staffFail('出席を確認してください',400);
 foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$state=$states[$k]??[];foreach($attendance as $name=>$value){if($value==='---')unset($state['attendance'][$name]);else $state['attendance'][$name]=$value;if(isset($state['exemptionOverrides'][$name])){$state['exemptionOverrides'][$name]=$value==='免除';unset($state['exemptionUndo'][$name]);}}
  if($hasNote)$state['publicNote']=$in['publicNote'];

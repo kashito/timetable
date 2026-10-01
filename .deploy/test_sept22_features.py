@@ -96,6 +96,16 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn('lesson-detail-layout.css?v=20260924-autosave', page)
         self.assertIn('.group-last-saved{', css)
 
+    def test_previous_homework_has_immediate_checkboxes_and_carry_guidance(self):
+        script = self.text("recording-tools.js")
+        css = self.text("recording-tools.css")
+        api = self.text("lesson_record_api.php")
+        self.assertIn('data-homework-task', script)
+        self.assertIn("action:'homework_check'", script)
+        self.assertIn('未チェックは次回にも表示されます。変更はすぐ保存されます。', script)
+        self.assertIn('.recording-homework-item', css)
+        self.assertIn("$action==='homework_check'", api)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

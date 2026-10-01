@@ -19,7 +19,8 @@ ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parent
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
 FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php',
-         'lesson_group_api.php', 'lesson_group_lengthen_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
+         'recording_context.php', 'lesson_record_api.php', 'lesson_group_api.php',
+         'lesson_group_lengthen_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
 SLOTS = list('①②③④⑤⑥⑦⑧⑨⑩⑪')
 TIMES = [('13:30','14:10'),('14:20','15:00'),('15:10','15:50'),('16:00','16:40'),
          ('16:50','17:30'),('17:40','18:20'),('18:30','19:10'),('19:20','20:00'),
@@ -210,6 +211,28 @@ class LessonCreationTests(unittest.TestCase):
         code,j=self.request('lesson_group_api.php?action=detail&id='+g['id'])
         self.assertEqual(code,200,j);self.assertEqual(j['nextLesson'],{'date':'2026-10-02','slot':'⑦','start':'18:30','end':'19:10'})
         self.assertEqual(before,self.snapshot())
+
+    def test_previous_homework_check_is_saved_immediately_and_only_unfinished_carries(self):
+        g,rows=self.prepare_group(with_next=False,deleted=False)
+        old=row(6);old.update({'日付':'2026-09-11','_追加ID':'old','_sourceKey':'ADD:old'})
+        previous=row(6);previous.update({'日付':'2026-09-18','_追加ID':'previous','_sourceKey':'ADD:previous'})
+        future=row(6);future.update({'日付':'2026-10-02','_追加ID':'future','_sourceKey':'ADD:future'})
+        self.write('added_lessons.json',[old,previous]+rows+[future])
+        records=self.read('lesson_records.json');records[key(old)]={'eventKey':key(old),'date':'2026-09-11','homework':'古い完了扱いの宿題'};records[key(previous)]={'eventKey':key(previous),'date':'2026-09-18','homework':'問題1\n問題2'};self.write('lesson_records.json',records)
+        code,j=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(g['key']))
+        self.assertEqual(code,200,j);self.assertEqual([x['text'] for x in j['items']],['問題1','問題2']);task=j['items'][0]['id']
+        code,saved=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':task,'checked':True})
+        self.assertEqual(code,200,saved);self.assertTrue(next(x for x in saved['previousHomework']['items'] if x['id']==task)['checked'])
+        code,next_view=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(key(future)))
+        self.assertEqual(code,200,next_view);self.assertNotIn('問題1',[x['text'] for x in next_view['items']]);self.assertIn('問題2',[x['text'] for x in next_view['items']]);self.assertNotIn('古い完了扱いの宿題',[x['text'] for x in next_view['items']])
+        code,_=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':task,'checked':False});self.assertEqual(code,200)
+        code,next_view=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(key(future)))
+        self.assertEqual(code,200,next_view);self.assertIn('問題1',[x['text'] for x in next_view['items']])
+
+    def test_unknown_homework_task_cannot_change_records(self):
+        g,_=self.prepare_group(with_next=False,deleted=False);before=self.snapshot()
+        code,j=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':'hw_'+'a'*24,'checked':True})
+        self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
 
     def test_incompatible_historical_room_is_not_silently_changed(self):
         g,rows=self.prepare_group();self.write('room_overrides.json',{key(row()):{'room':'黄'}});before=self.snapshot()

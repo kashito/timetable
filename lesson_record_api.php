@@ -36,6 +36,14 @@ $action=trim((string)($in['action']??'save'));
 $existing=(isset($all[$key]) && is_array($all[$key]))?$all[$key]:[];
 require_once __DIR__.'/recording_context.php';foreach(['memo','homework'] as $field)if(array_key_exists($field,$in))recordingTbdGuard($in[$field],$existing[$field]??'');
 
+if($action==='homework_check'){
+ $taskId=trim((string)($in['taskId']??''));$checked=$in['checked']??null;if(!preg_match('/^hw_[a-f0-9]{24}$/D',$taskId)||!is_bool($checked))staffFail('宿題のチェック内容を確認してください',400);
+ $previous=recordingPreviousHomework($key,$all);$known=false;foreach($previous['items'] as $item)if($item['id']===$taskId){$known=true;break;}if(!$known)staffFail('宿題が更新されています。再読み込みしてください。',409);
+ $context=recordingContext($key);$record=$existing;if(!$record)$record=['eventKey'=>$key,'date'=>$context['date'],'slot'=>$context['slots'],'className'=>$context['className'],'teacher'=>$context['teacher'],'memo'=>'','homework'=>'','author'=>$actor['name'],'createdAt'=>nowIso(),'replies'=>[],'reads'=>[]];
+ $record['homeworkChecks']=$record['homeworkChecks']??[];foreach($previous['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>nowIso(),'by'=>$actor['name']];$record['homeworkChecks'][$taskId]=['checked'=>$checked,'at'=>nowIso(),'by'=>$actor['name']];$record['updatedAt']=nowIso();$record['editedBy']=$actor['name'];$all[$key]=$record;
+ if(!safeJsonWriteAtomic($file,$all))staffFail('宿題のチェックを保存できません',500);echo json_encode(['ok'=>true,'record'=>$record,'previousHomework'=>recordingPreviousHomework($key,$all)],JSON_UNESCAPED_UNICODE);exit;
+}
+
 if($action==='reaction'){
  if(!$existing)staffFail('カルテが見つかりません',404);
  $emoji=(string)($in['emoji']??'');$expected=(string)($in['expected']??'');$allowed=['','👍','❤️','😊','🙏'];
@@ -115,6 +123,7 @@ $record['memo']=$memo;
 if(empty($record['author'])) $record['author']=$existing['teacher']??$actor['name'];
 $record['editedBy']=$actor['name'];
 $record['homework']=$homework;
+$record['homeworkChecks']=$record['homeworkChecks']??[];foreach(recordingPreviousHomework($key,$all)['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>nowIso(),'by'=>$actor['name']];
 if(empty($record['createdAt'])) $record['createdAt']=nowIso();
 $record['updatedAt']=nowIso();
 if(!isset($record['replies']) || !is_array($record['replies'])) $record['replies']=[];
