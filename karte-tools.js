@@ -1,6 +1,11 @@
 (()=>{
 'use strict';
 const esc=Workspace.esc,emojis=['👍','❤️','😊','🙏'],labels={'👍':'いいね','❤️':'ハート','😊':'笑顔','🙏':'ありがとう'};
+function linkedText(value){
+ const source=String(value??''),pattern=/https?:\/\/[^\s<>"']+/g;let html='',last=0,match;
+ while((match=pattern.exec(source))){let url=match[0],suffix='';while(/[。、，．）】』」！？!?.,]$/.test(url)){suffix=url.slice(-1)+suffix;url=url.slice(0,-1);}html+=esc(source.slice(last,match.index))+`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">リンク</a>`+esc(suffix);last=match.index+match[0].length;}
+ return html+esc(source.slice(last));
+}
 function dateParts(value){
  const m=String(value||'').match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(!m)return null;
  const stamp=Date.UTC(+m[1],+m[2]-1,+m[3]),d=new Date(stamp);
@@ -34,6 +39,6 @@ function reactionsHtml(record,reply=null){
  return `<div class="karte-reactions" data-reaction-target="${esc(replyId)}">${reply?'<span class="karte-reaction-label">この返信にリアクション</span>':''}<div class="karte-reaction-buttons" role="group" aria-label="${reply?'返信':'カルテ'}のリアクション">${groups.map(({emoji,names})=>`<button type="button" class="karte-reaction ${mine===emoji?'is-mine':''}" data-reaction="${emoji}" data-reply-id="${esc(replyId)}" data-expected="${esc(mine)}" aria-pressed="${mine===emoji}" aria-label="${labels[emoji]} ${names.length}人${mine===emoji?'。自分のリアクションを取り消す':''}" title="${esc(names.length?emoji+' '+names.join('、'):labels[emoji])}"><span aria-hidden="true">${emoji}</span>${names.length?`<span>${names.length}</span>`:''}</button>`).join('')}</div>${groups.some(g=>g.names.length)?`<details class="karte-reaction-people"><summary>誰がリアクションしたか</summary>${groups.filter(g=>g.names.length).map(g=>`<p>${g.emoji} ${g.names.map(esc).join('、')}</p>`).join('')}</details>`:''}<span class="karte-reaction-message" role="status"></span></div>`;
 }
 function refreshDates(){document.querySelectorAll('[data-record-date]').forEach(el=>el.textContent='📅 '+dateLabel(el.dataset.recordDate));document.querySelectorAll('[data-record-time]').forEach(el=>el.textContent=(el.dataset.recordTimeLabel||'')+dateTimeLabel(el.dataset.recordTime));}
-window.KarteUI={dateLabel,dateTimeLabel,attendanceHtml,reactionsHtml,refreshDates};
+window.KarteUI={dateLabel,dateTimeLabel,attendanceHtml,reactionsHtml,refreshDates,linkedText};
 setInterval(refreshDates,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDates();});
 })();
