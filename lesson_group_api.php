@@ -30,7 +30,7 @@ if($method==='GET'&&$action==='detail'){
  $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$names=[];$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
  foreach($students as $r){if(($r['クラス']??'')!==$class||empty($r['生徒名']))continue;$name=$r['生徒名'];if(!empty($directory['hiddenStudents'][$name]))continue;$active=!isset($r['在籍期間']);foreach($r['在籍期間']??[] as $p)if((empty($p['from'])||$p['from']<=$date)&&(empty($p['until'])||$date<$p['until']))$active=true;if($active)$names[$name]=true;}
  $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$records[$k]??[]];}
- echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>array_keys($names),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
+ echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>array_keys($names),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
 }
 if($method!=='POST')staffFail('Method not allowed',405);
 if(empty($g['active']))staffFail('連結は解除済みです。履歴として表示しています。',409);
