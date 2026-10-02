@@ -987,11 +987,11 @@ window.SharedClassState=(()=>{
               </div>
               <div class="event-icon" aria-hidden="true">${icon}</div>
             </div>
+            ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
             ${optionalNote(r)}
             <div class="event-sub">${actualRoom?`<span>🏫 教室 ${esc(actualRoom)}</span>`:'<span>🏫 教室 未設定</span>'}${r.teacher?`<span>担当 ${esc(r.teacher)}</span>`:''}${r._linked?.mealBreak?'<span class="linked-meal-notice">途中で食事休憩が入ります</span>':''}</div>
             ${homeworkMarkup(homework)}
             <div class="student-material-actions"><button type="button" class="student-materials-view" data-material-key="${esc(key)}" aria-expanded="false">資料を見る <span>確認中</span></button><button type="button" class="student-card-send-btn" data-send-key="${esc(key)}">資料を送る</button></div>
-            ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
             <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}</div>
             <details class="student-other-info"><summary>その他の情報</summary><div class="student-other-info-body">
               ${previousSameTitleGap.get(key)?`<div class="student-prev-gap"><span>前回の授業から</span><strong>${esc(previousSameTitleGap.get(key))}</strong></div>`:''}
@@ -1501,9 +1501,9 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
           if(!box){
             box=document.createElement('div');
             box.className='shared-public-note';
-            const tags=card.querySelector('.tags');
-            if(tags) card.insertBefore(box,tags);
-            else card.appendChild(box);
+            const top=card.querySelector('.event-top');
+            if(top) top.insertAdjacentElement('afterend',box);
+            else card.prepend(box);
           }
           const heading=document.createElement('strong');heading.textContent='📢 先生から生徒へのメッセージ';box.replaceChildren(heading,document.createElement('br'),document.createTextNode(String(state.publicNote)));
         }else if(box){

@@ -36,6 +36,16 @@ class StudentScheduleUiTest(unittest.TestCase):
         self.assertIn("資料を読み込めませんでした。再読み込みしてください。", source)
         self.assertIn("取得失敗", source)
 
+    def test_each_lesson_shows_its_student_message_below_time_header(self):
+        source = (ROOT / "student.html").read_text(encoding="utf-8")
+        start = source.index('html += `<article class="event-card')
+        end = source.index("html += '</section>'", start)
+        card = source[start:end]
+        message = '先生から生徒へのメッセージ'
+        self.assertGreater(card.index(message), card.index('class="event-time"'))
+        self.assertLess(card.index(message), card.index('${optionalNote(r)}'))
+        self.assertIn("top.insertAdjacentElement('afterend',box)", source)
+
     def test_twenty_local_themes_with_reset(self):
         source = (ROOT / "student-display-settings.js").read_text(encoding="utf-8")
         ids = re.findall(r"\['([a-z]+)','[^']+','[0-9a-f]+','[0-9a-f]+','[0-9a-f]+'\]", source)
