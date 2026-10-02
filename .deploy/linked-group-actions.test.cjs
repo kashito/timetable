@@ -28,3 +28,17 @@ test('full unlink returns to the originating timetable',()=>{
  const js=read('lesson-group.js');
  assert.match(js,/action:'unlink'[\s\S]*GroupScheduleActions\.returnToSchedule\(group\)/);
 });
+
+test('linked lesson edit and back return to the exact originating timetable view',()=>{
+ const group=read('lesson-group.js');
+ const actions=read('group-schedule-actions.js');
+ const groups=read('lesson-groups.js');
+ assert.match(groups,/rememberView\(from\)/);
+ assert.match(group,/back\.onclick=.*returnToSchedule\(g,dest\)/);
+ assert.match(group,/GroupScheduleActions\.edit\(group\)[\s\S]*returnToSchedule\(group,returnTarget\)/);
+ assert.match(actions,/returnStateKey='timetable\.scheduleReturnView\.v1'/);
+ assert.match(actions,/pageY:window\.scrollY,left:root\.scrollLeft/);
+ assert.match(actions,/if\(!u\.searchParams\.has\('date'\)&&!u\.searchParams\.has\('linkedDate'\)\)u\.searchParams\.set/);
+ assert.match(actions,/window\.scrollTo\(\{top:Number\(state\.pageY\)/);
+ assert.match(actions,/root\.scrollLeft=Number\(state\.left\)/);
+});

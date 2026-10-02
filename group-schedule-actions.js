@@ -1,5 +1,5 @@
 (()=>{
-const esc=Workspace.esc,token=()=>crypto.randomUUID(),slots=[...'①②③④⑤⑥⑦⑧⑨⑩⑪'];let active=false;
+const esc=Workspace.esc,token=()=>crypto.randomUUID(),slots=[...'①②③④⑤⑥⑦⑧⑨⑩⑪'],returnStateKey='timetable.scheduleReturnView.v1';let active=false;
 function dialog(title){let d=document.getElementById('groupScheduleDialog');if(!d){d=document.createElement('dialog');d.id='groupScheduleDialog';d.className='ws-dialog';document.body.appendChild(d);}d.innerHTML=`<div class="ws-dialog-inner"><div class="ws-dialog-head"><h2>${esc(title)}</h2><button class="ws-button" data-cancel>キャンセル</button></div><div class="ws-dialog-body" data-body></div><div class="ws-dialog-foot"><span class="ws-message" role="status" data-message>読み込み中…</span><button class="ws-button primary" data-save disabled>保存</button></div></div>`;return d;}
 function scheduleUrl(value){
  if(typeof value!=='string'||!/^(?:schedule_generator\.(?:html|php)|teacher2026summer(?:_vertical)?\.html)(?:\?[^#]*)?$/.test(value))return '';
@@ -13,8 +13,39 @@ function origin(){
  try{const ref=new URL(document.referrer);if(ref.origin===location.origin){const from=scheduleUrl(ref.pathname.split('/').pop()+ref.search);if(from)return from;}}catch(e){}
  try{return scheduleUrl(sessionStorage.getItem('workspace.return'))||'schedule_generator.html';}catch(e){return 'schedule_generator.html';}
 }
+function currentScheduleTarget(){return scheduleUrl(location.pathname.split('/').pop()+location.search);}
+function viewRoot(){return document.getElementById('gridWrap')||document.getElementById('schedule');}
+function viewAnchor(root){
+ const edge=Math.max(root.getBoundingClientRect().top,parseFloat(getComputedStyle(document.body).getPropertyValue('--workspace-nav-height'))||0,0);
+ return [...root.querySelectorAll('.generator-slot[data-date],.teacher-drop-slot[data-date],.day-group[data-date],.event[data-date]')].find(el=>{const r=el.getBoundingClientRect();return r.bottom>edge&&r.top<innerHeight;})||null;
+}
+function rememberView(target=origin()){
+ const page=currentScheduleTarget(),root=viewRoot();if(!page||!root)return null;
+ const anchor=viewAnchor(root),state={target:scheduleUrl(target)||page,pageY:window.scrollY,left:root.scrollLeft,createdAt:Date.now(),pending:false};
+ if(anchor)state.anchor={date:anchor.dataset.date||'',slot:anchor.dataset.slot||'',room:anchor.dataset.room||'',top:anchor.getBoundingClientRect().top};
+ try{sessionStorage.setItem(returnStateKey,JSON.stringify(state));}catch(e){}
+ return state;
+}
+function readReturnState(){try{return JSON.parse(sessionStorage.getItem(returnStateKey)||'null');}catch(e){return null;}}
+function markReturn(target){
+ let state=readReturnState();if(!state||Date.now()-Number(state.createdAt||0)>3600000)state=rememberView(target);
+ if(!state)return;state.target=scheduleUrl(target)||state.target;state.pending=true;state.createdAt=Date.now();try{sessionStorage.setItem(returnStateKey,JSON.stringify(state));}catch(e){}
+}
+function restoreRememberedView(){
+ const state=readReturnState(),page=currentScheduleTarget(),root=viewRoot();
+ if(!state?.pending||!page||!root||Date.now()-Number(state.createdAt||0)>3600000)return false;
+ if((scheduleUrl(state.target)||'').split('?')[0]!==page.split('?')[0])return false;
+ let anchor=null;if(state.anchor)anchor=[...root.querySelectorAll('[data-date]')].find(el=>el.dataset.date===state.anchor.date&&el.dataset.slot===state.anchor.slot&&el.dataset.room===state.anchor.room);
+ if(state.anchor&&!anchor)return false;
+ const apply=()=>{window.scrollTo({top:Number(state.pageY)||0,behavior:'instant'});root.scrollLeft=Number(state.left)||0;if(anchor){const delta=anchor.getBoundingClientRect().top-Number(state.anchor.top||0);if(Math.abs(delta)>.5)window.scrollBy({top:delta,behavior:'instant'});}};
+ apply();requestAnimationFrame(apply);[100,300,700].forEach(ms=>setTimeout(apply,ms));state.pending=false;try{sessionStorage.setItem(returnStateKey,JSON.stringify(state));}catch(e){}return true;
+}
+function installReturnRestore(){
+ if(!currentScheduleTarget())return;const tryRestore=()=>restoreRememberedView();
+ if(tryRestore())return;const observer=new MutationObserver(()=>{if(tryRestore())observer.disconnect();});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),15000);
+}
 function returnToSchedule(g,target=origin()){
- const u=new URL(scheduleUrl(target)||origin(),location.href);u.searchParams.set(u.pathname.endsWith('schedule_generator.html')?'linkedDate':'date',g.date);location.assign(u.pathname.split('/').pop()+u.search);
+ const u=new URL(scheduleUrl(target)||origin(),location.href),dateKey=u.pathname.endsWith('schedule_generator.html')?'linkedDate':'date';if(!u.searchParams.has('date')&&!u.searchParams.has('linkedDate'))u.searchParams.set(dateKey,g.date);const destination=u.pathname.split('/').pop()+u.search;if(currentScheduleTarget())rememberView(destination);markReturn(destination);location.assign(destination);
 }
 async function move(sourceKey,target){
  if(active||StaffAuth.user?.role!=='admin')return false;active=true;const d=dialog('連結した授業をまとめて移動'),body=d.querySelector('[data-body]'),msg=d.querySelector('[data-message]'),save=d.querySelector('[data-save]');let busy=false,resolve;const done=new Promise(r=>resolve=r);const close=v=>{if(busy)return;active=false;d.close();resolve(v);};d.querySelector('[data-cancel]').onclick=()=>close(false);d.oncancel=e=>{e.preventDefault();close(false);};d.showModal();
@@ -79,5 +110,6 @@ async function shorten(id){
   save.onclick=async()=>{if(busy)return;const source=body.querySelector('[name="shortenSource"]:checked')?.value;if(!source)return;busy=true;save.disabled=true;msg.textContent='短縮を保存中…';try{const result=await Workspace.api('lesson_group_shorten_api.php',{id,version:plan.version,source,requestId});returnToSchedule(result.group,returnTarget);}catch(e){msg.textContent=e.message;msg.classList.add('error');busy=false;save.disabled=false;}};
  }catch(e){msg.textContent=e.message;msg.classList.add('error');save.hidden=true;}
 }
-window.GroupScheduleActions={move,edit,extend,lengthen,shorten,origin,returnToSchedule};
+window.GroupScheduleActions={move,edit,extend,lengthen,shorten,origin,returnToSchedule,rememberView,restoreRememberedView};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installReturnRestore,{once:true});else installReturnRestore();
 })();

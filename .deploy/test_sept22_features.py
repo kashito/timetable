@@ -97,7 +97,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("Object.hasOwn(current.attendance", script)
         self.assertIn("'groupSharedMemo'", script)
         self.assertIn('id="groupLastSaved"', page)
-        self.assertIn('lesson-group.js?v=20261002-message-preview', page)
+        self.assertIn('lesson-group.js?v=20261002-return-view', page)
         self.assertIn('lesson-detail-layout.css?v=20260924-autosave', page)
         self.assertIn('.group-last-saved{', css)
 
