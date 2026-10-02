@@ -248,7 +248,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20260920-save-state"></script><script src="lesson-resize.js?v=20261002-r1"></script><script src="schedule-generator.js?v=20261002-resize"></script>
+<script src="generator-tools.js?v=20260920-save-state"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261002-resize"></script>
 
 
 <script id="generator-nowline-today-only-v2">
