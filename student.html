@@ -6,7 +6,7 @@
 <title>生徒個人2026</title>
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="student-attachments.js?v=20260910-r5"></script>
-<script src="student-schedule-model.js?v=20260927-priority-ui"></script>
+<script src="student-schedule-model.js?v=20261002-confirmed-off"></script>
 <style>
 :root{
   --ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;--white:#fff;
@@ -421,6 +421,7 @@ window.SharedClassState=(()=>{
   window.isStudentManagementPreview=managementPreview;
   let renderedRows = [];
   let lessonRecords = {};
+  let scheduleConfirmedDate = '';
   let schedulePrivateFrom = '';
   let publicationBoundaryTimer = 0;
 
@@ -816,7 +817,7 @@ window.SharedClassState=(()=>{
     const resolvedStudentNormal = resolvePriorityConflicts(studentNormalRaw);
     const hideTentative = !StaffAuth.user && schedulePrivateFrom;
     const studentNormal = hideTentative
-      ? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))
+      ? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))
       : resolvedStudentNormal;
     // Visible schedule after optional filters.
     const visibleNormal = studentNormal;
@@ -902,11 +903,11 @@ window.SharedClassState=(()=>{
       const studentEvents = studentNormal
         .filter(r => r.date === date)
         .sort((a,b)=>(a.start+a.cls).localeCompare(b.start+b.cls));
-      const privatePending = !!(hideTentative && date >= schedulePrivateFrom);
-      // 当日は午前6時を公開判断の締切とし、確定授業がなければ生徒にはOFFと案内する。
-      const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);
-
       const visibleEvents = LinkedSchedule.merge(visibleNormal.filter(r => r.date === date),lessonRoomKey,effectiveRoom);
+      const privatePending = !!(hideTentative && date >= schedulePrivateFrom);
+      const confirmedDay = !!(scheduleConfirmedDate && date <= scheduleConfirmedDate);
+      // 当日は午前6時を公開判断の締切とし、生徒に見える確定授業がなければOFFと案内する。
+      const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);
       const isOffDay = !special && selectedStudent && studentEvents.length === 0;
       const specialClassName = special ? ' has-special-day' : '';
       const schoolHoliday=!!(window.SchoolHolidays&&SchoolHolidays.isHoliday(date));
@@ -918,7 +919,7 @@ window.SharedClassState=(()=>{
       const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);
       const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';
       const dayState=StudentScheduleModel.dayState({
-        eventCount:visibleEvents.length,privatePending,todayFinalizedAsOff,schoolHoliday,
+        eventCount:visibleEvents.length,privatePending,todayFinalizedAsOff,confirmedDay,schoolHoliday,
         specialLabel:overviewSpecial,emptyLabel:emptyDayLabel
       });
       html += `<section class="day-group${isOffDay ? ' has-off-day' : ''}${specialClassName}${schoolHoliday ? ' is-school-holiday' : ''}" data-date="${esc(date)}">
@@ -944,7 +945,7 @@ window.SharedClassState=(()=>{
 
       if (selectedStudent && studentEvents.length === 0) {
         // 予定なし・調整中・当日午前6時以降のOFFは、日付直下の要約に一度だけ表示する。
-      } else if (visibleEvents.length === 0 && studentEvents.length > 0) {
+      } else if (visibleEvents.length === 0 && studentEvents.length > 0 && !todayFinalizedAsOff && !confirmedDay) {
         // Student has a class, but current optional filters hide it.
         html += `<div class="empty">絞り込み条件に一致する予定はありません。</div>`;
       } else {
@@ -1234,8 +1235,9 @@ window.SharedClassState=(()=>{
       await SharedClassState.loadAll();
       try{
         const publicSettings=await (await fetch('schedule_confirmed_api.php?t='+Date.now(),{cache:'no-store'})).json();
+        scheduleConfirmedDate=publicSettings?.ok?String(publicSettings.date||''):'';
         schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';
-      }catch(e){console.warn('生徒向け公開設定の読込失敗',e);schedulePrivateFrom='';}
+      }catch(e){console.warn('生徒向け公開設定の読込失敗',e);scheduleConfirmedDate='';schedulePrivateFrom='';}
       if(window.LessonFixed)await LessonFixed.ready;
       try{const lr=await (await fetch('lesson_record_api.php?action=homework&v='+Date.now(),{cache:'no-store'})).json();lessonRecords=(lr&&lr.records)||{};}catch(e){console.warn('宿題データ読込失敗',e);lessonRecords={};}
 

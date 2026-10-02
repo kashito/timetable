@@ -38,6 +38,9 @@
     const count=Number(value.eventCount)||0;
     if(value.todayFinalizedAsOff)return{label:'OFF（授業なし）',tone:'off',partial:false};
     if(value.schoolHoliday)return{label:'OFF（授業なし）',tone:'off',partial:false};
+    if(value.confirmedDay&&count>0)return{label:'授業あり',tone:'lessons',partial:false};
+    if(value.confirmedDay&&value.specialLabel)return{label:String(value.specialLabel),tone:'notice',partial:false};
+    if(value.confirmedDay)return{label:'OFF（授業なし）',tone:'off',partial:false};
     if(value.privatePending&&count>0)return{label:'授業あり・現在調整中（確定した授業のみ表示）',tone:'pending',partial:true};
     if(value.privatePending)return{label:'現在調整中',tone:'pending',partial:true};
     if(count>0)return{label:'授業あり',tone:'lessons',partial:false};

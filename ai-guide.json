@@ -209,45 +209,45 @@
       ],
       "exact_predicates": {
         "feature_enabled": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;",
-        "lesson_visibility": "? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))",
+        "lesson_visibility": "? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))",
         "banner_visibility": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);",
-        "today_off": "const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);",
+        "today_off": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);",
         "fixed_definition": "const isFixed=key=>!!lessons[key]?.fixed;"
       },
       "source": [
         {
           "file": "student.html",
-          "line": 1237,
+          "line": 1239,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
           "file": "student.html",
-          "line": 817,
+          "line": 818,
           "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
         },
         {
           "file": "student.html",
-          "line": 819,
-          "code": "? resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
-        },
-        {
-          "file": "student.html",
-          "line": 905,
-          "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
+          "line": 820,
+          "code": "? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
         },
         {
           "file": "student.html",
           "line": 907,
-          "code": "const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);"
+          "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 443,
+          "line": 910,
+          "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
+        },
+        {
+          "file": "student.html",
+          "line": 444,
           "code": "function scheduleSixAmPublicationRefresh(clock) {"
         },
         {
           "file": "student.html",
-          "line": 920,
+          "line": 921,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -289,22 +289,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 907,
-          "code": "const todayFinalizedAsOff = !!(privatePending && date === today && japanNow.hour >= 6 && studentEvents.length === 0);"
+          "line": 910,
+          "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 945,
+          "line": 946,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 918,
+          "line": 919,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 919,
+          "line": 920,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -341,7 +341,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 926,
+          "line": 927,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -356,17 +356,17 @@
         },
         {
           "file": "student-schedule-model.js",
-          "line": 50,
+          "line": 53,
           "code": "function homework(text,limit=88){"
         },
         {
           "file": "student.html",
-          "line": 995,
+          "line": 996,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 997,
+          "line": 998,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {
@@ -386,7 +386,7 @@
   "generated_sections": {
     "display_rules": {
       "generator": ".deploy/generate_ai_guide_states.py",
-      "source_digest_sha256": "f7fd04a6c664ab22ca053edc93c13c1c25bdc7e555800bbe147c3cbe7b7c7e94",
+      "source_digest_sha256": "1747a3fc56d767dc2c8b70c793a2b8ffaa15afceba3d5a35ea6bdecde681790f",
       "sources": [
         "student.html",
         "school-holidays.js",

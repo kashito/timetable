@@ -22,9 +22,9 @@ def source_ref(path, needle):
 def generated_content():
     refs = {
         "hide": source_ref("student.html", "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"),
-        "filter": source_ref("student.html", "resolvedStudentNormal.filter(r => r.date < schedulePrivateFrom"),
+        "filter": source_ref("student.html", "resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom"),
         "pending": source_ref("student.html", "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"),
-        "today_off": source_ref("student.html", "const todayFinalizedAsOff = !!(privatePending && date === today"),
+        "today_off": source_ref("student.html", "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0"),
         "six_refresh": source_ref("student.html", "function scheduleSixAmPublicationRefresh(clock)"),
         "banner": source_ref("student.html", "const dayState=StudentScheduleModel.dayState({"),
         "empty": source_ref("student.html", "if (selectedStudent && studentEvents.length === 0)"),
