@@ -241,6 +241,7 @@ function renderCalendar(append=false){
   if(append)$('schedule').querySelector('.teacher-generator-layout').append(...fresh.childNodes);
   else $('schedule').replaceChildren(...fresh.childNodes);
   window.LinkedSchedule?.layout();
+  if(mode==='teacher')window.LessonResize?.bind($('schedule'),{reload:load,status:'#statusBar'});
   if(progressiveCalendar){
     let more=$('wholeMoreDays');if(!more){more=document.createElement('button');more.id='wholeMoreDays';more.type='button';more.onclick=showMoreCalendarDays;$('schedule').after(more);}
     more.textContent='次の7日を表示 ↓';more.hidden=calendarDays>=calendarAvailable;

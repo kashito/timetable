@@ -18,7 +18,7 @@ import urllib.request
 ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parents[1]))
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
 FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_policy.php',
-         'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php',
+         'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
          'recording_context.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
 SLOTS = list('①②③④⑤⑥⑦⑧⑨⑩⑪')
@@ -159,7 +159,7 @@ class LessonCreationTests(unittest.TestCase):
         code,j=self.create(self.payload(2,9));self.assertEqual(code,200,j);self.assertEqual(j['group']['slots'],'⑩⑪')
 
     def test_admin_auth_and_csrf_required(self):
-        for endpoint,payload in [('lesson_create_group_api.php',self.payload()),('lesson_group_lengthen_api.php',{'id':'a'*24}),('lesson_group_shorten_api.php',{'id':'a'*24})]:
+        for endpoint,payload in [('lesson_create_group_api.php',self.payload()),('lesson_group_lengthen_api.php',{'id':'a'*24}),('lesson_group_shorten_api.php',{'id':'a'*24}),('lesson_resize_api.php',{'sourceKey':'ADD:fixture','edge':'start','time':'18:35','expectedStart':'18:30','expectedEnd':'19:10'})]:
             before=self.snapshot()
             self.assertEqual(self.request(endpoint,payload,self.client())[0],401)
             self.assertEqual(self.request(endpoint,payload,self.teacher,self.teacher_csrf)[0],403)
@@ -272,5 +272,31 @@ class LessonCreationTests(unittest.TestCase):
         code,_=self.post('lesson_group_shorten_api.php',dict(id=g['id'],version=plan['version'],source=rows[1]['_sourceKey'],requestId=secrets.token_hex(16)));self.assertEqual(code,400);self.assertEqual(before,self.snapshot())
         code,_=self.post('lesson_group_shorten_api.php',dict(id=g['id'],version='0'*64,source=rows[2]['_sourceKey'],requestId=secrets.token_hex(16)));self.assertEqual(code,409);self.assertEqual(before,self.snapshot())
         g['sources']=g['sources'][:2];g['snapshot']=rows[:2];self.write('lesson_groups.json',{g['id']:g});before=self.snapshot();self.assertEqual(self.request('lesson_group_shorten_api.php?id='+g['id'])[0],409);self.assertEqual(before,self.snapshot())
+
+    def test_single_lesson_start_and_end_can_be_resized_without_changing_period(self):
+        item=row(6);item['_追加ID']='resize-single';self.write('added_lessons.json',[item])
+        source='ADD:resize-single'
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='start',time='18:35',expectedStart='18:30',expectedEnd='19:10'))
+        self.assertEqual(code,200,j);self.assertFalse(j['grouped'])
+        saved=self.read('edited_lessons.json')[source];self.assertEqual(saved['開始'],'18:35');self.assertEqual(saved['終了'],'19:10');self.assertEqual(saved['時間番号'],'⑦')
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:35',expectedEnd='19:10'))
+        self.assertEqual(code,200,j);saved=self.read('edited_lessons.json')[source];self.assertEqual((saved['開始'],saved['終了']),('18:35','19:05'))
+
+    def test_linked_lesson_resizes_only_outer_edges_and_keeps_members(self):
+        g,rows=self.prepare_group(deleted=False);before_rows=self.read('added_lessons.json')
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=rows[0]['_sourceKey'],edge='start',time='16:55',expectedStart='16:50',expectedEnd='18:20'))
+        self.assertEqual(code,200,j);self.assertTrue(j['grouped']);self.assertEqual(j['group']['slots'],'⑤⑥')
+        edits=self.read('edited_lessons.json');self.assertEqual(edits[rows[0]['_sourceKey']]['開始'],'16:55');self.assertNotIn(rows[1]['_sourceKey'],edits)
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=rows[0]['_sourceKey'],edge='end',time='18:15',expectedStart='16:55',expectedEnd='18:20'))
+        self.assertEqual(code,200,j);edits=self.read('edited_lessons.json');self.assertEqual(edits[rows[1]['_sourceKey']]['終了'],'18:15')
+        self.assertEqual(self.read('added_lessons.json'),before_rows);saved_group=self.read('lesson_groups.json')[g['id']]
+        self.assertEqual(saved_group['sources'],g['sources']);self.assertEqual((saved_group['snapshot'][0]['開始'],saved_group['snapshot'][1]['終了']),('16:55','18:15'))
+
+    def test_resize_rejects_stale_invalid_and_fixed_changes_without_writes(self):
+        item=row(6);item['_追加ID']='resize-protected';self.write('added_lessons.json',[item]);source='ADD:resize-protected'
+        before=self.snapshot();code,_=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='start',time='18:35',expectedStart='18:25',expectedEnd='19:10'));self.assertEqual(code,409);self.assertEqual(before,self.snapshot())
+        code,_=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:11',expectedStart='18:30',expectedEnd='19:10'));self.assertEqual(code,400);self.assertEqual(before,self.snapshot())
+        self.write('lesson_fixed.json',{key(item):{'fixed':True}});before=self.snapshot();code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:30',expectedEnd='19:10'));self.assertEqual(code,409);self.assertTrue(j['fixedConflict']);self.assertEqual(before,self.snapshot())
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:30',expectedEnd='19:10',overrideFixed=True));self.assertEqual(code,200,j)
 
 if __name__=='__main__':unittest.main()

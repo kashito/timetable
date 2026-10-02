@@ -395,7 +395,7 @@ function filteredRows(){
 }
 function lessonHTML(r){
   const cls=r._roomClass||roomClass(roomKey(r['教室']));
-  return `<div role="button" tabindex="0" draggable="true" class="lesson ${cls} ${r._linked?'generator-linked-card':''}" ${window.LinkedSchedule?.attributes(r)||''} data-source-key="${esc(r['_sourceKey'])}">
+  return `<div role="button" tabindex="0" draggable="true" class="lesson ${cls} ${r._linked?'generator-linked-card':''}" ${window.LinkedSchedule?.attributes(r)||''} data-source-key="${esc(r['_sourceKey'])}" data-date="${esc(String(r['日付']||'').replaceAll('/','-'))}" data-slot="${esc(r['時間番号']||'')}" data-start="${esc(r['開始']||'')}" data-end="${esc(r._linked?r._linked.members.at(-1).end:(r['終了']||''))}">
     <strong>${r._linked?esc(r._linked.slots.join(''))+' ':''}${esc(r['クラス'])}</strong>
     <div>${esc(r['種別'])}　${esc(r['科目'])}</div>
     <div class="lesson-meta" title="担当 ${esc(r['担当講師']||'未設定')}">担当 ${esc(r['担当講師']||'未設定')}</div>
@@ -506,6 +506,7 @@ function render(options={}){
   if(append)$('grid').querySelector('.generator-grid').append(...fresh.childNodes);
   else $('grid').replaceChildren(...fresh.childNodes);
   window.DayCompare?.layout();
+  window.LessonResize?.bind($('grid'),{reload:load,status:'#status'});
   let more=$('generatorMoreDays');if(!more){more=document.createElement('button');more.id='generatorMoreDays';more.type='button';more.onclick=showMoreDays;$('gridWrap').append(more);}
   more.hidden=comparing||visibleDays>=availableDays;more.textContent='次の7日を表示 ↓';
   window.GeneratorView?.restore(position);

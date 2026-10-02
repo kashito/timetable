@@ -1,0 +1,10 @@
+.lesson-resizable{position:relative!important;box-sizing:border-box!important;touch-action:pan-y}
+.lesson-resize-handle{position:absolute!important;top:0!important;bottom:0!important;width:14px!important;min-width:14px!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;cursor:ew-resize!important;z-index:18!important;touch-action:none!important;color:#164e63!important;box-shadow:none!important}
+.lesson-resize-start{left:0!important}.lesson-resize-end{right:0!important}
+.lesson-resize-handle::after{content:'';position:absolute;top:20%;bottom:20%;left:6px;width:2px;border-radius:2px;background:currentColor;opacity:.55}
+.lesson-resize-handle:hover::after,.lesson-resize-handle:focus-visible::after,.lesson-resizable.is-resizing .lesson-resize-handle::after{opacity:1;width:3px}
+.lesson-resize-handle:focus-visible{outline:2px solid #087ea4!important;outline-offset:1px!important}
+.lesson-resize-time{display:none;position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);padding:4px 7px;border-radius:5px;background:#102a43;color:#fff;font:700 12px/1.2 system-ui;white-space:nowrap;box-shadow:0 2px 8px #0003}
+.lesson-resizable.is-resizing{z-index:30!important;user-select:none!important;box-shadow:0 0 0 2px #087ea4,0 5px 14px #1234!important}
+.lesson-resizable.is-resizing .lesson-resize-time{display:block}
+@media (pointer:coarse){.lesson-resize-handle{width:20px!important;min-width:20px!important}.lesson-resize-handle::after{left:9px}}

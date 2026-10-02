@@ -12,6 +12,9 @@ class GeneratorSaveTests(unittest.TestCase):
     def test_saved_sections_and_unsaved_drafts(self):
         self.run_node('generator-save.test.cjs')
 
+    def test_lesson_resize_behaviour(self):
+        self.run_node('lesson-resize.test.cjs')
+
     def run_node(self, name):
         node = shutil.which('node')
         self.assertIsNotNone(node, 'Node.js is required for the generator regression')

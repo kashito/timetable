@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>コマ生成・授業管理2026</title>
-<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1">
+<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1">
 <script src="vendor/xlsx.full.min.js"></script>
 
 <style id="generator-nowline-modal-layer-fix">
@@ -248,7 +248,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20260920-save-state"></script><script src="schedule-generator.js?v=20260921-scroll"></script>
+<script src="generator-tools.js?v=20260920-save-state"></script><script src="lesson-resize.js?v=20261002-r1"></script><script src="schedule-generator.js?v=20261002-resize"></script>
 
 
 <script id="generator-nowline-today-only-v2">
