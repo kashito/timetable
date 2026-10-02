@@ -16,6 +16,7 @@ import shlex
 import subprocess
 import sys
 import tarfile
+import time
 import uuid
 
 from healthcheck import healthcheck
@@ -203,11 +204,26 @@ def ssh_command():
             '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4']
 
 
+def run_remote_python(source, timeout=300):
+    """Retry only when a Lolipop SSH backend lacks the expected Python runtime."""
+    args = ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON]
+    for attempt in range(3):
+        result = subprocess.run([str(x) for x in args], input=source, timeout=timeout,
+                                capture_output=True)
+        if result.returncode == 0:
+            return result.stdout
+        stderr = result.stderr.decode('utf-8', errors='replace')
+        retryable = result.returncode == 127 and 'python3 unavailable' in stderr
+        if retryable and attempt < 2:
+            time.sleep(attempt + 1)
+            continue
+        raise RuntimeError('Command failed: ssh\n' + stderr[:3000])
+
+
 def probe(manifest):
     source = (HERE / 'remote_probe.py').read_text(encoding='utf-8')
     source += '\nprint(json.dumps(probe(' + repr(EXPECTED_ROOT) + ', ' + repr(list(manifest['files'])) + ')))\n'
-    response = run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON],
-                   input=source.encode(), timeout=300)
+    response = run_remote_python(source.encode())
     return json.loads(response)
 
 
@@ -230,8 +246,7 @@ def remote_transaction(request):
     source += (HERE / 'healthcheck.py').read_text(encoding='utf-8').split("\nif __name__ ==")[0] + '\n'
     source += (HERE / 'remote_transaction.py').read_text(encoding='utf-8') + '\n'
     source += 'print(json.dumps(dispatch(' + repr(request) + ')))\n'
-    return json.loads(run(ssh_command() + [EXPECTED_USER + '@' + EXPECTED_HOST, REMOTE_PYTHON],
-                          input=source.encode(), timeout=300))
+    return json.loads(run_remote_python(source.encode()))
 
 
 def stage_args(output, stage, run_id):

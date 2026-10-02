@@ -49,6 +49,23 @@ PUBLIC = ['index.php', 'staff_security.php', 'staff_auth_api.php', 'backup_api.p
 
 
 class SafetyTests(unittest.TestCase):
+    def test_remote_python_retries_only_known_missing_runtime(self):
+        missing = subprocess.CompletedProcess(['ssh'], 127, b'', b'python3 unavailable\n')
+        success = subprocess.CompletedProcess(['ssh'], 0, b'{"ok":true}', b'')
+        with patch.object(deploy, 'ssh_command', return_value=['ssh']), \
+             patch.object(deploy.subprocess, 'run', side_effect=[missing, success]) as called, \
+             patch.object(deploy.time, 'sleep') as slept:
+            self.assertEqual(deploy.run_remote_python(b'code'), b'{"ok":true}')
+            self.assertEqual(called.call_count, 2)
+            slept.assert_called_once_with(1)
+
+        other = subprocess.CompletedProcess(['ssh'], 255, b'', b'connection closed\n')
+        with patch.object(deploy, 'ssh_command', return_value=['ssh']), \
+             patch.object(deploy.subprocess, 'run', return_value=other) as called:
+            with self.assertRaisesRegex(RuntimeError, 'connection closed'):
+                deploy.run_remote_python(b'code')
+            self.assertEqual(called.call_count, 1)
+
     def test_remote_python_uses_only_known_absolute_paths_with_fallback(self):
         command = deploy.REMOTE_PYTHON
         self.assertIn('/usr/local/bin/python3', command)
