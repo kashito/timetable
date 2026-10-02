@@ -27,9 +27,9 @@
  }
  function paint(card,start,end){
   const g=geometry(card,start,end);if(!g)return;
-  const hostLeft=card.parentElement.getBoundingClientRect().left;
-  card.style.setProperty('margin-left',Math.max(0,g.left-hostLeft)+'px','important');
-  card.style.setProperty('width',Math.max(24,g.right-g.left)+'px','important');
+  const leftTrim=Math.max(0,g.left-g.a.left),rightTrim=Math.max(0,g.b.right-g.right);
+  card.style.setProperty('margin-left',leftTrim+'px','important');
+  card.style.setProperty('width',Math.max(24,g.b.right-g.a.left-leftTrim-rightTrim)+'px','important');
  }
  function message(options,value,error=false){
   const el=typeof options.status==='string'?document.querySelector(options.status):options.status;
