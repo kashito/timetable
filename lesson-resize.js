@@ -12,24 +12,37 @@
   const first=card.closest('.generator-slot');if(!first)return null;
   return [...document.querySelectorAll('.generator-slot')].find(cell=>cell.dataset.date===first.dataset.date&&cell.dataset.room===first.dataset.room&&cell.dataset.slot===slot)||null;
  }
+ function rowCells(card){
+  const first=card.closest('.generator-slot');if(!first)return [];
+  return Object.keys(SLOT_TIMES).map(slot=>matchingCell(card,slot)).filter(Boolean);
+ }
+ function cellAtX(card,clientX){
+  const cells=rowCells(card);if(!cells.length)return null;
+  return cells.find(cell=>{const r=innerRect(cell);return clientX>=r.left&&clientX<=r.right})||(clientX<innerRect(cells[0]).left?cells[0]:cells.at(-1));
+ }
+ function cellForTime(card,value,edge){
+  const m=minutes(value),cells=rowCells(card);if(!cells.length)return null;
+  const exact=cells.find(cell=>{const pair=SLOT_TIMES[cell.dataset.slot];return m>=minutes(pair[0])&&m<=minutes(pair[1])});
+  if(exact)return exact;
+  return cells.reduce((best,cell)=>{const pair=SLOT_TIMES[cell.dataset.slot],point=edge==='start'?minutes(pair[0]):minutes(pair[1]);return Math.abs(m-point)<best.distance?{cell,distance:Math.abs(m-point)}:best},{cell:cells[0],distance:Infinity}).cell;
+ }
  function innerRect(cell){
   const rect=cell.getBoundingClientRect(),css=getComputedStyle(cell);
   const left=rect.left+(parseFloat(css.paddingLeft)||0),right=rect.right-(parseFloat(css.paddingRight)||0);
   return {left,right,width:Math.max(1,right-left)};
  }
  function geometry(card,start=card.dataset.start,end=card.dataset.end){
-  const ss=slots(card),first=card.closest('.generator-slot'),last=matchingCell(card,ss.at(-1));
-  if(!first||!last||!SLOT_TIMES[ss[0]]||!SLOT_TIMES[ss.at(-1)])return null;
-  const a=innerRect(first),b=innerRect(last),firstNom=SLOT_TIMES[ss[0]],lastNom=SLOT_TIMES[ss.at(-1)];
-  const left=a.left+a.width*Math.max(0,minutes(start)-minutes(firstNom[0]))/40;
-  const right=b.right-b.width*Math.max(0,minutes(lastNom[1])-minutes(end))/40;
-  return {first,last,a,b,left,right};
+  const first=cellForTime(card,start,'start'),last=cellForTime(card,end,'end'),origin=card.closest('.generator-slot');
+  if(!first||!last||!origin)return null;
+  const a=innerRect(first),b=innerRect(last),o=innerRect(origin),firstNom=SLOT_TIMES[first.dataset.slot],lastNom=SLOT_TIMES[last.dataset.slot];
+  const left=a.left+a.width*Math.max(0,Math.min(40,minutes(start)-minutes(firstNom[0])))/40;
+  const right=b.left+b.width*Math.max(0,Math.min(40,minutes(end)-minutes(lastNom[0])))/40;
+  return {first,last,a,b,o,left,right};
  }
  function paint(card,start,end){
   const g=geometry(card,start,end);if(!g)return;
-  const leftTrim=Math.max(0,g.left-g.a.left),rightTrim=Math.max(0,g.b.right-g.right);
-  card.style.setProperty('margin-left',leftTrim+'px','important');
-  card.style.setProperty('width',Math.max(24,g.b.right-g.a.left-leftTrim-rightTrim)+'px','important');
+  card.style.setProperty('margin-left',(g.left-g.o.left)+'px','important');
+  card.style.setProperty('width',Math.max(24,g.right-g.left)+'px','important');
  }
  function message(options,value,error=false){
   const el=typeof options.status==='string'?document.querySelector(options.status):options.status;
@@ -56,12 +69,15 @@
    handle.addEventListener('pointerdown',event=>{
     if(event.button!==0&&event.pointerType==='mouse')return;
     event.preventDefault();event.stopPropagation();
-    const ss=slots(card),slot=edge==='start'?ss[0]:ss.at(-1),cell=edge==='start'?card.closest('.generator-slot'):matchingCell(card,slot),bounds=SLOT_TIMES[slot];
-    if(!cell||!bounds)return;
-    const rect=innerRect(cell),min=minutes(bounds[0]),max=minutes(bounds[1]),oldStart=card.dataset.start,oldEnd=card.dataset.end;
+    const ss=slots(card),boundarySlot=edge==='start'?ss[0]:ss.at(-1),oldStart=card.dataset.start,oldEnd=card.dataset.end;
+    if(!SLOT_TIMES[boundarySlot])return;
+    const dayMin=minutes(SLOT_TIMES['①'][0]),dayMax=minutes(SLOT_TIMES['⑪'][1]);
+    const min=edge==='start'?dayMin:minutes(SLOT_TIMES[boundarySlot][0])+5;
+    const max=edge==='start'?minutes(SLOT_TIMES[boundarySlot][1])-5:dayMax;
     let candidate=edge==='start'?minutes(oldStart):minutes(oldEnd);const oldDraggable=card.draggable;card.draggable=false;card.classList.add('is-resizing');
     const update=clientX=>{
-     const raw=min+(Math.max(rect.left,Math.min(rect.right,clientX))-rect.left)/rect.width*(max-min);
+     const cell=cellAtX(card,clientX),bounds=cell&&SLOT_TIMES[cell.dataset.slot];if(!cell||!bounds)return;
+     const rect=innerRect(cell),raw=minutes(bounds[0])+(Math.max(rect.left,Math.min(rect.right,clientX))-rect.left)/rect.width*40;
      candidate=edge==='start'?snap(raw,min,minutes(oldEnd)-5):snap(raw,minutes(oldStart)+5,max);
      bubble.textContent=time(candidate);paint(card,edge==='start'?time(candidate):oldStart,edge==='end'?time(candidate):oldEnd);
     };

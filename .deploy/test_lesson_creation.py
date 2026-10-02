@@ -281,6 +281,8 @@ class LessonCreationTests(unittest.TestCase):
         saved=self.read('edited_lessons.json')[source];self.assertEqual(saved['開始'],'18:35');self.assertEqual(saved['終了'],'19:10');self.assertEqual(saved['時間番号'],'⑦')
         code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:35',expectedEnd='19:10'))
         self.assertEqual(code,200,j);saved=self.read('edited_lessons.json')[source];self.assertEqual((saved['開始'],saved['終了']),('18:35','19:05'))
+        code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='20:00',expectedStart='18:35',expectedEnd='19:05'))
+        self.assertEqual(code,200,j);saved=self.read('edited_lessons.json')[source];self.assertEqual(saved['終了'],'20:00');self.assertEqual(saved['時間番号'],'⑦')
 
     def test_linked_lesson_resizes_only_outer_edges_and_keeps_members(self):
         g,rows=self.prepare_group(deleted=False);before_rows=self.read('added_lessons.json')
@@ -291,6 +293,10 @@ class LessonCreationTests(unittest.TestCase):
         self.assertEqual(code,200,j);edits=self.read('edited_lessons.json');self.assertEqual(edits[rows[1]['_sourceKey']]['終了'],'18:15')
         self.assertEqual(self.read('added_lessons.json'),before_rows);saved_group=self.read('lesson_groups.json')[g['id']]
         self.assertEqual(saved_group['sources'],g['sources']);self.assertEqual((saved_group['snapshot'][0]['開始'],saved_group['snapshot'][1]['終了']),('16:55','18:15'))
+        extension=dict(sourceKey=rows[0]['_sourceKey'],edge='end',time='19:10',expectedStart='16:55',expectedEnd='18:15')
+        before=self.snapshot();code,j=self.post('lesson_resize_api.php',extension);self.assertEqual(code,409,j);self.assertTrue(j['roomConflict']);self.assertEqual(before,self.snapshot())
+        extension['overrideRoom']=True;code,j=self.post('lesson_resize_api.php',extension)
+        self.assertEqual(code,200,j);self.assertEqual(self.read('edited_lessons.json')[rows[1]['_sourceKey']]['終了'],'19:10');self.assertEqual(j['group']['slots'],'⑤⑥')
 
     def test_resize_rejects_stale_invalid_and_fixed_changes_without_writes(self):
         item=row(6);item['_追加ID']='resize-protected';self.write('added_lessons.json',[item]);source='ADD:resize-protected'

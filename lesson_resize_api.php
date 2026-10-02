@@ -42,9 +42,9 @@ $slotIndex=array_search($boundary['時間番号']??'',$slots,true);
 if($slotIndex===false)staffFail('授業の時間番号を確認できません。',409);
 $boundaryStart=$toMinutes(trim((string)($boundary['開始']??''))?:$starts[$slotIndex]);
 $boundaryEnd=$toMinutes(trim((string)($boundary['終了']??''))?:$ends[$slotIndex]);
-$nominalStart=$toMinutes($starts[$slotIndex]);$nominalEnd=$toMinutes($ends[$slotIndex]);
-if($edge==='start'&&($targetMinutes<$nominalStart||$targetMinutes>$boundaryEnd-5))staffFail($starts[$slotIndex].'〜'.$format($boundaryEnd-5).' の範囲で開始時刻を変更してください。',400);
-if($edge==='end'&&($targetMinutes<$boundaryStart+5||$targetMinutes>$nominalEnd))staffFail($format($boundaryStart+5).'〜'.$ends[$slotIndex].' の範囲で終了時刻を変更してください。',400);
+$dayStart=$toMinutes($starts[0]);$dayEnd=$toMinutes($ends[count($ends)-1]);
+if($edge==='start'&&($targetMinutes<$dayStart||$targetMinutes>$boundaryEnd-5))staffFail($starts[0].'〜'.$format($boundaryEnd-5).' の範囲で開始時刻を変更してください。',400);
+if($edge==='end'&&($targetMinutes<$boundaryStart+5||$targetMinutes>$dayEnd))staffFail($format($boundaryStart+5).'〜'.$ends[count($ends)-1].' の範囲で終了時刻を変更してください。',400);
 
 $dir=__DIR__.'/data';$fixed=readJsonStrict($dir.'/lesson_fixed.json');
 if(empty($in['overrideFixed']))foreach($members as $row){$key=canonicalLessonKey(policyKey($row));if(!empty($fixed[$key]['fixed']))policyConflict('fixedConflict',($group?'連結した授業':'この授業').'は「確定」済みです。それでも時刻を変更しますか？');}
