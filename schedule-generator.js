@@ -763,6 +763,9 @@ async function populateModal(row,mode){
   $('fStart').value=row['開始']||SLOTS[row['時間番号']]?.[0]||'';
   $('fEnd').value=row['終了']||SLOTS[row['時間番号']]?.[1]||'';
   $('fNote').value=row['備考'];
+  const publicPreview=$('generatorPublicMessagePreview'),publicMessage=String(row['備考']||'').trim();
+  if(publicPreview){publicPreview.hidden=!publicMessage;publicPreview.querySelector('span').textContent=publicMessage;}
+  $('fNote').oninput=()=>{const value=$('fNote').value.trim();publicPreview.hidden=!value;publicPreview.querySelector('span').textContent=value;};
   for(const id of ['fDate','fSlot','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fRoomSelect','fRoomCustom'])if($(id))$(id).disabled=StaffAuth.user?.role!=='admin';
   window.ClassTreePicker?.sync();
   $('formMsg').textContent='';

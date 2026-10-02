@@ -92,9 +92,26 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("Object.hasOwn(current.attendance", script)
         self.assertIn("'groupSharedMemo'", script)
         self.assertIn('id="groupLastSaved"', page)
-        self.assertIn('lesson-group.js?v=20261002-link-actions', page)
+        self.assertIn('lesson-group.js?v=20261002-message-preview', page)
         self.assertIn('lesson-detail-layout.css?v=20260924-autosave', page)
         self.assertIn('.group-last-saved{', css)
+
+    def test_student_message_is_shown_directly_below_lesson_date_and_time(self):
+        generator_page = self.text("schedule_generator.php")
+        generator_script = self.text("schedule-generator.js")
+        timetable_page = self.text("teacher2026summer.html")
+        timetable_script = self.text("timetable-app.js")
+        group_page = self.text("lesson_group.html")
+        group_script = self.text("lesson-group.js")
+        preview_css = self.text("lesson-message-preview.css")
+
+        self.assertLess(generator_page.index('id="fSlot"'), generator_page.index('id="generatorPublicMessagePreview"'))
+        self.assertIn("publicPreview.hidden=!publicMessage", generator_script)
+        self.assertIn("data-note=", timetable_script)
+        self.assertIn("${esc(publicMessage)}", timetable_page)
+        self.assertLess(group_page.index('id="groupFacts"'), group_page.index('id="groupPublicMessagePreview"'))
+        self.assertIn("publicPreview.querySelector('span').textContent=publicMessage", group_script)
+        self.assertIn('.lesson-public-message-preview[hidden]', preview_css)
 
     def test_previous_homework_has_immediate_checkboxes_and_carry_guidance(self):
         script = self.text("recording-tools.js")

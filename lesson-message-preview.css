@@ -1,0 +1,6 @@
+.lesson-public-message-preview{grid-column:1/-1;margin:0 0 4px;padding:9px 11px;border-left:4px solid #0e7490;border-radius:7px;background:#ecfeff;color:#164e63;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.lesson-public-message-preview[hidden]{display:none!important}
+.lesson-public-message-preview>strong{display:block;margin-bottom:2px;font-size:11px;color:#0e7490}
+#teacherOpsModal .lesson-public-message-preview{margin:-5px 0 14px}
+.group-overview>.lesson-public-message-preview{margin:10px 0 4px}
+@media(max-width:600px){.lesson-public-message-preview{padding:8px 9px;font-size:12px}}

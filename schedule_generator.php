@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>コマ生成・授業管理2026</title>
-<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1">
+<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
 <script src="vendor/xlsx.full.min.js"></script>
 
 <style id="generator-nowline-modal-layer-fix">
@@ -155,6 +155,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
     <div class="modal-content-scroll"><div class="form-grid">
       <label>日付<input id="fDate" type="date"></label>
       <label>時間番号<select id="fSlot"><option value="①">①</option><option value="②">②</option><option value="③">③</option><option value="④">④</option><option value="⑤">⑤</option><option value="⑥">⑥</option><option value="⑦">⑦</option><option value="⑧">⑧</option><option value="⑨">⑨</option><option value="⑩">⑩</option><option value="⑪">⑪</option></select></label>
+      <div id="generatorPublicMessagePreview" class="lesson-public-message-preview wide" hidden><strong>📢 生徒へのメッセージ</strong><span></span></div>
       <div id="generatorCreateOptions" class="wide hidden" style="padding:12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc">
         <label>追加するコマ数<select id="fCreateCount"><option value="1">1コマ</option></select></label>
         <label id="generatorCreateMeal" hidden>途中の食事休憩<select id="fCreateMeal"><option value="0">なし</option><option value="1">あり（途中で食事休憩が入ります）</option></select></label>
@@ -248,7 +249,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20260920-save-state"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261002-resize"></script>
+<script src="generator-tools.js?v=20260920-save-state"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261002-message-preview"></script>
 
 
 <script id="generator-nowline-today-only-v2">

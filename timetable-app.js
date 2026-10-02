@@ -131,6 +131,7 @@ function lessonAttributes(r){
     data-teacher="${esc(r.teacher||'')}"
     data-type="${esc(r.type||'')}"
     data-room="${esc(r.room||'')}"
+    data-note="${esc(r.note||'')}"
     data-subject="${esc(r.subjects.join('+'))}"
     data-date="${esc(r.date)}"
     data-slot="${esc(r.slot)}"`;
