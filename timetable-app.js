@@ -395,7 +395,8 @@ async function showDetail(key){
   }
 }
 function bindEvents(root=document){root.querySelectorAll('[data-key]').forEach(e=>e.onclick=ev=>{if(ev.target.closest('[data-lesson-action]')||teacherDragJustFinished)return;showDetail(e.dataset.key)})}
-window.WholeSchedule={reload:()=>load()};
+function publicMessageKeys(date,cls){return [...new Set(rows.filter(r=>!r.dayType&&r.date===date&&r.cls===cls).map(r=>[r.date,r.slot,r.cls,r.teacher,r.type,r.subjects.join('+')].join('|')))];}
+window.WholeSchedule={reload:()=>load(),publicMessageKeys};
 async function load(){try{
   const dataPromise=(async()=>{try{const response=await fetch('data_api.php?v='+Date.now(),{cache:'no-store'});const data=await response.json();if(response.ok&&data.ok&&data.initialized&&Array.isArray(data.schedule))return data.schedule;}catch(e){}return null;})();
   const [serverRows,notes]=await Promise.all([dataPromise,loadDailyNotes(),window.LessonGroups?.ready,window.LessonFixed?.ready,window.SchoolHolidays?.load()]);

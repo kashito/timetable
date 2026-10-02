@@ -361,12 +361,12 @@
         },
         {
           "file": "student.html",
-          "line": 994,
+          "line": 995,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 996,
+          "line": 997,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {

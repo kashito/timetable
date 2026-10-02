@@ -123,6 +123,12 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn('applyDayPublicMessageSummaries();', page)
         self.assertIn('.whole-day-public-messages[hidden]', css)
         self.assertIn('.teacher-day-info.whole-day-collapsed.has-public-messages', css)
+        self.assertIn('async function copyPublicMessageToToday(cls,text,button)', page)
+        self.assertIn("SharedClassState.save(key,{publicNote:text})", page)
+        self.assertIn('window.WholeSchedule?.publicMessageKeys(today,cls)', page)
+        self.assertIn('window.WholeSchedule={reload:()=>load(),publicMessageKeys}', app)
+        self.assertIn("if(date<today)", page)
+        self.assertIn('whole-day-public-message-copy', css)
 
     def test_previous_homework_has_immediate_checkboxes_and_carry_guidance(self):
         script = self.text("recording-tools.js")

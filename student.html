@@ -987,6 +987,7 @@ window.SharedClassState=(()=>{
               </div>
               <div class="event-icon" aria-hidden="true">${icon}</div>
             </div>
+            <div class="lesson-countdown" data-countdown aria-live="polite"></div>
             ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
             ${optionalNote(r)}
             <div class="event-sub">${actualRoom?`<span>🏫 教室 ${esc(actualRoom)}</span>`:'<span>🏫 教室 未設定</span>'}${r.teacher?`<span>担当 ${esc(r.teacher)}</span>`:''}${r._linked?.mealBreak?'<span class="linked-meal-notice">途中で食事休憩が入ります</span>':''}</div>
@@ -995,7 +996,6 @@ window.SharedClassState=(()=>{
             <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}</div>
             <details class="student-other-info"><summary>その他の情報</summary><div class="student-other-info-body">
               ${previousSameTitleGap.get(key)?`<div class="student-prev-gap"><span>前回の授業から</span><strong>${esc(previousSameTitleGap.get(key))}</strong></div>`:''}
-              <div class="lesson-countdown" data-countdown></div>
               ${type?`<div class="tags"><span class="tag tag-type">${icon} ${esc(type)}</span></div>`:''}
             </div></details>
           </article>`;
@@ -1403,6 +1403,7 @@ window.SharedClassState=(()=>{
       const start=new Date(card.dataset.date+'T'+String(sm[1]).padStart(2,'0')+':'+sm[2]+':00');
       const end=new Date(card.dataset.date+'T'+String(em[1]).padStart(2,'0')+':'+em[2]+':00');
       out.classList.remove('is-soon','is-active','is-ended');
+      out.hidden=false;
       if(now<start){
         const mins=Math.max(0,Math.ceil((start-now)/60000));
         const days=Math.floor(mins/1440);
@@ -1415,8 +1416,8 @@ window.SharedClassState=(()=>{
         out.textContent=`授業中（残り${mins}分）`;
         out.classList.add('is-active');
       }else{
-        out.textContent='終了しました';
-        out.classList.add('is-ended');
+        out.textContent='';
+        out.hidden=true;
       }
     });
   }
@@ -1708,7 +1709,7 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 <script id="student-card-send-v67">
 (function(){document.addEventListener('click',async function(e){const b=e.target.closest('.student-card-send-btn');if(!b)return;e.preventDefault();e.stopPropagation();const input=document.createElement('input');input.type='file';input.multiple=true;input.style.display='none';document.body.appendChild(input);input.onchange=async()=>{const fs=[...input.files];if(!fs.length){input.remove();return;}b.disabled=true;const old=b.textContent;b.textContent='送信中…';try{for(const f of fs)await StudentAttachments.upload(b.dataset.sendKey,f,{sender:'student',senderName:(window.selectedStudent&&selectedStudent.name)||''});await StudentAttachments.loadAll();if(typeof window.applyStudentAttachments==='function')await window.applyStudentAttachments();b.textContent='✓ 送信しました';setTimeout(()=>{b.textContent=old;b.disabled=false},1400);}catch(err){alert('送信できませんでした：'+(err.message||err));b.textContent=old;b.disabled=false;}finally{input.remove();}};input.click();});})();
 </script>
-<link rel="stylesheet" href="student-schedule-v2.css?v=20260927-priority-ui">
+<link rel="stylesheet" href="student-schedule-v2.css?v=20261002-countdown-visible">
 <script src="student-display-settings.js?v=20260927-priority-ui"></script>
 <script defer src="calendar-view.js?v=20260922-events"></script></body>
 </html>

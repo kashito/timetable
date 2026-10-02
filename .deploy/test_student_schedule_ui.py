@@ -46,6 +46,17 @@ class StudentScheduleUiTest(unittest.TestCase):
         self.assertLess(card.index(message), card.index('${optionalNote(r)}'))
         self.assertIn("top.insertAdjacentElement('afterend',box)", source)
 
+    def test_countdown_is_visible_on_each_upcoming_lesson_without_opening_details(self):
+        source = (ROOT / "student.html").read_text(encoding="utf-8")
+        start = source.index('html += `<article class="event-card')
+        end = source.index("html += '</section>'", start)
+        card = source[start:end]
+        self.assertLess(card.index('data-countdown'), card.index('class="student-other-info"'))
+        self.assertIn('out.hidden=false;', source)
+        self.assertIn('out.hidden=true;', source)
+        css = (ROOT / "student-schedule-v2.css").read_text(encoding="utf-8")
+        self.assertIn('.event-card>.lesson-countdown[hidden]', css)
+
     def test_twenty_local_themes_with_reset(self):
         source = (ROOT / "student-display-settings.js").read_text(encoding="utf-8")
         ids = re.findall(r"\['([a-z]+)','[^']+','[0-9a-f]+','[0-9a-f]+','[0-9a-f]+'\]", source)
