@@ -20,7 +20,7 @@ PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
 FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php',
          'recording_context.php', 'lesson_record_api.php', 'lesson_group_api.php',
-         'lesson_group_lengthen_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
+         'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
 SLOTS = list('①②③④⑤⑥⑦⑧⑨⑩⑪')
 TIMES = [('13:30','14:10'),('14:20','15:00'),('15:10','15:50'),('16:00','16:40'),
          ('16:50','17:30'),('17:40','18:20'),('18:30','19:10'),('19:20','20:00'),
@@ -249,6 +249,22 @@ class LessonCreationTests(unittest.TestCase):
                 code,result=self.post('lesson_group_shorten_api.php',payload);self.assertEqual(code,200,result);self.assertEqual(result['group']['slots'],expected)
                 self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json')[g['key']]['slot'],expected)
                 after=self.snapshot();code,replay=self.post('lesson_group_shorten_api.php',payload);self.assertEqual(code,200,replay);self.assertTrue(replay['replayed']);self.assertEqual(after,self.snapshot())
+
+    def test_existing_adjacent_period_can_be_added_to_linked_group(self):
+        g,rows=self.prepare_group(deleted=False);before_rows=self.read('added_lessons.json')
+        code,plan=self.request('lesson_group_extend_api.php?id='+g['id']);self.assertEqual(code,200,plan)
+        self.assertEqual([c['row']['時間番号'] for c in plan['candidates']],['⑦'])
+        payload=dict(id=g['id'],version=plan['version'],sources=[rows[2]['_sourceKey']],requestId=secrets.token_hex(16))
+        code,result=self.post('lesson_group_extend_api.php',payload);self.assertEqual(code,200,result)
+        self.assertEqual(result['group']['slots'],'⑤⑥⑦');self.assertEqual(len(result['group']['sources']),3)
+        self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json')[g['key']]['slot'],'⑤⑥⑦')
+
+    def test_unlink_keeps_each_period_and_record(self):
+        g,rows=self.prepare_group(deleted=False);code,detail=self.request('lesson_group_api.php?action=detail&id='+g['id']);self.assertEqual(code,200,detail)
+        before_rows=self.read('added_lessons.json');before_records=self.read('lesson_records.json');before_states=self.read('class_state.json')
+        code,result=self.post('lesson_group_api.php',dict(action='unlink',id=g['id'],version=detail['version']));self.assertEqual(code,200,result)
+        saved=self.read('lesson_groups.json')[g['id']];self.assertFalse(saved['active']);self.assertEqual(saved['snapshot'],rows[:2])
+        self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json'),before_records);self.assertEqual(self.read('class_state.json'),before_states)
 
     def test_shorten_rejects_middle_stale_and_two_period_groups_without_writes(self):
         g,rows=self.prepare_group(deleted=False);g['sources']=[r['_sourceKey'] for r in rows];g['snapshot']=rows;self.write('lesson_groups.json',{g['id']:g})
