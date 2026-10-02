@@ -352,7 +352,7 @@ window.SharedClassState=(()=>{
 <style id="student-to-teacher-upload-v65">
 .student-send-box{margin-top:14px;padding:13px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}.student-send-box strong{display:block;margin-bottom:8px}.student-send-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.student-send-row input[type=file]{flex:1;min-width:210px}.student-send-btn{border:0;border-radius:9px;padding:9px 13px;background:#15803d;color:#fff;font-weight:900;cursor:pointer}.student-send-status{display:block;margin-top:7px;font-weight:800}.attachment-source{font-size:11px;margin-right:5px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-weight:900}
 </style>
-<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
+<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
 <body>
 <div class="app">
   <header class="student-header" id="studentHeader">
@@ -677,7 +677,14 @@ window.SharedClassState=(()=>{
 
   function belongsToStudent(r) {
     if (!selectedStudent) return false;
+    if(isInvitedToLesson(r))return true;
     return Array.isArray(selectedStudent.classes) && selectedStudent.classes.includes(r.cls) && (!window.Workspace||Workspace.roster(r.cls,r.date,managementPreview()).some(x=>normName(x['生徒名'])===normName(selectedStudent.name)));
+  }
+
+  function isInvitedToLesson(r){
+    if(!selectedStudent)return false;
+    const wanted=normName(selectedStudent.name),state=SharedClassState.get(lessonRoomKey(r))||{};
+    return Array.isArray(state.invitedStudents)&&state.invitedStudents.some(name=>normName(name)===wanted);
   }
 
   function optionalForStudent(r){
@@ -759,10 +766,10 @@ window.SharedClassState=(()=>{
           kept.push(r);
           return;
         }
-        const myPriority = Number(priorityMap[r.cls] || 0);
+        const myPriority = isInvitedToLesson(r) ? Number.MAX_SAFE_INTEGER : Number(priorityMap[r.cls] || 0);
         const maxPriority = Math.max(
           myPriority,
-          ...conflicts.map(x => Number(priorityMap[x.cls] || 0))
+          ...conflicts.map(x => isInvitedToLesson(x) ? Number.MAX_SAFE_INTEGER : Number(priorityMap[x.cls] || 0))
         );
         if(myPriority === maxPriority) kept.push(r);
       });
@@ -813,7 +820,7 @@ window.SharedClassState=(()=>{
     const allNormal = rows.filter(r => !specialDayLabel(r));
 
     // Student's own schedule before optional filters. Exempt lessons are not part of the individual schedule.
-    const studentNormalRaw = allNormal.filter(r => belongsToStudent(r) && !isExemptForSelectedStudent(r));
+    const studentNormalRaw = allNormal.filter(r => belongsToStudent(r) && (isInvitedToLesson(r)||!isExemptForSelectedStudent(r)));
     const resolvedStudentNormal = resolvePriorityConflicts(studentNormalRaw);
     const hideTentative = !StaffAuth.user && schedulePrivateFrom;
     const studentNormal = hideTentative
@@ -967,6 +974,7 @@ window.SharedClassState=(()=>{
             ? ''
             : roomInlineStyle(actualRoom);
           const key=lessonRoomKey(r);
+          const invited=isInvitedToLesson(r);
           const homework=homeworkForKey.get(key)||'';
           const subject=(r.subjects||[]).join('・');
           const lessonTitle=subject||r.cls||type||'授業';
@@ -991,7 +999,7 @@ window.SharedClassState=(()=>{
             <div class="lesson-countdown" data-countdown aria-live="polite"></div>
             ${[...new Set((r._linked?.members||[r]).map(m=>SharedClassState.get(lessonRoomKey(m))?.publicNote||m.note).filter(Boolean))].map(note=>`<div class="shared-public-note"><strong>📢 先生から生徒へのメッセージ</strong><br>${esc(note)}</div>`).join('')}
             ${optionalNote(r)}
-            <div class="event-sub">${actualRoom?`<span>🏫 教室 ${esc(actualRoom)}</span>`:'<span>🏫 教室 未設定</span>'}${r.teacher?`<span>担当 ${esc(r.teacher)}</span>`:''}${r._linked?.mealBreak?'<span class="linked-meal-notice">途中で食事休憩が入ります</span>':''}</div>
+            <div class="event-sub">${actualRoom?`<span>🏫 教室 ${esc(actualRoom)}</span>`:'<span>🏫 教室 未設定</span>'}${r.teacher?`<span>担当 ${esc(r.teacher)}</span>`:''}${invited?'<span class="student-invited-label">追加招集</span>':''}${r._linked?.mealBreak?'<span class="linked-meal-notice">途中で食事休憩が入ります</span>':''}</div>
             ${homeworkMarkup(homework)}
             <div class="student-material-actions"><button type="button" class="student-materials-view" data-material-key="${esc(key)}" aria-expanded="false">資料を見る <span>確認中</span></button><button type="button" class="student-card-send-btn" data-send-key="${esc(key)}">資料を送る</button></div>
             <div class="student-card-actions">${selectedStudent&&r.date>=today?`<div class="sc-card-actions"><button type="button" class="sc-open" data-contact-open data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}">遅刻・欠席を連絡</button><button type="button" class="sc-card-status" data-contact-history hidden data-contact-keys="${esc(JSON.stringify((r._linked?.members||[r]).map(lessonRoomKey)))}"></button></div>`:''}</div>

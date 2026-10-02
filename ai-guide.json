@@ -217,27 +217,27 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1239,
+          "line": 1247,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
           "file": "student.html",
-          "line": 818,
+          "line": 825,
           "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
         },
         {
           "file": "student.html",
-          "line": 820,
+          "line": 827,
           "code": "? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
         },
         {
           "file": "student.html",
-          "line": 907,
+          "line": 914,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 910,
+          "line": 917,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
@@ -247,7 +247,7 @@
         },
         {
           "file": "student.html",
-          "line": 921,
+          "line": 928,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -289,22 +289,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 910,
+          "line": 917,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 946,
+          "line": 953,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 919,
+          "line": 926,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 920,
+          "line": 927,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -341,7 +341,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 927,
+          "line": 934,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -361,12 +361,12 @@
         },
         {
           "file": "student.html",
-          "line": 996,
+          "line": 1004,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 998,
+          "line": 1006,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {

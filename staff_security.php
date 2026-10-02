@@ -25,7 +25,7 @@ function staffRequire($admin=false){
 function staffPublicState($state){
   if(staffCurrent())return $state;$out=[];
   foreach($state as $key=>$row)if(strpos((string)$key,'__CLASS_MEMO__|')!==0&&is_array($row)){
-    $out[$key]=array_intersect_key($row,array_flip(['publicNote','ready','updatedAt']));$flags=$row['exemptionOverrides']??[];
+    $out[$key]=array_intersect_key($row,array_flip(['publicNote','ready','updatedAt','invitedStudents']));$flags=$row['exemptionOverrides']??[];
     foreach($row['attendance']??[] as $name=>$value)if($value!==''&&$value!=='---')$flags[$name]=$value==='免除';
     if($flags)$out[$key]['exemptionOverrides']=$flags;
   }

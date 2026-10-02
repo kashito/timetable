@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lesson_roster.php';
 // Timings are read separately from record creation/edit dates. Linked lessons end at their last slot.
 function recordLessonTimings($records){
  $rows=policyRows();$byKey=[];foreach($rows as $row)if(empty($row['日区分']))$byKey[canonicalLessonKey(policyKey($row))]=$row;
@@ -41,12 +42,13 @@ function recordAttendanceContext($records){
     if(!empty($directory['hiddenStudents'][$name]))continue;
     $roster[$name]=true;if($within($student['免除期間']??[],$date))$autoExempt[$name]=true;
    }
+   $invited=array_fill_keys(lessonInvitedStudents($state),true);foreach(array_keys($invited) as $name)if(empty($directory['hiddenStudents'][$name]))$roster[$name]=true;
    // Actual saved attendance survives later roster edits or student hiding.
    foreach($state['attendance']??[] as $name=>$status)if($status!==''&&$status!=='---')$roster[$name]=true;
    $statuses=['出席'=>[],'欠席'=>[],'遅刻'=>[],'早退'=>[],'免除'=>[],'その他'=>[],'不明'=>[],'未定'=>[]];$missing=[];
    foreach(array_keys($roster) as $name){
     $status=$state['attendance'][$name]??'';
-    if($status===''||$status==='---')$status=($state['exemptionOverrides'][$name]??isset($autoExempt[$name]))?'免除':'';
+    if($status===''||$status==='---')$status=!isset($invited[$name])&&($state['exemptionOverrides'][$name]??isset($autoExempt[$name]))?'免除':'';
     if(isset($statuses[$status]))$statuses[$status][]=$name;else $missing[]=$name;
    }
    foreach($statuses as &$names)sort($names,SORT_STRING);unset($names);sort($missing,SORT_STRING);

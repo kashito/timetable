@@ -6,6 +6,7 @@
 <title>全体スケ2026</title>
 <link rel="stylesheet" href="styles.css?v=20260910-r1">
 <link rel="stylesheet" href="schedule-generator.css?v=20260910-r1">
+<link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script src="lesson-invitations.js?v=20261003-invites"></script>
 <link rel="stylesheet" href="teacher-generator-match-v17.css?v=20260910-r1"><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="student-attachments.js?v=20260910-r5"></script>
@@ -603,8 +604,10 @@ async function applyReadyOnce(){
     try{ lessonRecord=await loadLessonRecord(key); }catch(e){ console.warn('授業カルテ読込失敗',e); }
     if(!data || !Array.isArray(data.rows) || !Array.isArray(data.members)) data={rows:[],members:[]};
     if(window.RoomOverrides){ try{ await RoomOverrides.load(); }catch(e){ console.warn('教室変更読込失敗',e); } }
-    const st=stateForCard(card);
-    const roster=[...new Set(data.members.filter(x=>norm(x['クラス'])===cls&&(!window.Workspace||(!Workspace.hiddenStudent(norm(x['生徒名']))&&Workspace.enrolled(x,card.dataset.date||key.split('|')[0])))).map(x=>norm(x['生徒名'])).filter(Boolean))];
+    const st=stateForCard(card),lessonDate=card.dataset.date||key.split('|')[0];
+    const regularRoster=[...new Set(data.members.filter(x=>norm(x['クラス'])===cls&&(!window.Workspace||(!Workspace.hiddenStudent(norm(x['生徒名']))&&Workspace.enrolled(x,lessonDate)))).map(x=>norm(x['生徒名'])).filter(Boolean))];
+    const availableStudents=[...new Set(data.members.filter(x=>!window.Workspace||(!Workspace.hiddenStudent(norm(x['生徒名']))&&Workspace.enrolled(x,lessonDate))).map(x=>norm(x['生徒名'])).filter(Boolean))];
+    const invitedStudents=LessonInvitations.normalize(st.invitedStudents),roster=LessonInvitations.merge(regularRoster,invitedStudents);
 
     const seriesRows=data.rows.filter(r=>{
       const manual=norm(r['授業ID']);
@@ -634,7 +637,7 @@ async function applyReadyOnce(){
     // v73以降、利用者が保存した出席情報には attendanceTouched=true が付く。
     const legacyAutoPresent=exactAttendanceState.attendanceTouched!==true && roster.length>0 && roster.every(n=>rawAtt[n]==='出席');
     const att={...rawAtt},autoExempt=new Set();
-    if(window.Workspace)for(const n of roster)if((!att[n]||att[n]==='---')&&Workspace.exempt(n,cls,card.dataset.date||key.split('|')[0],exactAttendanceState)){att[n]='免除';autoExempt.add(n);}
+    if(window.Workspace)for(const n of roster)if(!invitedStudents.includes(n)&&(!att[n]||att[n]==='---')&&Workspace.exempt(n,cls,card.dataset.date||key.split('|')[0],exactAttendanceState)){att[n]='免除';autoExempt.add(n);}
     detailLoadFailed=detailLoadFailed||SharedClassState.loadFailed||lessonRecord._loadFailed;
     modal.querySelector('#opsTitle').textContent=cls||'授業';
     const cardDate=card.dataset.date||key.split('|')[0]||'';
@@ -695,6 +698,7 @@ async function applyReadyOnce(){
 
       <section class="ops-sec">
         <h3>✅ 出席者確認</h3><div id="scOpsContacts"></div><div class="attendance-bulk-actions"><button type="button" id="opsAllPresent" data-all-present="#teacherOpsModal .attSel">全員出席にする</button><button type="button" class="ce-copy-previous" data-previous-mode="teacher" data-copy-previous="#teacherOpsModal .attSel">前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div>
+        ${LessonInvitations.markup(availableStudents,regularRoster,invitedStudents)}
         ${roster.map(n=>`<div class="att-row ${att[n]==='免除'?'is-exempt':''}"><span>${esc(n)}</span><select class="attSel" data-name="${esc(n)}" data-auto-exempt="${autoExempt.has(n)}" onchange="this.closest('.att-row').classList.toggle('is-exempt',this.value==='免除')">${['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'].map(v=>`<option ${(att[n]||'---')===v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')||'<small>対象生徒なし</small>'}
       </section>
       <section class="ops-sec">
@@ -780,6 +784,7 @@ async function applyReadyOnce(){
       </section>
       <button id="opsSave" class="ops-save" type="button">保存</button>
       <div id="opsMsg"></div>`;
+    LessonInvitations.bind(modal);
 
     if(window.StaffContacts)StaffContacts.mount(modal.querySelector('#scOpsContacts'),{keys:[key],onConfirmed:async item=>{
       await SharedClassState.loadAll();if(modal.dataset.currentKey!==key)return;
@@ -922,7 +927,8 @@ async function saveOpsAndClose(){
           publicNote:modal.querySelector('#publicNote')?.value||'',
           ready:!!modal.querySelector('#readyCheck')?.checked,
           attendance,
-          attendanceTouched:true
+          attendanceTouched:true,
+          invitedStudents:LessonInvitations.selected(modal)
         });
         // 講師共有メモも通常の保存ボタンで保存する
         await saveClassMemo(modal.dataset.currentClass||cls, modal.querySelector('#teacherMemo')?.value||'');

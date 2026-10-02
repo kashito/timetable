@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>コマ生成・授業管理2026</title>
-<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
+<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script src="lesson-invitations.js?v=20261003-invites"></script><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
 <script src="vendor/xlsx.full.min.js"></script>
 
 <style id="generator-nowline-modal-layer-fix">
@@ -228,9 +228,10 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
       <div class="generator-ops-section">
         <h3><span class="ops-icon">👥</span>参加生徒・出席ステータス</h3>
+        <div id="generatorInvitationPicker"></div>
         <div class="attendance-bulk-actions"><button type="button" id="generatorAllPresent" data-all-present="#generatorAttendanceList .generator-att-select">全員出席にする</button><button type="button" class="ce-copy-previous" data-previous-mode="generator" data-copy-previous="#generatorAttendanceList .generator-att-select">前の授業と同じ出席</button><span data-attendance-bulk-message role="status"></span></div>
         <div id="scGeneratorContacts"></div><div id="generatorAttendanceList" class="generator-attendance-list"></div>
-        <button id="saveGeneratorAttendance" type="button" class="ops-save-button">出席ステータスを保存</button>
+        <button id="saveGeneratorAttendance" type="button" class="ops-save-button">追加招集・出席を保存</button>
         <span id="generatorAttendanceMsg" class="generator-inline-msg"></span>
       </div>
     </section>

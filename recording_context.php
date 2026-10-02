@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/lesson_groups.php';
+require_once __DIR__.'/lesson_roster.php';
 function recordingTbdGuard($value,$before){if(trim((string)$value)==='未定'&&trim((string)$before)!=='未定'&&(staffCurrent()['role']??'')!=='admin')staffFail('未定としての記録は管理者のみ行えます。',403);}
 function recordingDate($value){$value=str_replace('/','-',trim((string)$value));$stamp=strtotime($value);return $stamp===false?'':date('Y-m-d',$stamp);}
 function recordingContext($inputKey){
@@ -7,9 +8,9 @@ function recordingContext($inputKey){
  foreach(lessonGroups() as $g)if(!empty($g['active'])){foreach(groupRows($g,$all) as $r)if($g['key']===$key||canonicalLessonKey(policyKey($r))===$key){$group=$g;$rows=groupRows($g,$all);$key=$g['key'];break 2;}}
  if(!$group)foreach($all as $r)if(canonicalLessonKey(policyKey($r))===$key){$rows=[$r];break;}
  if(!$rows)staffFail('授業が見つかりません。時間割から開き直してください。',404);
- $first=$rows[0];$date=recordingDate($first['日付']);$class=$first['クラス'];$dir=__DIR__.'/data';$students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$directory=readJsonStrict($dir.'/directory_state.json');$names=[];
- foreach($students as $s){$name=$s['生徒名']??'';if(!$name||($s['クラス']??'')!==$class||!empty($directory['hiddenStudents'][$name]))continue;$active=!isset($s['在籍期間']);foreach($s['在籍期間']??[] as $p)if((empty($p['from'])||$p['from']<=$date)&&(empty($p['until'])||$date<$p['until']))$active=true;if($active)$names[$name]=true;}
- return ['key'=>$key,'date'=>$date,'className'=>$class,'teacher'=>$first['担当講師']??'','slots'=>implode('',array_column($rows,'時間番号')),'groupId'=>$group['id']??'','sources'=>array_column($rows,'_sourceKey'),'students'=>array_keys($names),'seriesId'=>groupSeriesId($first)];
+ $first=$rows[0];$date=recordingDate($first['日付']);$class=$first['クラス'];$dir=__DIR__.'/data';$students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$directory=readJsonStrict($dir.'/directory_state.json');$states=readJsonStrict($dir.'/class_state.json');$names=array_fill_keys(lessonRosterNames($students,$directory,$class,$date,[]),true);
+ foreach($rows as $row)foreach(lessonInvitedStudents($states[canonicalLessonKey(policyKey($row))]??[]) as $name)if(empty($directory['hiddenStudents'][$name]))$names[$name]=true;$roster=array_keys($names);sort($roster,SORT_NATURAL);
+ return ['key'=>$key,'date'=>$date,'className'=>$class,'teacher'=>$first['担当講師']??'','slots'=>implode('',array_column($rows,'時間番号')),'groupId'=>$group['id']??'','sources'=>array_column($rows,'_sourceKey'),'students'=>$roster,'seriesId'=>groupSeriesId($first)];
 }
 function recordingHomeworkLines($text){
  $lines=preg_split('/\R/u',trim((string)$text));$out=[];foreach($lines as $line){$line=trim($line);if($line!==''&&$line!=='宿題なし'&&$line!=='未定')$out[]=$line;}return $out;

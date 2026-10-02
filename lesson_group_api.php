@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/lesson_groups.php';require_once __DIR__.'/lesson_links.php';
+require_once __DIR__.'/lesson_roster.php';
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
 $dir=__DIR__.'/data';$groups=lessonGroups();$allRows=policyRows();
 $method=$_SERVER['REQUEST_METHOD'];$in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式が不正です',400);$action=$in['action']??'index';
@@ -27,10 +28,11 @@ $id=(string)($in['id']??'');$g=$groups[$id]??null;if(!$g)staffFail('連結した
 if(!empty($g['active'])&&count($rows)!==count($g['sources']))staffFail('連結中の授業が変更されています。管理者に確認してください。',409);
 $key=$g['key'];$record=$records[$key]??[];$version=lgVersion($g,$rows,$record,$states);
 if($method==='GET'&&$action==='detail'){
- $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$names=[];$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
- foreach($students as $r){if(($r['クラス']??'')!==$class||empty($r['生徒名']))continue;$name=$r['生徒名'];if(!empty($directory['hiddenStudents'][$name]))continue;$active=!isset($r['在籍期間']);foreach($r['在籍期間']??[] as $p)if((empty($p['from'])||$p['from']<=$date)&&(empty($p['until'])||$date<$p['until']))$active=true;if($active)$names[$name]=true;}
+ $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
  $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$records[$k]??[]];}
- echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>array_keys($names),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
+ $regular=lessonRosterNames($students,$directory,$class,$date,[]);$names=array_fill_keys($regular,true);foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)if(empty($directory['hiddenStudents'][$name]))$names[$name]=true;$roster=array_keys($names);sort($roster,SORT_NATURAL);
+ $invited=[];foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)$invited[$name]=true;$invited=array_keys($invited);sort($invited,SORT_NATURAL);
+ echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>$roster,'regularStudents'=>$regular,'invitedStudents'=>$invited,'availableStudents'=>lessonVisibleStudentNames($students,$directory,$date),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
 }
 if($method!=='POST')staffFail('Method not allowed',405);
 if(empty($g['active']))staffFail('連結は解除済みです。履歴として表示しています。',409);
@@ -39,6 +41,7 @@ if($action==='delete'){foreach($rows as $r)guardFixedLesson(policyKey($r),$in);$
 if($action==='unlink'){$groups[$id]['active']=false;$groups[$id]['snapshot']=$rows;$groups[$id]['unlinkedAt']=date('c');$groups[$id]['unlinkedBy']=$actor['name'];if(!safeJsonWriteAtomic($dir.'/lesson_groups.json',$groups))staffFail('解除できません',500);echo json_encode(['ok'=>true],JSON_UNESCAPED_UNICODE);exit;}
 if($action!=='save')staffFail('不明な操作です',400);
 $memo=(string)($in['memo']??'');$homework=(string)($in['homework']??'');if(strlen($memo)>120000||strlen($homework)>120000)staffFail('本文が長すぎます',400);
+$hasInvited=array_key_exists('invitedStudents',$in);if($hasInvited){$studentMaster=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$in['invitedStudents']=lessonValidateInvitedStudents($in['invitedStudents'],$studentMaster,readJsonStrict($dir.'/directory_state.json'),str_replace('/','-',$rows[0]['日付']??''));}
 require_once __DIR__.'/recording_context.php';foreach(['memo','homework'] as $field)recordingTbdGuard($in[$field]??'',$record[$field]??'');foreach($in['attendance']??[] as $name=>$value)foreach($rows as $r)recordingTbdGuard($value,$states[canonicalLessonKey(policyKey($r))]['attendance'][$name]??'');
 $hasNote=array_key_exists('publicNote',$in);$edits=null;
 if($hasNote){
@@ -50,7 +53,8 @@ if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homew
 $attendance=$in['attendance']??[];if(!is_array($attendance))staffFail('出席の形式が不正です',400);foreach($attendance as $name=>$value)if(!in_array($value,['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'],true))staffFail('出席を確認してください',400);
 foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$state=$states[$k]??[];foreach($attendance as $name=>$value){if($value==='---')unset($state['attendance'][$name]);else $state['attendance'][$name]=$value;if(isset($state['exemptionOverrides'][$name])){$state['exemptionOverrides'][$name]=$value==='免除';unset($state['exemptionUndo'][$name]);}}
  if($hasNote)$state['publicNote']=$in['publicNote'];
- if($attendance)$state['attendanceTouched']=true;if(array_key_exists('ready',$in))$state['ready']=(bool)$in['ready'];if($hasNote||$attendance||array_key_exists('ready',$in)){$state['updatedAt']=date('c');$state['updatedBy']=$actor['name'];$states[$k]=$state;}
+ if($hasInvited)$state['invitedStudents']=$in['invitedStudents'];
+ if($attendance)$state['attendanceTouched']=true;if(array_key_exists('ready',$in))$state['ready']=(bool)$in['ready'];if($hasNote||$hasInvited||$attendance||array_key_exists('ready',$in)){$state['updatedAt']=date('c');$state['updatedBy']=$actor['name'];$states[$k]=$state;}
 }
 $writes=[$dir.'/lesson_records.json'=>$records,$dir.'/class_state.json'=>$states];if($hasNote)$writes[$dir.'/edited_lessons.json']=$edits;
 if(!safeDataTransaction($writes))staffFail('保存できません',500);echo json_encode(['ok'=>true],JSON_UNESCAPED_UNICODE);

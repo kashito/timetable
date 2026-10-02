@@ -2,8 +2,8 @@
   "schema_version": "1.1.0",
   "system_name": "timetable",
   "display_name": "時間割システム",
-  "version": "production-2026-09-27",
-  "updated_at": "2026-09-27T00:00:00+09:00",
+  "version": "production-2026-10-03",
+  "updated_at": "2026-10-03T00:00:00+09:00",
   "production_url": "https://224236.com/2026summer/",
   "status": "production",
   "description": "講師・生徒の時間割、講師NG、今日の動き、授業管理を扱うシステム。",
@@ -171,6 +171,36 @@
       ]
     },
     {
+      "id": "lesson-extra-invitations",
+      "question": "授業ごとに通常クラス以外の生徒を追加招集するには？",
+      "answer": "講師の授業詳細で「追加招集の生徒」を開き、生徒名を選んで保存します。クラス所属は変更せず、その授業だけ生徒予定表・出欠・カルテの対象になります。連結授業では全コマへ反映します。",
+      "steps": [
+        "全体時間割、講師縦、コマ生成、または連結授業から授業詳細を開く",
+        "「追加招集の生徒」を開く",
+        "生徒名を検索してチェックする",
+        "保存する",
+        "生徒予定表と出欠欄への反映を確認する"
+      ],
+      "page": "授業詳細",
+      "url": "https://224236.com/2026summer/teacher2026summer.html",
+      "roles": [
+        "teacher",
+        "admin"
+      ],
+      "buttons": [
+        "追加招集の生徒",
+        "保存"
+      ],
+      "status": "production",
+      "keywords": [
+        "追加招集",
+        "追加参加",
+        "別クラス",
+        "参加生徒",
+        "授業詳細"
+      ]
+    },
+    {
       "id": "student-schedule-display-settings",
       "question": "生徒予定表の色テーマを変更するには？",
       "answer": "生徒予定表の上部にある「表示設定」を開き、色見本と色名から選びます。選択はその端末のブラウザーに保存され、先生やほかの利用者の画面には影響しません。",
@@ -224,6 +254,11 @@
       "feature": "生徒・保護者向け予定確認画面",
       "change": "日ごとの状態・来室/終了時刻・空き時間を要約し、宿題・資料操作を優先表示。20色の端末別テーマを追加",
       "generated_by": ".deploy/generate_ai_guide_states.py"
+    },
+    {
+      "date": "2026-10-03",
+      "feature": "授業ごとの追加招集",
+      "change": "授業詳細から通常クラス外の生徒をその授業だけ招集し、生徒予定・出欠・カルテへ反映できるようにした"
     },
     {
       "date": "2026-09-27",
@@ -287,27 +322,27 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1239,
+          "line": 1247,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
           "file": "student.html",
-          "line": 818,
+          "line": 825,
           "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
         },
         {
           "file": "student.html",
-          "line": 820,
+          "line": 827,
           "code": "? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
         },
         {
           "file": "student.html",
-          "line": 907,
+          "line": 914,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 910,
+          "line": 917,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
@@ -317,7 +352,7 @@
         },
         {
           "file": "student.html",
-          "line": 921,
+          "line": 928,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -359,22 +394,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 910,
+          "line": 917,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 946,
+          "line": 953,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 919,
+          "line": 926,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 920,
+          "line": 927,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -411,7 +446,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 927,
+          "line": 934,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -431,12 +466,12 @@
         },
         {
           "file": "student.html",
-          "line": 996,
+          "line": 1004,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 998,
+          "line": 1006,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {

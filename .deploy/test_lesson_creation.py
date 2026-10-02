@@ -17,7 +17,7 @@ import urllib.request
 
 ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parents[1]))
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
-FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_policy.php',
+FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
          'recording_context.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
@@ -211,6 +211,21 @@ class LessonCreationTests(unittest.TestCase):
         code,j=self.request('lesson_group_api.php?action=detail&id='+g['id'])
         self.assertEqual(code,200,j);self.assertEqual(j['nextLesson'],{'date':'2026-10-02','slot':'⑦','start':'18:30','end':'19:10'})
         self.assertEqual(before,self.snapshot())
+
+    def test_group_detail_saves_extra_invitation_to_every_linked_period(self):
+        g,rows=self.prepare_group(with_next=False,deleted=False)
+        self.write('schedule_data.json', {'schedule':[], 'students':[
+            {'生徒名':'通常生徒','クラス':'検証クラス'},
+            {'生徒名':'追加生徒','クラス':'別クラス'}
+        ]})
+        code,detail=self.request('lesson_group_api.php?action=detail&id='+g['id']);self.assertEqual(code,200,detail)
+        self.assertEqual(detail['students'],['通常生徒']);self.assertIn('追加生徒',detail['availableStudents'])
+        payload={'action':'save','id':g['id'],'version':detail['version'],'memo':'共通カルテ','homework':'共通宿題','attendance':{},'invitedStudents':['追加生徒']}
+        code,saved=self.post('lesson_group_api.php',payload);self.assertEqual(code,200,saved)
+        states=self.read('class_state.json')
+        self.assertEqual([states[key(r)]['invitedStudents'] for r in rows], [['追加生徒'],['追加生徒']])
+        code,detail=self.request('lesson_group_api.php?action=detail&id='+g['id']);self.assertEqual(code,200,detail)
+        self.assertEqual(detail['invitedStudents'],['追加生徒']);self.assertEqual(detail['students'],['追加生徒','通常生徒'])
 
     def test_previous_homework_check_is_saved_immediately_and_only_unfinished_carries(self):
         g,rows=self.prepare_group(with_next=False,deleted=False)

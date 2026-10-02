@@ -20,6 +20,7 @@ async function dialog(){
  let calls=0,request=async(url,options)=>({ok:true,json:async()=>({ok:true,row}),text:async()=>JSON.stringify({ok:true,state:{}})});
  const context=vm.createContext({console,setTimeout,JSON,document:{getElementById:element,querySelectorAll:s=>s==='.generator-att-select'?[attendance]:[],querySelector:()=>attendance},
   fetch:(...args)=>request(...args),SharedNotes:{post:async(cls,input)=>{input.value='';}},
+  LessonInvitations:{selected:()=>[]},
   LessonPlacement:{next:async()=>{calls++;return null;}},StaffAuth:{user:{role:'admin'}},
   normalize:r=>r,isoToGeneratorDate:v=>v,currentModalRow:()=>row,generatorEventKey:()=>row['日付']+'|'+row['時間番号'],
   getChoiceValue:(a,b)=>element(a).value||element(b).value,getTypeValue:()=>row['種別'],getRoomValue:()=>'',

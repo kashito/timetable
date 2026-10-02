@@ -1,6 +1,7 @@
 <?php
 // Notifications are calculated from current lessons and saved records. Reading never completes a task.
 require_once __DIR__.'/lesson_groups.php';
+require_once __DIR__.'/lesson_roster.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');header('Vary: Cookie');
 $actor=staffRequire();
@@ -65,6 +66,7 @@ try {
     $exempt=$st['exemptionOverrides'][$name]??$within($s['免除期間']??[],$date);
     if(!$exempt)$names[$name]=true;
    }
+   foreach(lessonInvitedStudents($st) as $name)if(empty($directory['hiddenStudents'][$name])){$value=$st['attendance'][$name]??'';if(!in_array($value,['出席','遅刻','欠席','早退','免除','その他','不明','未定'],true))$names[$name]=true;}
    if($names){$namesByKey[$memberKey]=array_keys($names);$missingSlots[]=$r['時間番号'];$missingNames+=$names;}
   }
   $record=$records[$unitKey]??[];$missing=[];

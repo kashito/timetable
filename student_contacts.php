@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/lesson_groups.php';
+require_once __DIR__.'/lesson_roster.php';
 function scText($in,$key,$max,$required=false){$s=$in[$key]??'';if(!is_string($s)||strlen($s)>$max||preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u',$s)||($required&&trim($s)===''))staffFail('入力内容と文字数を確認してください。',400);return trim($s);}
 function scVersion($value){return hash('sha256',json_encode($value,JSON_UNESCAPED_UNICODE));}
 function scItemVersion($item){unset($item['reads']);return scVersion($item);}
@@ -22,16 +23,17 @@ function scContext($student,$keys){
  foreach($all as $r){
   $date=str_replace('/','-',$r['日付']??'');$class=scClass($r['クラス']??'',$directory);
   if(!empty($r['日区分'])||$date<date('Y-m-d')||$class===''||(!empty($directory['hiddenStudents'][$student])&&$date>=($directory['hiddenStudentFrom'][$student]??date('Y-m-d'))))continue;
-  $members=array_values(array_filter($own,fn($m)=>scClass($m['クラス']??'',$directory)===$class&&scWithin($m['在籍期間']??[['from'=>'','until'=>'']],$date)));if(!$members)continue;
-  $key=canonicalLessonKey(policyKey($r));$state=$states[$key]??[];$att=$state['attendance'][$student]??'';
-  if($att!==''&&$att!=='---')$exempt=$att==='免除';elseif(isset($state['exemptionOverrides'][$student]))$exempt=(bool)$state['exemptionOverrides'][$student];else{$exempt=false;foreach($own as $m)if(scClass($m['クラス']??'',$directory)===$class&&scWithin($m['免除期間']??[],$date))$exempt=true;}
-  if(!$exempt)$eligible[]=$r;
+  $key=canonicalLessonKey(policyKey($r));$state=$states[$key]??[];$invited=in_array($student,lessonInvitedStudents($state),true);
+  $members=array_values(array_filter($own,fn($m)=>scClass($m['クラス']??'',$directory)===$class&&scWithin($m['在籍期間']??[['from'=>'','until'=>'']],$date)));if(!$members&&!$invited)continue;
+  $att=$state['attendance'][$student]??'';
+  if($att!==''&&$att!=='---')$exempt=$att==='免除';elseif($invited)$exempt=false;elseif(isset($state['exemptionOverrides'][$student]))$exempt=(bool)$state['exemptionOverrides'][$student];else{$exempt=false;foreach($own as $m)if(scClass($m['クラス']??'',$directory)===$class&&scWithin($m['免除期間']??[],$date))$exempt=true;}
+  if(!$exempt){$r['_invitedStudent']=$invited;$eligible[]=$r;}
  }
- $visible=[];foreach($eligible as $r){$priority=$priorities[scClass($r['クラス'],$directory)]??0;$suppressed=false;foreach($eligible as $other)if(str_replace('/','-',$r['日付'])===str_replace('/','-',$other['日付'])&&($r['開始']??'')<($other['終了']??'')&&($other['開始']??'')<($r['終了']??'')&&($priorities[scClass($other['クラス'],$directory)]??0)>$priority){$suppressed=true;break;}if(!$suppressed)$visible[canonicalLessonKey(policyKey($r))]=$r;}
+ $visible=[];foreach($eligible as $r){$priority=!empty($r['_invitedStudent'])?PHP_INT_MAX:($priorities[scClass($r['クラス'],$directory)]??0);$suppressed=false;foreach($eligible as $other){$otherPriority=!empty($other['_invitedStudent'])?PHP_INT_MAX:($priorities[scClass($other['クラス'],$directory)]??0);if(str_replace('/','-',$r['日付'])===str_replace('/','-',$other['日付'])&&($r['開始']??'')<($other['終了']??'')&&($other['開始']??'')<($r['終了']??'')&&$otherPriority>$priority){$suppressed=true;break;}}if(!$suppressed)$visible[canonicalLessonKey(policyKey($r))]=$r;}
  $target=[];foreach($keys as $key){$canonical=canonicalLessonKey($key);if(!isset($visible[$canonical]))staffFail('参加予定が変わったか、連絡できる授業ではありません。予定表を再読み込みしてください。',409);$target[]=$visible[$canonical];}
  usort($target,fn($a,$b)=>strcmp($a['開始']??'',$b['開始']??''));$first=$target[0];$g=groupForSource($first['_sourceKey']);
  foreach($target as $r)if(str_replace('/','-',$r['日付'])!==str_replace('/','-',$first['日付'])||$r['クラス']!==$first['クラス']||(count($target)>1&&(!$g||!in_array($r['_sourceKey'],$g['sources'],true))))staffFail('同じ連結授業のコマを選んでください。',400);
- return ['student'=>$student,'lessons'=>array_map('scSummary',$target),'version'=>scVersion([$target,$own,$g?[$g['id'],$g['sources']]:null])];
+ return ['student'=>$student,'lessons'=>array_map('scSummary',$target),'version'=>scVersion([$target,$own,$g?[$g['id'],$g['sources']]:null,array_map(fn($r)=>lessonInvitedStudents($states[canonicalLessonKey(policyKey($r))]??[]),$target)])];
 }
 function scCurrentRows(){static $rows=null;if($rows===null){$rows=[];foreach(policyRows() as $r)$rows[$r['_sourceKey']]=$r;}return $rows;}
 function scCanRead($item,$actor){if($actor['role']==='admin')return true;$rows=scCurrentRows();foreach($item['lessons'] as $r)if($r['teacher']===$actor['name']||($rows[$r['sourceKey']]['担当講師']??'')===$actor['name'])return true;return false;}

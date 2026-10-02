@@ -637,13 +637,16 @@ async function loadGeneratorOps(row){
   SharedNotes.mount($('fTeacherSharedMemo'),cls);
 
   const st=generatorClassState[eventKey]||{};
-  const roster=generatorRosterForClass(cls,row['日付']);
+  const regularRoster=generatorRosterForClass(cls,row['日付']);
+  const availableStudents=[...new Set(studentRows.filter(r=>!window.Workspace||(!Workspace.hiddenStudent(String(r['生徒名']||'').trim())&&Workspace.enrolled(r,row['日付']))).map(r=>String(r['生徒名']||'').trim()).filter(Boolean))];
+  const invitedStudents=LessonInvitations.normalize(st.invitedStudents),roster=LessonInvitations.merge(regularRoster,invitedStudents);
+  $('generatorInvitationPicker').innerHTML=LessonInvitations.markup(availableStudents,regularRoster,invitedStudents);LessonInvitations.bind($('generatorInvitationPicker'));
   const rawAttendance=(st.attendance&&typeof st.attendance==='object')?st.attendance:{};
   // 旧版で詳細を保存しただけで全員『出席』が自動保存されたデータは、未選択として扱う。
   // v73以降に明示保存した出席情報は attendanceTouched=true なのでそのまま表示する。
   const legacyAutoPresent=st.attendanceTouched!==true && roster.length>0 && roster.every(name=>rawAttendance[name]==='出席');
   const attendance={...rawAttendance},autoExempt=new Set();
-  if(window.Workspace)for(const n of roster)if((!attendance[n]||attendance[n]==='---')&&Workspace.exempt(n,cls,row['日付'],st)){attendance[n]='免除';autoExempt.add(n);}
+  if(window.Workspace)for(const n of roster)if(!invitedStudents.includes(n)&&(!attendance[n]||attendance[n]==='---')&&Workspace.exempt(n,cls,row['日付'],st)){attendance[n]='免除';autoExempt.add(n);}
 
   const recordBox=$('generatorLessonRecord');
   if(recordBox){
@@ -705,7 +708,7 @@ async function persistGeneratorAttendance(options={}){
     if(!eventKey || eventKey==='|||||') throw new Error('授業情報を取得できません');
     const res=await fetch('state_api.php?v='+Date.now(),{
       method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({eventKey,attendance,attendanceTouched:true})
+      body:JSON.stringify({eventKey,attendance,attendanceTouched:true,invitedStudents:LessonInvitations.selected($('generatorInvitationPicker'))})
     });
     const raw=await res.text();
     let j={};
@@ -802,7 +805,7 @@ async function openEditModal(row){
 }
 
 let generatorModalSnapshot='',generatorModalSession=0;
-function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);return JSON.stringify(s)}
+function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);document.querySelectorAll('[data-lesson-invite]').forEach(e=>s['invite:'+e.value]=e.checked);return JSON.stringify(s)}
 function markGeneratorModalSnapshot(){generatorModalSnapshot=generatorModalState()}
 function generatorModalHasChanges(){
   const saved=JSON.parse(generatorModalSnapshot||'{}'),current=JSON.parse(generatorModalState());

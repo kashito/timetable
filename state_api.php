@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/staff_security.php';
+require_once __DIR__.'/lesson_roster.php';
 if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET' || isset($_GET['action'])) staffRequire();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -203,6 +204,10 @@ if($eventKey===''){
   http_response_code(400);
   echo json_encode(['ok'=>false,'error'=>'eventKeyがありません'],JSON_UNESCAPED_UNICODE); exit;
 }
+if(array_key_exists('invitedStudents',$in)){
+  $base=readJsonStrict($dir.'/schedule_data.json');$students=readJsonStrict($dir.'/student_master.json',$base['students']??[]);$directory=readJsonStrict($dir.'/directory_state.json');$lessonDate=explode('|',$eventKey)[0];
+  $in['invitedStudents']=lessonValidateInvitedStudents($in['invitedStudents'],$students,$directory,$lessonDate);
+}
 if(isset($in['attendance'])){if(!is_array($in['attendance']))staffFail('出欠を確認してください。',400);$previous=readJsonStrict($stateFile)[$eventKey]['attendance']??[];foreach($in['attendance'] as $name=>$value){$before=$previous[$name]??'';if(trim((string)$value)==='未定'&&trim((string)$before)!=='未定'&&(staffCurrent()['role']??'')!=='admin')staffFail('未定としての記録は管理者のみ行えます。',403);}}
 if(array_key_exists('publicNote',$in)){
   list($syncOk,$syncErr)=syncPublicNoteToSchedule($dir,$eventKey,(string)$in['publicNote']);
@@ -213,7 +218,7 @@ if(array_key_exists('publicNote',$in)){
 }
 list($ok,$err,$state)=updateJson($stateFile,function($state) use($eventKey,$in){
   $cur=(isset($state[$eventKey])&&is_array($state[$eventKey]))?$state[$eventKey]:[];
-  foreach(['publicNote','ready','attendance','attendanceTouched','teacherMemo'] as $field){
+  foreach(['publicNote','ready','attendance','attendanceTouched','teacherMemo','invitedStudents'] as $field){
     if(array_key_exists($field,$in)){
       if($field==='attendance'&&is_array($in[$field])){
         $attendance=$in[$field];$directory=readJsonStrict(__DIR__.'/data/directory_state.json');$lessonDate=explode('|',$eventKey)[0];
