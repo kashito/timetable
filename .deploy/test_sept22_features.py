@@ -113,6 +113,17 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("publicPreview.querySelector('span').textContent=publicMessage", group_script)
         self.assertIn('.lesson-public-message-preview[hidden]', preview_css)
 
+    def test_whole_schedule_summarizes_each_class_student_message_below_time_header(self):
+        app = self.text("timetable-app.js")
+        page = self.text("teacher2026summer.html")
+        css = self.text("whole-day-info.css")
+        self.assertIn('data-public-message-date="${esc(d)}"', app)
+        self.assertIn('function applyDayPublicMessageSummaries()', page)
+        self.assertIn("item.append(name,document.createTextNode('：'+text))", page)
+        self.assertIn('applyDayPublicMessageSummaries();', page)
+        self.assertIn('.whole-day-public-messages[hidden]', css)
+        self.assertIn('.teacher-day-info.whole-day-collapsed.has-public-messages', css)
+
     def test_previous_homework_has_immediate_checkboxes_and_carry_guidance(self):
         script = self.text("recording-tools.js")
         css = self.text("recording-tools.css")
