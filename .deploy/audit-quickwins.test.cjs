@@ -22,6 +22,15 @@ test('ordinary shared notes do not render a TODO checkbox',()=>{
  assert.doesNotMatch(js,/data-note-todo="\$\{esc\(n\.id\)\}" \$\{n\.todo/);
 });
 
+test('shared notes safely link URLs and offer copy actions in details and lists',()=>{
+ const context={window:{},navigator:{},document:{}};
+ vm.runInNewContext(read('shared-note-view.js'),context);
+ const html=context.window.SharedNoteView.linkedText('教材 https://example.com/a?q=1&x=2。\n場所 C:\\教材\\英語 <script>');
+ assert.equal(html,'教材 <a href="https://example.com/a?q=1&amp;x=2" target="_blank" rel="noopener noreferrer">https://example.com/a?q=1&amp;x=2</a>。\n場所 C:\\教材\\英語 &lt;script&gt;');
+ assert.match(read('shared-notes.js'),/data-note-copy=/);
+ assert.match(read('shared-todos.js'),/data-sn-action="copy"/);
+});
+
 test('karte URLs become safe links without rendering injected markup',()=>{
  const context={window:{},Workspace:{esc:s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))},StaffAuth:{user:null},document:{querySelectorAll:()=>[],addEventListener:()=>{}},setInterval:()=>{}};
  vm.runInNewContext(read('karte-tools.js'),context);
