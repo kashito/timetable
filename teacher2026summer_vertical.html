@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261002-homework-check" data-staff="required"></script><script src="workspace-ui.js?v=20261002-audit1"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261002-homework-check" data-staff="required"></script><script src="workspace-ui.js?v=20261003-daily-tab"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script><script src="student-schedule-model.js?v=20261003-teacher-status"></script><script src="schedule-confirmed.js?v=20261003-teacher-status"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>講師縦2026</title>
@@ -1164,6 +1164,11 @@ async function saveOpsAndClose(){
   background:transparent;border:0;border-radius:0;
   padding:2px 3px;margin:5px 0 8px;font-weight:900;color:#7c2d12;
 }
+.teacher-mobile-day-state{display:inline-flex;align-items:center;width:max-content;max-width:100%;margin:3px 3px 8px;font-size:14px;font-weight:900;color:#14532d}
+.teacher-mobile-day-state::before{content:"";width:8px;height:8px;flex:0 0 8px;border-radius:50%;margin-right:7px;background:#22c55e}
+.teacher-mobile-day-state.state-pending{color:#92400e}.teacher-mobile-day-state.state-pending::before{background:#f59e0b}
+.teacher-mobile-day-state.state-off,.teacher-mobile-day-state.state-unknown{color:#475569}.teacher-mobile-day-state.state-off::before,.teacher-mobile-day-state.state-unknown::before{background:#94a3b8}
+.teacher-mobile-day-state.state-notice{color:#9a3412}.teacher-mobile-day-state.state-notice::before{background:#fb923c}
 .teacher-mobile-empty{background:#fff;border:1px dashed #cbd5e1;border-radius:12px;padding:18px;text-align:center;color:#64748b}
 
 .teacher-vertical-page .teacher-mobile-day .event{
@@ -1251,6 +1256,30 @@ async function saveOpsAndClose(){
 
   let teacherNgEntries=[];
   let teacherNgLoaded=false;
+  let scheduleConfirmedDate='';
+  let schedulePrivateFrom='';
+  async function loadSchedulePublication(){
+    try{
+      const settings=await ScheduleConfirmed.loadSettings(true);
+      scheduleConfirmedDate=String(settings.date||'');
+      schedulePrivateFrom=String(settings.privateFrom||'');
+    }catch(e){
+      console.warn('生徒向け公開設定の読込失敗',e);
+      scheduleConfirmedDate='';
+      schedulePrivateFrom='';
+    }
+  }
+  function japanClock(now=new Date()){
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(now).map(p=>[p.type,p.value]));
+    return {date:`${parts.year}-${parts.month}-${parts.day}`,hour:Number(parts.hour)};
+  }
+  const lessonKey=r=>[r.date,r.slot,r.cls,r.teacher,r.type,(r.subjects||[]).join('+')].join('|');
+  function specialLabel(row){
+    const value=String(row?.dayType||'').trim();
+    if(value==='休み')return '休講日';
+    if(/^(サマキャン|サマーキャンプ)$/i.test(value))return 'サマーキャンプ';
+    return value;
+  }
   async function loadTeacherNg(){
     try{
       const r=await fetch('teacher_ng_api.php?_='+Date.now(),{cache:'no-store'});
@@ -1323,7 +1352,8 @@ async function saveOpsAndClose(){
   function renderTeacherMobile(){
     const host=document.getElementById('schedule');
     if(!host) return;
-    const lessons=LinkedSchedule.merge(visibleLessonRows());
+    const rawLessons=visibleLessonRows();
+    const lessons=LinkedSchedule.merge(rawLessons);
     // 授業データが存在しない日も抜け落ちないよう、日付を連続生成する。
     // 授業がない日も、調整中・未定・休講日の案内を表示する。
     const dateSet=new Set();
@@ -1338,12 +1368,17 @@ async function saveOpsAndClose(){
     if(actualDates.length){const last=parseDate(actualDates[actualDates.length-1]); if(last&&last>end)end=last;}
     const dates=[];
     for(let d=new Date(first); d<=end; d.setDate(d.getDate()+1)) dates.push(keyDate(d));
+    const currentJapan=japanClock();
     let html='';
 
     dates.forEach(d=>{
       const dayLessons=lessons.filter(r=>r.date===d);
+      const privatePending=!!(schedulePrivateFrom&&d>=schedulePrivateFrom);
+      const confirmedDay=!!(scheduleConfirmedDate&&d<=scheduleConfirmedDate);
+      const publicRaw=rawLessons.filter(r=>r.date===d&&(!privatePending||confirmedDay||window.LessonFixed?.isFixed(lessonKey(r))));
+      const publicLessons=LinkedSchedule.merge(publicRaw);
       const special=specialForDate(d);
-      const first=dayLessons[0], last=dayLessons.reduce((last,r)=>toMin(r.end)>toMin(last.end)?r:last,dayLessons[0]);
+      const first=dayLessons[0], last=dayLessons.length?dayLessons.reduce((last,r)=>toMin(r.end)>toMin(last.end)?r:last,dayLessons[0]):null;
       const inTime=(()=>{
         if(!dayLessons.length || !first.start) return '';
         const m=toMin(first.start);
@@ -1353,12 +1388,13 @@ async function saveOpsAndClose(){
       })();
       const summary=dayLessons.length?`${inTime}IN　${first.start||''}-${last.end||''}`:'';
       const schoolHoliday=!!(window.SchoolHolidays&&SchoolHolidays.isHoliday(d));
+      const todayFinalizedAsOff=d===currentJapan.date&&currentJapan.hour>=6&&publicLessons.length===0;
+      const dayState=StudentScheduleModel.dayState({eventCount:publicLessons.length,privatePending,todayFinalizedAsOff,confirmedDay,schoolHoliday,specialLabel:specialLabel(special),emptyLabel:SchoolHolidays.emptyDayLabel(d)});
       html+=`<section class="teacher-mobile-day${schoolHoliday?' is-school-holiday':''}" data-mobile-date="${esc2(d)}"><div class="teacher-mobile-day-title"><span>${esc2(fmtDate(d))}${schoolHoliday?'<b class="school-holiday-label">休講日</b>':''}</span><small>${esc2(summary)}</small></div><div class="ce-day-events" data-calendar-date="${esc2(d)}"></div>`;
       html+=ngHtml(d);
+      html+=`<div class="teacher-mobile-day-state state-${esc2(dayState.tone)}">${esc2(dayState.label)}</div>`;
       if(special){
         html+=`<div class="teacher-mobile-special">${esc2(displayDayType(special.dayType,d))}${special.note?`<div style="font-size:12px;font-weight:600;margin-top:4px">${esc2(special.note)}</div>`:''}</div>`;
-      } else if(!dayLessons.length && !(ngForDate(d)&&ngForDate(d).allDay)){
-        html+=`<div class="teacher-mobile-special">${esc2(SchoolHolidays.emptyDayLabel(d))}</div>`;
       }
       let prevEnd=null;
       dayLessons.forEach(r=>{
@@ -1389,7 +1425,7 @@ async function saveOpsAndClose(){
 
   async function install(){
     updateTeacherHeading();
-    if(!teacherNgLoaded) await loadTeacherNg();
+    if(!teacherNgLoaded) await Promise.all([loadTeacherNg(),loadSchedulePublication()]);
     const oldRender=typeof render==='function'?render:null;
     if(!oldRender) return setTimeout(install,200);
     if(window.__teacherMobileRenderInstalled) return;
@@ -1424,7 +1460,7 @@ async function saveOpsAndClose(){
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(install,500));
   else setTimeout(install,500);
-  window.addEventListener('load',()=>setTimeout(async()=>{updateTeacherHeading();await loadTeacherNg();renderTeacherMobile()},1400));
+  window.addEventListener('load',()=>setTimeout(async()=>{updateTeacherHeading();await Promise.all([loadTeacherNg(),loadSchedulePublication()]);renderTeacherMobile()},1400));
 })();
 </script>
 
