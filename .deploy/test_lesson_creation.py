@@ -244,6 +244,25 @@ class LessonCreationTests(unittest.TestCase):
         code,next_view=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(key(future)))
         self.assertEqual(code,200,next_view);self.assertIn('問題1',[x['text'] for x in next_view['items']])
 
+    def test_linked_previous_homework_is_shown_once_and_keeps_legacy_checks(self):
+        current,current_rows=self.prepare_group(with_next=False,deleted=False)
+        previous_rows=[]
+        for slot in [4,5]:
+            item=row(slot);item.update({'日付':'2026-09-18','_追加ID':'previous-'+str(slot),'_sourceKey':'ADD:previous-'+str(slot)});previous_rows.append(item)
+        previous={'id':'b'*24,'key':'GROUP:'+'b'*24,'sources':[r['_sourceKey'] for r in previous_rows],'snapshot':previous_rows,'active':True,'mealBreak':False}
+        self.write('added_lessons.json',previous_rows+current_rows)
+        self.write('lesson_groups.json',{previous['id']:previous,current['id']:current})
+        texts=['関数103','98-102直し']
+        legacy_id='hw_'+hashlib.sha256((key(previous_rows[1])+'\0'+'0'+'\0'+texts[0]).encode()).hexdigest()[:24]
+        records={previous['key']:{'eventKey':previous['key'],'date':'2026-09-18','homework':'\n'.join(texts)},current['key']:{'eventKey':current['key'],'date':'2026-09-25','homework':'','homeworkChecks':{legacy_id:{'checked':True}}}}
+        self.write('lesson_records.json',records)
+        code,result=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(current['key']))
+        self.assertEqual(code,200,result);self.assertEqual([item['text'] for item in result['items']],texts)
+        self.assertEqual(len(result['items']),2);self.assertTrue(result['items'][0]['checked'])
+        canonical_id=result['items'][0]['id']
+        code,saved=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':current['key'],'taskId':canonical_id,'checked':False})
+        self.assertEqual(code,200,saved);self.assertFalse(next(item for item in saved['previousHomework']['items'] if item['id']==canonical_id)['checked'])
+
     def test_unknown_homework_task_cannot_change_records(self):
         g,_=self.prepare_group(with_next=False,deleted=False);before=self.snapshot()
         code,j=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':'hw_'+'a'*24,'checked':True})
