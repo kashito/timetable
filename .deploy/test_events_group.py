@@ -21,7 +21,7 @@ class EventsGroupTests(unittest.TestCase):
 
     def setUp(self):
         fixture.LessonCreationTests.setUp(self)
-        for name in ['calendar_events.php','calendar_events_api.php','lesson_group_move_api.php','board_guides_api.php','schedule_confirmed_api.php']:
+        for name in ['calendar_events.php','calendar_events_api.php','lesson_group_move_api.php','board_guides_api.php','board_guides_settings.php','schedule_confirmed_api.php']:
             shutil.copyfile(fixture.ROOT/name,self.root/name)
         self.write('student_master.json',[{'生徒名':'検証生徒A','クラス':'検証クラス'}, {'生徒名':'検証生徒B','クラス':'別クラス'}])
         self.write('directory_state.json',{});self.write('lesson_visibility.json',{'hidden':[]})
@@ -138,5 +138,37 @@ class EventsGroupTests(unittest.TestCase):
         slides=[dict(id=secrets.token_hex(16),kind='countdown',title='試験カウントダウン',body='',seconds=20,visible=True),dict(id=secrets.token_hex(16),title='以前の案内',body='保持する文章',seconds=10,visible=False)]
         p=dict(board='all',date='2026-09-25',mainSeconds=30,slides=slides,version=j['guide']['version'],requestId=secrets.token_hex(16));code,j=self.post('board_guides_api.php',p);self.assertEqual(code,200,j);self.assertEqual(j['guide']['slides'][0]['kind'],'countdown');self.assertEqual(j['guide']['slides'][1]['body'],'保持する文章')
         before=self.snapshot();code,j=self.request('board_guides_api.php?board=all&date=2026-09-25',client=self.client());self.assertEqual(len(j['guide']['slides']),1);self.assertEqual(before,self.snapshot())
+
+    def test_board_rotation_defaults_reload_and_daily_overrides(self):
+        def get(date, board='all', public=False):
+            code,j=self.request('board_guides_api.php?board='+board+'&date='+date, **({'client':self.client()} if public else {}));self.assertEqual(code,200,j);return j['guide']
+        initial=get('2026-10-04');self.assertEqual(initial['mainSeconds'],20);self.assertEqual(initial['slides'][0]['seconds'],10)
+        hidden=dict(id=secrets.token_hex(16),kind='notice',title='日別案内',body='非公開文章',seconds=15,visible=False)
+        slides=[dict(initial['slides'][0],seconds=7),hidden]
+        p=dict(board='all',date='2026-10-04',mainSeconds=25,slides=slides,version=initial['version'],requestId=secrets.token_hex(16),saveDefaults=True)
+        code,j=self.post('board_guides_api.php',p);self.assertEqual(code,200,j)
+        code,duplicate=self.post('board_guides_api.php',p);self.assertEqual(code,200,duplicate);self.assertTrue(duplicate['duplicate'])
+        self.assertEqual(get('2026-10-04')['mainSeconds'],25)
+        tomorrow=get('2026-10-05');self.assertEqual(tomorrow['mainSeconds'],25);self.assertEqual(len(tomorrow['slides']),1);self.assertEqual(tomorrow['slides'][0]['seconds'],7)
+        self.assertEqual(len(get('2026-10-04',public=True)['slides']),1)
+        self.assertEqual(get('2026-10-05','blue')['mainSeconds'],20)
+        p.update(date='2026-10-05',mainSeconds=40,slides=[],saveDefaults=False,version=tomorrow['version'],requestId=secrets.token_hex(16))
+        code,j=self.post('board_guides_api.php',p);self.assertEqual(code,200,j)
+        self.assertEqual(get('2026-10-05')['slides'],[]);self.assertEqual(get('2026-10-06')['mainSeconds'],25)
+        stale=get('2026-10-06');new=get('2026-10-07')
+        p.update(date='2026-10-07',mainSeconds=35,slides=new['slides'],saveDefaults=True,version=new['version'],requestId=secrets.token_hex(16))
+        code,j=self.post('board_guides_api.php',p);self.assertEqual(code,200,j)
+        p.update(date='2026-10-06',version=stale['version'],requestId=secrets.token_hex(16))
+        code,j=self.post('board_guides_api.php',p);self.assertEqual(code,409,j)
+        self.assertEqual(get('2026-10-05')['mainSeconds'],40);self.assertEqual(get('2026-10-04')['slides'][1]['body'],'非公開文章')
+
+    def test_legacy_rotation_inherits_countdown_only_without_writes(self):
+        countdown=dict(id=secrets.token_hex(16),kind='countdown',title='試験カウントダウン',body='',seconds=14,visible=False)
+        notice=dict(id=secrets.token_hex(16),title='日別',body='この日だけ',seconds=8,visible=True)
+        self.write('board_guides.php',{'schema':1,'days':{'all:2026-10-04':{'mainSeconds':31,'slides':[notice,countdown]}}})
+        before=self.snapshot()
+        code,j=self.request('board_guides_api.php?board=all&date=2026-10-05');self.assertEqual(code,200,j);self.assertEqual(j['guide']['mainSeconds'],31);self.assertEqual(j['guide']['slides'],[countdown])
+        code,j=self.request('board_guides_api.php?board=all&date=2026-10-05',client=self.client());self.assertEqual(j['guide']['slides'],[])
+        self.assertEqual(before,self.snapshot())
 
 if __name__=='__main__':unittest.main()

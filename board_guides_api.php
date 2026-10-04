@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__.'/staff_security.php';
+require_once __DIR__.'/board_guides_settings.php';
 header('Cache-Control: private, no-store');header('Vary: Cookie');
 function bgFail($s,$code=400){staffFail($s,$code);}
 function bgText($in,$k,$max){$v=$in[$k]??'';if(!is_string($v)||strlen($v)>$max||preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/',$v))bgFail('案内の文字数・形式を確認してください。');return trim($v);}
 function bgVersion($r){return hash('sha256',json_encode($r,JSON_UNESCAPED_UNICODE));}
 function bgSeconds($v){if(!is_int($v)||$v<5||$v>600)bgFail('表示時間は5〜600秒で指定してください。');return $v;}
-function bgProjection($r,$board,$date,$admin){$out=['board'=>$board,'date'=>$date,'mainSeconds'=>$r['mainSeconds']??30,'slides'=>array_values(array_filter($r['slides']??[],fn($s)=>$admin||$s['visible'])),'canEdit'=>$admin,'updatedAt'=>$r['updatedAt']??null];if($admin)$out['version']=bgVersion($r);return $out;}
+function bgProjection($r,$board,$date,$admin){$out=['board'=>$board,'date'=>$date,'mainSeconds'=>$r['mainSeconds']??20,'slides'=>array_values(array_filter($r['slides']??[],fn($s)=>$admin||$s['visible'])),'canEdit'=>$admin,'updatedAt'=>$r['updatedAt']??null];if($admin)$out['version']=$GLOBALS['bgStateVersion'];return $out;}
 try{
  $method=$_SERVER['REQUEST_METHOD'];if(!in_array($method,['GET','POST'],true))bgFail('Method not allowed',405);
  $in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))bgFail('入力内容を確認してください。');
@@ -13,7 +14,7 @@ try{
  if(!in_array($board,['all','blue'],true)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4)))bgFail('掲示板・日付を確認してください。');
  $actor=$method==='POST'?staffRequire(true):staffCurrent();$admin=$actor&&$actor['role']==='admin'&&empty($actor['mustChange']);if($method==='GET'&&($in['preview']??'')==='student')$admin=false;
  $file=__DIR__.'/data/board_guides.php';$data=readJsonStrict($file,['schema'=>1,'days'=>[]]);if(($data['schema']??null)!==1||!is_array($data['days']??null))dataError('案内の保存形式を確認してください。上書きせず停止しました。');
- $key=$board.':'.$date;$day=$data['days'][$key]??[];$imageDir=__DIR__.'/data/board_guide_images';
+ $key=$board.':'.$date;$storedDay=$data['days'][$key]??[];$day=bgEffective($data,$board,$date);$GLOBALS['bgStateVersion']=bgStateVersion($data,$board,$date);$imageDir=__DIR__.'/data/board_guide_images';
  if($method==='GET'&&($in['action']??'')==='image'){
   $id=bgText($in,'id',64);if(!preg_match('/^[a-f0-9]{64}$/D',$id))bgFail('画像がありません。',404);
   $image=null;foreach($day['slides']??[] as $s)if(($admin||$s['visible'])&&($s['image']['id']??'')===$id)$image=$s['image'];
@@ -42,14 +43,15 @@ try{
   $total+=$r['image']['size']??0;if($total>4194304)bgFail('1日の案内画像は合計4MBまでです。');
   if($kind!=='countdown'&&$r['body']===''&&!$r['image'])bgFail('案内の文章か画像を追加してください。');if($r['title']==='')$r['title']='案内';$slides[]=$r;
  }
- $fields=['mainSeconds'=>bgSeconds($in['mainSeconds']??null),'slides'=>$slides];$hash=bgVersion($fields);
+ $fields=['mainSeconds'=>bgSeconds($in['mainSeconds']??null),'slides'=>$slides];$saveDefaults=$in['saveDefaults']??false;if(!is_bool($saveDefaults))bgFail('既定値の設定を確認してください。');$hash=bgVersion([$fields,$saveDefaults]);
  if(($day['receipt']['id']??'')===$request&&($day['receipt']['actor']??'')===$actor['id']){if(($day['receipt']['hash']??'')!==$hash)bgFail('前の内容は保存済みです。一覧を確認してください。',409);echo json_encode(['ok'=>true,'duplicate'=>true,'guide'=>bgProjection($day,$board,$date,true)],JSON_UNESCAPED_UNICODE);exit;}
- if(!hash_equals(bgVersion($day),bgText($in,'version',64)))bgFail('別の画面で案内が更新されました。入力を控え、開き直してください。',409);
+ if(!hash_equals($GLOBALS['bgStateVersion'],bgText($in,'version',64)))bgFail('別の画面で案内が更新されました。入力を控え、開き直してください。',409);
  $created=[];try{
   if($blobs&&!is_dir($imageDir)&&!@mkdir($imageDir,0775,true)&&!is_dir($imageDir))throw new RuntimeException('image directory');
   foreach($blobs as $id=>$bytes){$path=$imageDir.'/'.$id.'.php';if(is_file($path))continue;$h=@fopen($path,'xb');if(!$h)throw new RuntimeException('image create');$created[]=$path;$body="<?php exit; ?>\n".$bytes;try{if(fwrite($h,$body)!==strlen($body))throw new RuntimeException('image write');}finally{fclose($h);}}
-  $history=$day['history']??[];if($day){$old=$day;unset($old['history'],$old['receipt']);$history[]=$old;}
+  $history=$storedDay['history']??[];if($storedDay){$old=$storedDay;unset($old['history'],$old['receipt']);$history[]=$old;}
   $day=$fields+['updatedAt'=>date('c'),'updatedBy'=>$actor['name'],'history'=>$history,'receipt'=>['id'=>$request,'actor'=>$actor['id'],'hash'=>$hash]];$data['days'][$key]=$day;
+  if($saveDefaults){$data['defaultsHistory'][$board][]=['settings'=>$data['defaults'][$board]??null,'at'=>date('c'),'by'=>$actor['name']];$data['defaults'][$board]=bgRotation($fields);}$GLOBALS['bgStateVersion']=bgStateVersion($data,$board,$date);
   if(!safeJsonWriteAtomic($file,$data))throw new RuntimeException('guide save');
  }catch(Throwable $e){foreach($created as $path)@unlink($path);throw $e;}
  echo json_encode(['ok'=>true,'guide'=>bgProjection($day,$board,$date,true)],JSON_UNESCAPED_UNICODE);
