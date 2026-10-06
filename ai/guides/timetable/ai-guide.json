@@ -322,7 +322,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1265,
+          "line": 1273,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
@@ -337,12 +337,12 @@
         },
         {
           "file": "student.html",
-          "line": 932,
+          "line": 939,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 935,
+          "line": 942,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
@@ -352,7 +352,7 @@
         },
         {
           "file": "student.html",
-          "line": 946,
+          "line": 953,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -394,22 +394,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 935,
+          "line": 942,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 971,
+          "line": 978,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 944,
+          "line": 951,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 945,
+          "line": 952,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -446,7 +446,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 952,
+          "line": 959,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -471,12 +471,12 @@
         },
         {
           "file": "student.html",
-          "line": 1022,
+          "line": 1029,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 1024,
+          "line": 1031,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {

@@ -2,8 +2,8 @@
   "schema_version": "1.1.0",
   "system_name": "timetable",
   "display_name": "時間割システム",
-  "version": "production-2026-09-27",
-  "updated_at": "2026-09-27T00:00:00+09:00",
+  "version": "production-2026-10-07",
+  "updated_at": "2026-10-07T00:00:00+09:00",
   "production_url": "https://224236.com/2026summer/",
   "status": "production",
   "description": "講師・生徒の時間割、講師NG、掲示板・PC、授業管理を扱うシステム。",
@@ -267,7 +267,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1265,
+          "line": 1273,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
@@ -282,12 +282,12 @@
         },
         {
           "file": "student.html",
-          "line": 932,
+          "line": 939,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 935,
+          "line": 942,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
@@ -297,7 +297,7 @@
         },
         {
           "file": "student.html",
-          "line": 946,
+          "line": 953,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -339,22 +339,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 935,
+          "line": 942,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 971,
+          "line": 978,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 944,
+          "line": 951,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 945,
+          "line": 952,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -391,7 +391,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 952,
+          "line": 959,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -416,12 +416,12 @@
         },
         {
           "file": "student.html",
-          "line": 1022,
+          "line": 1029,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 1024,
+          "line": 1031,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {
@@ -451,5 +451,9 @@
         "student-display-settings.js"
       ]
     }
+  },
+  "homework_detail": {
+    "assignment": "連結・単独の授業詳細で「この授業までの宿題を追加」を入力し、通常の保存で反映。次回までの宿題とは別欄。",
+    "student": "生徒縦表示 student.html 上部に現在出ている宿題を折りたたみ表示。完了・非表示は生徒ごとのブラウザ保存。期限は授業開始時刻。"
   }
 }

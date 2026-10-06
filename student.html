@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20260917-r56-ready"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261007-due-homework"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
 <meta charset="utf-8"><meta name="timetable-view-version" content="20260914-r41">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>生徒個人2026</title>
@@ -352,7 +352,7 @@ window.SharedClassState=(()=>{
 <style id="student-to-teacher-upload-v65">
 .student-send-box{margin-top:14px;padding:13px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}.student-send-box strong{display:block;margin-bottom:8px}.student-send-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.student-send-row input[type=file]{flex:1;min-width:210px}.student-send-btn{border:0;border-radius:9px;padding:9px 13px;background:#15803d;color:#fff;font-weight:900;cursor:pointer}.student-send-status{display:block;margin-top:7px;font-weight:800}.attachment-source{font-size:11px;margin-right:5px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-weight:900}
 </style>
-<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="student-homework-hub.css?v=20261006-homework"><script defer src="student-homework-hub.js?v=20261006-homework"></script><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
+<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="student-homework-hub.css?v=20261006-homework"><script defer src="student-homework-hub.js?v=20261007-due-homework"></script><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
 <body>
 <div class="app">
   <header class="student-header" id="studentHeader">
@@ -371,7 +371,7 @@ window.SharedClassState=(()=>{
   </section>
 
   <section id="studentHomeworkHub" class="student-homework-hub" hidden aria-label="宿題の確認">
-    <button id="studentHomeworkToggle" class="student-homework-toggle" type="button" aria-expanded="false" aria-controls="studentHomeworkBody"><span aria-hidden="true">📚</span> 宿題 <span id="studentHomeworkCount" class="student-homework-count">0</span></button>
+    <button id="studentHomeworkToggle" class="student-homework-toggle" type="button" aria-expanded="false" aria-controls="studentHomeworkBody"><span aria-hidden="true">📚</span> 今出ている宿題 <span id="studentHomeworkCount" class="student-homework-count">0</span></button>
     <div id="studentHomeworkBody" class="student-homework-body" hidden></div>
   </section>
 
@@ -870,7 +870,7 @@ window.SharedClassState=(()=>{
 
     // 宿題は「同じ授業の次の授業日」に引き継ぐ。
     // 同じ日に同一授業が2コマ以上あっても1回分として扱い、同日内では引き継がない。
-    const homeworkForKey = new Map();
+    const homeworkForKey = new Map(),issuedHomeworkForKey=new Map();
     const bySeriesDay = new Map();
     for(const cur of studentTimeline){
       const series=String(cur.cls||'').trim();
@@ -891,10 +891,17 @@ window.SharedClassState=(()=>{
           if(hw&&!homeworks.includes(hw)) homeworks.push(hw);
         }
         const carried=homeworks.join('\n');
+        const issued=prevRows.filter(prev=>Date.parse(prev.date+'T'+(prev.start||'00:00')+':00+09:00')<=Date.now()).map(prev=>String(lessonRecords[lessonRoomKey(prev)]?.homework||'').trim()).filter(Boolean).join('\n');
+        if(issued)for(const cur of (dayMap.get(days[i])||[]))issuedHomeworkForKey.set(lessonRoomKey(cur),issued);
         if(carried){
           for(const cur of (dayMap.get(days[i])||[])) homeworkForKey.set(lessonRoomKey(cur),carried);
         }
       }
+    }
+
+    for(const cur of studentTimeline){
+      const key=lessonRoomKey(cur),direct=String(lessonRecords[key]?.dueHomework||'').trim();
+      if(direct)homeworkForKey.set(key,[...new Set([...(homeworkForKey.get(key)||'').split('\n'),...direct.split('\n')].map(x=>x.trim()).filter(Boolean))].join('\n'));
     }
 
     // Always show the full Summer Course 2026 period.
@@ -906,7 +913,7 @@ window.SharedClassState=(()=>{
     const homeworkHubByKey=new Map(),noHomework=['宿題','なし'].join('');
     for(const current of studentTimeline){
       if(current.date<today)continue;
-      const value=String(homeworkForKey.get(lessonRoomKey(current))||'').trim();
+      const value=[issuedHomeworkForKey.get(lessonRoomKey(current))||'',lessonRecords[lessonRoomKey(current)]?.dueHomework||''].filter(Boolean).join('\n').trim();
       if(!value||value===noHomework||value==='未定')continue;
       for(const task of value.replace(/\r/g,'').split('\n').map(item=>item.trim()).filter(item=>item&&item!==noHomework&&item!=='未定')){
         const className=current.cls||studentType(current)||'授業',dueAt=`${current.date}T${current.start||'00:00'}:00+09:00`,taskKey=[current.date,className,task].join('\0'),before=homeworkHubByKey.get(taskKey);
@@ -1091,6 +1098,7 @@ window.SharedClassState=(()=>{
       }
     }catch(e){}
 
+    detailHomework=[...new Set([detailHomework,...(target._linked?.members||[target]).map(m=>lessonRecords[lessonRoomKey(m)]?.dueHomework||'')].join('\n').split('\n').map(x=>x.trim()).filter(Boolean))].join('\n');
     $('modalTitle').textContent = `${target.cls} ${studentType(target)}`;
     $('modalBody').innerHTML = `
       ${optionalNote(target)}

@@ -805,7 +805,7 @@ async function openEditModal(row){
 }
 
 let generatorModalSnapshot='',generatorModalSession=0;
-function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);document.querySelectorAll('[data-lesson-invite]').forEach(e=>s['invite:'+e.value]=e.checked);return JSON.stringify(s)}
+function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework','generatorDueHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);document.querySelectorAll('[data-lesson-invite]').forEach(e=>s['invite:'+e.value]=e.checked);return JSON.stringify(s)}
 function markGeneratorModalSnapshot(){generatorModalSnapshot=generatorModalState()}
 function generatorModalHasChanges(){
   const saved=JSON.parse(generatorModalSnapshot||'{}'),current=JSON.parse(generatorModalState());

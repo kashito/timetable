@@ -3,9 +3,9 @@ require_once __DIR__.'/lesson_policy.php';
 function lessonGroups(){return readJsonStrict(__DIR__.'/data/lesson_groups.json');}
 function lgCompatible($a,$b){foreach(['クラス','担当講師','種別','科目','教室'] as $f)if(trim((string)($a[$f]??''))!==trim((string)($b[$f]??'')))return false;return str_replace('/','-',$a['日付']??'')===str_replace('/','-',$b['日付']??'');}
 function buildLessonGroup($rows,$records,$actor,$mealBreak=false){
- $id=bin2hex(random_bytes(12));$key='GROUP:'.$id;$g=['id'=>$id,'key'=>$key,'sources'=>array_column($rows,'_sourceKey'),'snapshot'=>$rows,'active'=>true,'mealBreak'=>$mealBreak,'createdAt'=>date('c'),'createdBy'=>$actor['name']];$summary=groupSummary($g,$rows);$memo=[];$homework=[];
- foreach($rows as $r){$record=$records[canonicalLessonKey(policyKey($r))]??[];if(trim((string)($record['memo']??''))!=='')$memo[]='【'.$r['時間番号'].'】'."\n".$record['memo'];if(trim((string)($record['homework']??''))!=='')$homework[]=$record['homework'];}
- $record=['eventKey'=>$key,'date'=>$summary['date'],'slot'=>$summary['slots'],'className'=>$summary['className'],'teacher'=>$summary['teacher'],'room'=>$summary['room'],'subject'=>$rows[0]['科目']??'','memo'=>implode("\n\n",$memo),'homework'=>implode("\n",array_unique($homework)),'author'=>$actor['name'],'createdAt'=>date('c'),'updatedAt'=>date('c'),'groupId'=>$id,'replies'=>[],'reads'=>[]];
+ $id=bin2hex(random_bytes(12));$key='GROUP:'.$id;$g=['id'=>$id,'key'=>$key,'sources'=>array_column($rows,'_sourceKey'),'snapshot'=>$rows,'active'=>true,'mealBreak'=>$mealBreak,'createdAt'=>date('c'),'createdBy'=>$actor['name']];$summary=groupSummary($g,$rows);$memo=[];$homework=[];$dueHomework=[];
+ foreach($rows as $r){$record=$records[canonicalLessonKey(policyKey($r))]??[];if(trim((string)($record['memo']??''))!=='')$memo[]='【'.$r['時間番号'].'】'."\n".$record['memo'];if(trim((string)($record['homework']??''))!=='')$homework[]=$record['homework'];foreach(preg_split('/\R/u',trim((string)($record['dueHomework']??''))) as $line)if(trim($line)!=='')$dueHomework[]=trim($line);}
+ $record=['eventKey'=>$key,'date'=>$summary['date'],'slot'=>$summary['slots'],'className'=>$summary['className'],'teacher'=>$summary['teacher'],'room'=>$summary['room'],'subject'=>$rows[0]['科目']??'','memo'=>implode("\n\n",$memo),'homework'=>implode("\n",array_unique($homework)),'dueHomework'=>implode("\n",array_unique($dueHomework)),'author'=>$actor['name'],'createdAt'=>date('c'),'updatedAt'=>date('c'),'groupId'=>$id,'replies'=>[],'reads'=>[]];
  return [$g,$record];
 }
 function groupRows($group,$allRows=null){$allRows=$allRows??policyRows();$by=[];foreach($allRows as $r)$by[$r['_sourceKey']]=$r;$rows=[];foreach($group['sources']??[] as $s)if(isset($by[$s]))$rows[]=$by[$s];return $rows;}
@@ -35,7 +35,7 @@ function groupNextLesson($group,$rows,$allRows){
 function groupRecordList($records,$homework=false){
  $out=$records;$rows=policyRows();
  foreach(lessonGroups() as $g){if(empty($g['active']))continue;$common=$records[$g['key']]??null;if(!$common)continue;
-  foreach(groupRows($g,$rows) as $r){$key=canonicalLessonKey(policyKey($r));if($homework)$out[$key]=['homework'=>$common['homework']??''];else unset($out[$key]);}
+  foreach(groupRows($g,$rows) as $r){$key=canonicalLessonKey(policyKey($r));if($homework)$out[$key]=['homework'=>$common['homework']??'','dueHomework'=>$common['dueHomework']??''];else unset($out[$key]);}
  }
  return $out;
 }

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261002-homework-check" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script><link rel="stylesheet" href="homework-editor.css?v=20261006-items"><script defer src="homework-editor.js?v=20261006-items"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261007-due-homework" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script><link rel="stylesheet" href="homework-editor.css?v=20261006-items"><script defer src="homework-editor.js?v=20261006-items"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>全体スケ2026</title>
@@ -289,7 +289,7 @@ body.compact-whole-schedule > .workspace-nav{position:sticky;top:0;z-index:40;bo
   body.compact-whole-schedule > .workspace-nav .nav-user{width:auto}
 }
 </style>
-<script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20261002-return-view"></script><link rel="stylesheet" href="whole-day-info.css?v=20261002-message-copy"><script defer src="whole-day-info.js?v=20260917-r55-ready"></script><script defer src="day-homework-summary.js?v=20261006-day-homework"></script><link rel="stylesheet" href="whole-time-header.css?v=20260921-scroll"><script defer src="whole-time-header.js?v=20260921-scroll"></script></head>
+<script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20261002-return-view"></script><link rel="stylesheet" href="whole-day-info.css?v=20261002-message-copy"><script defer src="whole-day-info.js?v=20260917-r55-ready"></script><script defer src="day-homework-summary.js?v=20261006-day-homework"></script><link rel="stylesheet" href="whole-time-header.css?v=20260921-scroll"><script defer src="whole-time-header.js?v=20260921-scroll"></script><link rel="stylesheet" href="lesson-detail-common.css?v=20261007-detail"><script defer src="lesson-detail-layout.js?v=20261007-detail"></script></head>
 <body data-mode="teacher" class="compact-whole-schedule">
 
 
@@ -652,7 +652,7 @@ async function applyReadyOnce(){
       <section class="ops-sec record-sec">
         <div class="record-headline"><h3>🗂 この授業の記録・カルテ</h3><a class="record-list-mini-link" href="lesson_records.html?class=${encodeURIComponent(cls)}">この授業のカルテ一覧を見る</a></div>
         <textarea id="lessonRecordMemo" placeholder="例：理解度、つまずき、次回の対応、保護者共有事項など">${esc(lessonRecord.memo||'')}</textarea>
-        <div data-recording-key="${esc(key)}"></div>
+        <div data-recording-key="${esc(key)}"></div><label for="lessonDueHomework" class="lesson-due-label">この授業までの宿題を追加</label><textarea id="lessonDueHomework" data-homework-items placeholder="この授業の開始までに取り組む宿題">${esc(lessonRecord.dueHomework||'')}</textarea><small>前回からの宿題とは別に、この授業を期限として追加できます。通常の保存で反映します。</small>
         <label style="display:block;margin-top:10px;font-weight:900">📚 次回までの宿題</label><textarea id="lessonHomework" class="homework-input" data-homework-items placeholder="次回の同じ授業コマに表示する宿題">${esc(lessonRecord.homework||'')}</textarea><div><button type="button" class="ws-button" data-homework-none="#lessonHomework">宿題なしを入力</button><small>入力後、保存してください。空欄は未記入として通知します。</small></div>
         <small>カルテと宿題はこの日・このコマに保存され、宿題は次回の同じ授業に引き継いで表示されます。</small>
       </section>
@@ -784,6 +784,7 @@ async function applyReadyOnce(){
       </section>
       <button id="opsSave" class="ops-save" type="button">保存</button>
       <div id="opsMsg"></div>`;
+    window.LessonDetailLayout?.single(modal);
     LessonInvitations.bind(modal);
 
     if(window.StaffContacts)StaffContacts.mount(modal.querySelector('#scOpsContacts'),{keys:[key],onConfirmed:async item=>{
@@ -937,6 +938,7 @@ async function saveOpsAndClose(){
           eventKey:saveKey,
           memo:modal.querySelector('#lessonRecordMemo')?.value||'',
           homework:modal.querySelector('#lessonHomework')?.value||'',
+          dueHomework:modal.querySelector('#lessonDueHomework')?.value||'',
           date:cardDate,
           slot:cardSlot,
           className:modal.dataset.currentClass||cls,
@@ -999,7 +1001,7 @@ async function saveOpsAndClose(){
     }
 
     const shortcuts=document.createElement('div');shortcuts.className='detail-shortcuts';shortcuts.innerHTML=`<a href="class_schedule.html?class=${encodeURIComponent(cls)}">この授業の全予定</a><a href="lesson_records.html?class=${encodeURIComponent(cls)}">カルテ一覧</a><button type="button" data-manage-class="${esc(cls)}">参加生徒</button>`;modal.querySelector('#opsBody').prepend(shortcuts);
-    let footer=modal.querySelector('.ops-footer');if(!footer){footer=document.createElement('div');footer.className='ops-footer';modal.querySelector('.teacher-ops-panel').appendChild(footer);}footer.replaceChildren();if(StaffAuth.user?.role==='admin'&&card.dataset.sourceKey){const remove=document.createElement('button');remove.type='button';remove.className='ws-button';remove.textContent='この授業を削除';remove.style.color='#a12323';remove.onclick=async()=>{if(!confirm(card.dataset.date+' '+card.dataset.slot+' '+cls+' の予定を削除しますか？カルテ・出席記録は保持します。'))return;remove.disabled=true;try{await Workspace.api('lesson_add_api.php',{action:'delete',sourceKey:card.dataset.sourceKey});hideOpsWithoutSave();await WholeSchedule.reload();window.HistoryWindow?.restore(savedPosition);}catch(err){remove.disabled=false;modal.querySelector('#opsMsg').textContent=err.message;}};footer.append(remove);}const fixedSave=modal.querySelector('#opsSave');if(fixedSave)footer.appendChild(fixedSave);const fixedMsg=modal.querySelector('#opsMsg');if(fixedMsg)footer.appendChild(fixedMsg);
+    let footer=modal.querySelector('.ops-footer');if(!footer){footer=document.createElement('div');footer.className='ops-footer group-savebar';modal.querySelector('.teacher-ops-panel').appendChild(footer);}footer.replaceChildren();if(StaffAuth.user?.role==='admin'&&card.dataset.sourceKey){const remove=document.createElement('button');remove.type='button';remove.className='ws-button';remove.textContent='この授業を削除';remove.style.color='#a12323';remove.onclick=async()=>{if(!confirm(card.dataset.date+' '+card.dataset.slot+' '+cls+' の予定を削除しますか？カルテ・出席記録は保持します。'))return;remove.disabled=true;try{await Workspace.api('lesson_add_api.php',{action:'delete',sourceKey:card.dataset.sourceKey});hideOpsWithoutSave();await WholeSchedule.reload();window.HistoryWindow?.restore(savedPosition);}catch(err){remove.disabled=false;modal.querySelector('#opsMsg').textContent=err.message;}};footer.append(remove);}const fixedSave=modal.querySelector('#opsSave');if(fixedSave)footer.appendChild(fixedSave);const fixedMsg=modal.querySelector('#opsMsg');if(fixedMsg)footer.appendChild(fixedMsg);
     if(detailLoadFailed){modal.querySelector('#opsMsg').textContent='読込失敗：データ保護のため保存できません。詳細を開き直してください。';for(const id of ['teacherMemoSave','lessonRecordSave']){const button=modal.querySelector('#'+id);if(button)button.disabled=true;}}
     if(window.LessonFixed)LessonFixed.editor(key,modal.querySelector('.ops-summary'));
     const saveBtn=modal.querySelector('#opsSave');

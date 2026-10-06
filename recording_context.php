@@ -15,6 +15,8 @@ function recordingContext($inputKey){
 function recordingHomeworkLines($text){
  $lines=preg_split('/\R/u',trim((string)$text));$out=[];foreach($lines as $line){$line=trim($line);if($line!==''&&$line!=='宿題なし'&&$line!=='未定')$out[]=$line;}return $out;
 }
+// Direct assignments remain on their target lesson, separate from homework for the next lesson.
+function recordingNormalizeHomework($text){if(!is_string($text)||strlen($text)>120000)staffFail('宿題の内容を確認してください',400);return implode("\n",array_unique(recordingHomeworkLines($text)));}
 function recordingHomeworkTaskId($eventKey,$index,$text){return 'hw_'.substr(hash('sha256',$eventKey."\0".$index."\0".$text),0,24);}
 function recordingPreviousHomework($key,$storedRecords=null){
  $context=recordingContext($key);$raw=currentLessonEntries($storedRecords??readJsonStrict(__DIR__.'/data/lesson_records.json'));$records=groupRecordList($raw,true);$rows=[];$date='';$end='';

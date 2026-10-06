@@ -19,7 +19,7 @@ function cleanText($v){ return trim((string)$v); }
 if($_SERVER['REQUEST_METHOD']==='GET'){
   if(($_GET['action']??'')==='previous_homework'){staffRequire();require_once __DIR__.'/recording_context.php';echo json_encode(['ok'=>true]+recordingPreviousHomework((string)($_GET['key']??'')),JSON_UNESCAPED_UNICODE);exit;}
   $all=currentLessonEntries(readRecords($file));
-  if(($_GET['action']??'')==='homework'){$all=groupRecordList($all,true);foreach($all as $k=>$r){$all[$k]=['homework'=>(string)($r['homework']??'')];} echo json_encode(['ok'=>true,'records'=>$all],JSON_UNESCAPED_UNICODE);exit;}
+  if(($_GET['action']??'')==='homework'){$all=groupRecordList($all,true);foreach($all as $k=>$r){$all[$k]=['homework'=>(string)($r['homework']??''),'dueHomework'=>(string)($r['dueHomework']??'')];} echo json_encode(['ok'=>true,'records'=>$all],JSON_UNESCAPED_UNICODE);exit;}
   $key=canonicalLessonKey(trim((string)($_GET['key']??'')));if($key==='')$all=groupRecordList($all);
   if($key!==''){ echo json_encode(['ok'=>true,'record'=>$all[$key]??[]],JSON_UNESCAPED_UNICODE); }
   else { $response=['ok'=>true,'records'=>$all];if(!empty($_GET['includeAttendance'])){require_once __DIR__.'/lesson_record_context.php';$response['attendance']=recordAttendanceContext($all);}if(!empty($_GET['includeTiming'])){require_once __DIR__.'/lesson_record_context.php';$response['timings']=recordLessonTimings($all);}echo json_encode($response,JSON_UNESCAPED_UNICODE); }
@@ -34,7 +34,7 @@ $groupRows=policyRows();foreach(lessonGroups() as $group)if(!empty($group['activ
 $all=readRecords($file);
 $action=trim((string)($in['action']??'save'));
 $existing=(isset($all[$key]) && is_array($all[$key]))?$all[$key]:[];
-require_once __DIR__.'/recording_context.php';foreach(['memo','homework'] as $field)if(array_key_exists($field,$in))recordingTbdGuard($in[$field],$existing[$field]??'');
+require_once __DIR__.'/recording_context.php';foreach(['memo','homework','dueHomework'] as $field)if(array_key_exists($field,$in))recordingTbdGuard($in[$field],$existing[$field]??'');
 
 if($action==='homework_check'){
  $taskId=trim((string)($in['taskId']??''));$checked=$in['checked']??null;if(!preg_match('/^hw_[a-f0-9]{24}$/D',$taskId)||!is_bool($checked))staffFail('宿題のチェック内容を確認してください',400);
@@ -105,7 +105,7 @@ $homework=(string)($homeworkProvided?$in['homework']:($existing['homework']??'')
 // 明示的に宿題欄が送られてきた場合は、空欄への変更も保存する。
 // これにより「宿題だけ登録していた記録」の宿題も消去できる。
 // 何も送られていない空データだけは、従来どおり既存カルテを保護する。
-if(trim($memo)==='' && trim($homework)==='' && !$homeworkProvided){
+if(trim($memo)==='' && trim($homework)==='' && !$homeworkProvided && !array_key_exists('dueHomework',$in)){
   if($existing){ echo json_encode(['ok'=>true,'record'=>$existing,'protected'=>true],JSON_UNESCAPED_UNICODE); }
   else { echo json_encode(['ok'=>true,'record'=>[]],JSON_UNESCAPED_UNICODE); }
   exit;
@@ -123,6 +123,7 @@ $record['memo']=$memo;
 if(empty($record['author'])) $record['author']=$existing['teacher']??$actor['name'];
 $record['editedBy']=$actor['name'];
 $record['homework']=$homework;
+if(array_key_exists('dueHomework',$in)) $record['dueHomework']=recordingNormalizeHomework($in['dueHomework']);
 $record['homeworkChecks']=$record['homeworkChecks']??[];foreach(recordingPreviousHomework($key,$all)['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>nowIso(),'by'=>$actor['name']];
 if(empty($record['createdAt'])) $record['createdAt']=nowIso();
 $record['updatedAt']=nowIso();
