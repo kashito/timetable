@@ -352,7 +352,7 @@ window.SharedClassState=(()=>{
 <style id="student-to-teacher-upload-v65">
 .student-send-box{margin-top:14px;padding:13px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}.student-send-box strong{display:block;margin-bottom:8px}.student-send-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.student-send-row input[type=file]{flex:1;min-width:210px}.student-send-btn{border:0;border-radius:9px;padding:9px 13px;background:#15803d;color:#fff;font-weight:900;cursor:pointer}.student-send-status{display:block;margin-top:7px;font-weight:800}.attachment-source{font-size:11px;margin-right:5px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-weight:900}
 </style>
-<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
+<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="student-homework-hub.css?v=20261006-homework"><script defer src="student-homework-hub.js?v=20261006-homework"></script><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
 <body>
 <div class="app">
   <header class="student-header" id="studentHeader">
@@ -368,6 +368,11 @@ window.SharedClassState=(()=>{
       <button id="studentSearch" type="button">決定</button>
     </div>
     <div id="studentMessage"></div>
+  </section>
+
+  <section id="studentHomeworkHub" class="student-homework-hub" hidden aria-label="宿題の確認">
+    <button id="studentHomeworkToggle" class="student-homework-toggle" type="button" aria-expanded="false" aria-controls="studentHomeworkBody"><span aria-hidden="true">📚</span> 宿題 <span id="studentHomeworkCount" class="student-homework-count">0</span></button>
+    <div id="studentHomeworkBody" class="student-homework-body" hidden></div>
   </section>
 
   <div class="sticky-context">
@@ -815,7 +820,7 @@ window.SharedClassState=(()=>{
 
   function render() {
     document.dispatchEvent(new CustomEvent('student-schedule-selected',{detail:{name:selectedStudent?.name||''}}));
-    if(!selectedStudent){renderedRows=[];$('schedule').innerHTML='<div class="empty">生徒名を決定すると、その生徒の予定を表示します。</div>';$('status').textContent='生徒名を決定してください。';document.dispatchEvent(new Event('student-selection-changed'));return;}
+    if(!selectedStudent){renderedRows=[];window.__studentHomeworkHubData={name:'',items:[]};window.StudentHomeworkHub?.update('',[]);$('schedule').innerHTML='<div class="empty">生徒名を決定すると、その生徒の予定を表示します。</div>';$('status').textContent='生徒名を決定してください。';document.dispatchEvent(new Event('student-selection-changed'));return;}
     const specials = rows.filter(r => specialDayLabel(r));
     const allNormal = rows.filter(r => !specialDayLabel(r));
 
@@ -898,6 +903,19 @@ window.SharedClassState=(()=>{
     const availableDates = [...new Set(rows.map(r => r.date).filter(Boolean))].sort();
     const japanNow = japanClock();
     const today = japanNow.date;
+    const homeworkHubByKey=new Map(),noHomework=['宿題','なし'].join('');
+    for(const current of studentTimeline){
+      if(current.date<today)continue;
+      const value=String(homeworkForKey.get(lessonRoomKey(current))||'').trim();
+      if(!value||value===noHomework||value==='未定')continue;
+      for(const task of value.replace(/\r/g,'').split('\n').map(item=>item.trim()).filter(item=>item&&item!==noHomework&&item!=='未定')){
+        const className=current.cls||studentType(current)||'授業',dueAt=`${current.date}T${current.start||'00:00'}:00+09:00`,taskKey=[current.date,className,task].join('\0'),before=homeworkHubByKey.get(taskKey);
+        if(!before||dueAt<before.dueAt)homeworkHubByKey.set(taskKey,{className,text:task,dueAt});
+      }
+    }
+    const homeworkHubItems=[...homeworkHubByKey.values()];
+    window.__studentHomeworkHubData={name:selectedStudent.name,items:homeworkHubItems};
+    window.StudentHomeworkHub?.update(selectedStudent.name,homeworkHubItems);
     const rangeStart = window.HistoryWindow ? HistoryWindow.start() : today;
     const horizon = new Date((rangeStart>today?rangeStart:today)+'T00:00:00');horizon.setDate(horizon.getDate()+120);
     const rangeEnd = [availableDates[availableDates.length-1]||'',horizon.toLocaleDateString('sv-SE')].sort().at(-1);

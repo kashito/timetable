@@ -395,7 +395,7 @@ function filteredRows(){
 }
 function lessonHTML(r){
   const cls=r._roomClass||roomClass(roomKey(r['教室']));
-  return `<div role="button" tabindex="0" draggable="true" class="lesson ${cls} ${r._linked?'generator-linked-card':''}" ${window.LinkedSchedule?.attributes(r)||''} data-source-key="${esc(r['_sourceKey'])}" data-date="${esc(String(r['日付']||'').replaceAll('/','-'))}" data-slot="${esc(r['時間番号']||'')}" data-start="${esc(r['開始']||'')}" data-end="${esc(r._linked?r._linked.members.at(-1).end:(r['終了']||''))}">
+  return `<div role="button" tabindex="0" draggable="true" class="lesson ${cls} ${r._linked?'generator-linked-card':''}" ${window.LinkedSchedule?.attributes(r)||''} data-key="${esc(generatorEventKey(r))}" data-class="${esc(r['クラス']||'')}" data-source-key="${esc(r['_sourceKey'])}" data-date="${esc(String(r['日付']||'').replaceAll('/','-'))}" data-slot="${esc(r['時間番号']||'')}" data-start="${esc(r['開始']||'')}" data-end="${esc(r._linked?r._linked.members.at(-1).end:(r['終了']||''))}">
     <strong>${r._linked?esc(r._linked.slots.join(''))+' ':''}${esc(r['クラス'])}</strong>
     <div>${esc(r['種別'])}　${esc(r['科目'])}</div>
     <div class="lesson-meta" title="担当 ${esc(r['担当講師']||'未設定')}">担当 ${esc(r['担当講師']||'未設定')}</div>
@@ -476,7 +476,7 @@ function render(options={}){
           ${genHolidayControl(date)}
           <div class="day-note-box"><textarea class="generator-day-note" data-date="${esc(date)}" placeholder="生徒の予定・個人メモ">${esc(generatorDailyNotes[iso]||'')}</textarea><span class="generator-day-note-status"></span></div>
         </div>
-      </div><section id="whole-day-${esc(iso)}" class="cell teacher-day-info generator-day-info date-start whole-day-collapsed" data-info-date="${esc(iso)}" aria-label="${esc(date)}の学校行事・連絡"><div class="whole-day-events"><strong class="whole-day-events-label">学校行事・お知らせ</strong><div class="ce-day-events" data-calendar-date="${esc(iso)}" data-calendar-full="1"></div></div><div class="whole-day-contacts" data-contact-date="${esc(iso)}"></div></section>`;
+      </div><section id="whole-day-${esc(iso)}" class="cell teacher-day-info generator-day-info date-start whole-day-collapsed" data-info-date="${esc(iso)}" aria-label="${esc(date)}の学校行事・連絡"><div class="whole-day-events"><strong class="whole-day-events-label">学校行事・お知らせ</strong><div class="ce-day-events" data-calendar-date="${esc(iso)}" data-calendar-full="1"></div></div><div class="whole-day-homework" data-homework-date="${esc(iso)}" hidden></div><div class="whole-day-contacts" data-contact-date="${esc(iso)}"></div></section>`;
     ROOMS.filter(room=>(!window.GeneratorExtras||GeneratorExtras.showRoom(room))&&(!window.DayCompare?.active||DayCompare.showRoom(room,rows))).forEach(room=>{
       h+=`<div class="cell lane-label ${roomClass(room)}">
         <span class="room-chip">${ROOM_LABEL[room]}</span>

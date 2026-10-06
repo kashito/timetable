@@ -38,6 +38,7 @@ def generated_content():
         "gaps": source_ref("student-schedule-model.js", "function gaps(events)"),
         "day_state": source_ref("student-schedule-model.js", "function dayState(input)"),
         "homework": source_ref("student-schedule-model.js", "function homework(text,limit=88)"),
+        "homework_hub": source_ref("student-homework-hub.js", "window.StudentHomeworkHub={update};"),
         "materials": source_ref("student.html", "class=\"student-materials-view\""),
         "other": source_ref("student.html", "<details class=\"student-other-info\">"),
         "themes": source_ref("student-display-settings.js", "const themes=["),
@@ -126,12 +127,12 @@ def generated_content():
                 "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
                 "一部だけ確定している日は「授業あり・現在調整中（確定した授業のみ表示）」と表示し、全予定が確定したように見せない",
                 "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
-                "宿題は常時表示し、空欄は「宿題の記録はまだありません」、長文は「続きを読む」で全文を表示する",
+                "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。生徒ごとの完了チェックと非表示はその端末に保存する",
                 "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
                 "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
                 "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
             ],
-            "source": [refs[k] for k in ("overview", "day_state", "gaps", "homework", "materials", "other", "themes", "theme_storage")],
+            "source": [refs[k] for k in ("overview", "day_state", "gaps", "homework", "homework_hub", "materials", "other", "themes", "theme_storage")],
             "generated_by": GENERATOR
         }
     ]
@@ -184,7 +185,7 @@ def expected_guide(path):
         "display_rules": {
             "generator": GENERATOR,
             "source_digest_sha256": digest,
-            "sources": ["student.html", "school-holidays.js", "lesson-fixed.js", "student-schedule-model.js", "student-display-settings.js"]
+            "sources": ["student.html", "school-holidays.js", "lesson-fixed.js", "student-schedule-model.js", "student-homework-hub.js", "student-display-settings.js"]
         }
     }
     return guide

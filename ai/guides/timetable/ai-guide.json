@@ -322,37 +322,37 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1247,
+          "line": 1265,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
           "file": "student.html",
-          "line": 825,
+          "line": 830,
           "code": "const hideTentative = !StaffAuth.user && schedulePrivateFrom;"
         },
         {
           "file": "student.html",
-          "line": 827,
+          "line": 832,
           "code": "? resolvedStudentNormal.filter(r => r.date <= scheduleConfirmedDate || r.date < schedulePrivateFrom || window.LessonFixed?.isFixed(lessonRoomKey(r)))"
         },
         {
           "file": "student.html",
-          "line": 914,
+          "line": 932,
           "code": "const privatePending = !!(hideTentative && date >= schedulePrivateFrom);"
         },
         {
           "file": "student.html",
-          "line": 917,
+          "line": 935,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 444,
+          "line": 449,
           "code": "function scheduleSixAmPublicationRefresh(clock) {"
         },
         {
           "file": "student.html",
-          "line": 928,
+          "line": 946,
           "code": "const dayState=StudentScheduleModel.dayState({"
         },
         {
@@ -394,22 +394,22 @@
       "source": [
         {
           "file": "student.html",
-          "line": 917,
+          "line": 935,
           "code": "const todayFinalizedAsOff = !!(date === today && japanNow.hour >= 6 && visibleEvents.length === 0);"
         },
         {
           "file": "student.html",
-          "line": 953,
+          "line": 971,
           "code": "if (selectedStudent && studentEvents.length === 0) {"
         },
         {
           "file": "student.html",
-          "line": 926,
+          "line": 944,
           "code": "const emptyDayLabel=SchoolHolidays.emptyDayLabel(date);"
         },
         {
           "file": "student.html",
-          "line": 927,
+          "line": 945,
           "code": "const overviewSpecial=special?displayDayType(specialDayLabel(special)):'';"
         },
         {
@@ -438,7 +438,7 @@
         "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
         "一部だけ確定している日は「授業あり・現在調整中（確定した授業のみ表示）」と表示し、全予定が確定したように見せない",
         "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
-        "宿題は常時表示し、空欄は「宿題の記録はまだありません」、長文は「続きを読む」で全文を表示する",
+        "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。生徒ごとの完了チェックと非表示はその端末に保存する",
         "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
         "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
         "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
@@ -446,7 +446,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 934,
+          "line": 952,
           "code": "<div class=\"day-overview\">"
         },
         {
@@ -465,13 +465,18 @@
           "code": "function homework(text,limit=88){"
         },
         {
+          "file": "student-homework-hub.js",
+          "line": 24,
+          "code": "window.StudentHomeworkHub={update};if(window.__studentHomeworkHubData)update(window.__studentHomeworkHubData.name,window.__studentHomeworkHubData.items);setInterval(()=>{if(open)render();},60000);"
+        },
+        {
           "file": "student.html",
-          "line": 1004,
+          "line": 1022,
           "code": "<div class=\"student-material-actions\"><button type=\"button\" class=\"student-materials-view\" data-material-key=\"${esc(key)}\" aria-expanded=\"false\">資料を見る <span>確認中</span></button><button type=\"button\" class=\"student-card-send-btn\" data-send-key=\"${esc(key)}\">資料を送る</button></div>"
         },
         {
           "file": "student.html",
-          "line": 1006,
+          "line": 1024,
           "code": "<details class=\"student-other-info\"><summary>その他の情報</summary><div class=\"student-other-info-body\">"
         },
         {
@@ -491,12 +496,13 @@
   "generated_sections": {
     "display_rules": {
       "generator": ".deploy/generate_ai_guide_states.py",
-      "source_digest_sha256": "1747a3fc56d767dc2c8b70c793a2b8ffaa15afceba3d5a35ea6bdecde681790f",
+      "source_digest_sha256": "e33e186f0881546060494a8e0ddecad0bf4c4dc291cbfdc90566326ef539e9a8",
       "sources": [
         "student.html",
         "school-holidays.js",
         "lesson-fixed.js",
         "student-schedule-model.js",
+        "student-homework-hub.js",
         "student-display-settings.js"
       ]
     }

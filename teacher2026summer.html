@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261002-homework-check" data-staff="required"></script><script src="workspace-ui.js?v=20261003-daily-tab"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261002-homework-check" data-staff="required"></script><script src="workspace-ui.js?v=20261003-daily-tab"></script><link rel="stylesheet" href="homework-editor.css?v=20261006-items"><script defer src="homework-editor.js?v=20261006-items"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>全体スケ2026</title>
@@ -289,7 +289,7 @@ body.compact-whole-schedule > .workspace-nav{position:sticky;top:0;z-index:40;bo
   body.compact-whole-schedule > .workspace-nav .nav-user{width:auto}
 }
 </style>
-<script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20261002-return-view"></script><link rel="stylesheet" href="whole-day-info.css?v=20261002-message-copy"><script defer src="whole-day-info.js?v=20260917-r55-ready"></script><link rel="stylesheet" href="whole-time-header.css?v=20260921-scroll"><script defer src="whole-time-header.js?v=20260921-scroll"></script></head>
+<script defer src="lesson-placement.js?v=20260912-r21"></script><link rel="stylesheet" href="student-contacts.css?v=20260912-r24"><script defer src="student-contacts.js?v=20260912-r24"></script><link rel="stylesheet" href="presence.css?v=20260915-r45"><script defer src="presence.js?v=20260915-r45"></script><script defer src="staff-contacts.js?v=20260917-r55-ready"></script><script defer src="group-schedule-actions.js?v=20261002-return-view"></script><link rel="stylesheet" href="whole-day-info.css?v=20261002-message-copy"><script defer src="whole-day-info.js?v=20260917-r55-ready"></script><script defer src="day-homework-summary.js?v=20261006-day-homework"></script><link rel="stylesheet" href="whole-time-header.css?v=20260921-scroll"><script defer src="whole-time-header.js?v=20260921-scroll"></script></head>
 <body data-mode="teacher" class="compact-whole-schedule">
 
 
@@ -653,7 +653,7 @@ async function applyReadyOnce(){
         <div class="record-headline"><h3>🗂 この授業の記録・カルテ</h3><a class="record-list-mini-link" href="lesson_records.html?class=${encodeURIComponent(cls)}">この授業のカルテ一覧を見る</a></div>
         <textarea id="lessonRecordMemo" placeholder="例：理解度、つまずき、次回の対応、保護者共有事項など">${esc(lessonRecord.memo||'')}</textarea>
         <div data-recording-key="${esc(key)}"></div>
-        <label style="display:block;margin-top:10px;font-weight:900">📚 次回までの宿題</label><textarea id="lessonHomework" class="homework-input" placeholder="次回の同じ授業コマに表示する宿題">${esc(lessonRecord.homework||'')}</textarea><div><button type="button" class="ws-button" data-homework-none="#lessonHomework">宿題なしを入力</button><small>入力後、保存してください。空欄は未記入として通知します。</small></div>
+        <label style="display:block;margin-top:10px;font-weight:900">📚 次回までの宿題</label><textarea id="lessonHomework" class="homework-input" data-homework-items placeholder="次回の同じ授業コマに表示する宿題">${esc(lessonRecord.homework||'')}</textarea><div><button type="button" class="ws-button" data-homework-none="#lessonHomework">宿題なしを入力</button><small>入力後、保存してください。空欄は未記入として通知します。</small></div>
         <small>カルテと宿題はこの日・このコマに保存され、宿題は次回の同じ授業に引き継いで表示されます。</small>
       </section>
       <section class="ops-sec">
