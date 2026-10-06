@@ -13,7 +13,9 @@ HTML_PAGES = {
     'teacher2026summer.html': '全体スケ2026',
     'student.html': '生徒個人2026',
     'lesson_records.html': 'カルテ',
-    'daily_board.html': '掲示板',
+    # Accept the old title before the rename is deployed; expected_files still
+    # verifies the exact new file after the transaction replaces programs.
+    'daily_board.html': ('掲示板', '今日の動き'),
 }
 
 
@@ -42,7 +44,8 @@ def healthcheck(expected_files=None):
         status, body, _ = http_get(path)
         text = body.decode('utf-8', errors='replace')
         match = re.search(r'<title>(.*?)</title>', text, re.I | re.S)
-        ok = status == 200 and match is not None and title in match[1] and '</html>' in text.lower()
+        titles = title if isinstance(title, tuple) else (title,)
+        ok = status == 200 and match is not None and any(value in match[1] for value in titles) and '</html>' in text.lower()
         if path in expected_files:
             ok = ok and hashlib.sha256(body).hexdigest() == expected_files[path]
         if not ok:
