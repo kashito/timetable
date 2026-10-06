@@ -142,7 +142,7 @@ class EventsGroupTests(unittest.TestCase):
     def test_board_rotation_defaults_reload_and_daily_overrides(self):
         def get(date, board='all', public=False):
             code,j=self.request('board_guides_api.php?board='+board+'&date='+date, **({'client':self.client()} if public else {}));self.assertEqual(code,200,j);return j['guide']
-        initial=get('2026-10-04');self.assertEqual(initial['mainSeconds'],20);self.assertEqual(initial['slides'][0]['seconds'],10)
+        initial=get('2026-10-04');self.assertEqual(initial['mainSeconds'],20);self.assertEqual(initial['slides'][0]['seconds'],20)
         hidden=dict(id=secrets.token_hex(16),kind='notice',title='日別案内',body='非公開文章',seconds=15,visible=False)
         slides=[dict(initial['slides'][0],seconds=7),hidden]
         p=dict(board='all',date='2026-10-04',mainSeconds=25,slides=slides,version=initial['version'],requestId=secrets.token_hex(16),saveDefaults=True)

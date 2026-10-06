@@ -32,18 +32,19 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
  const frame=page.frameLocator('.bg-countdown');await frame.locator('.countdown-row').first().waitFor();
  assert.equal(await frame.locator('.countdown-row').count(),3);assert.deepEqual(await frame.locator('.countdown-number strong').allTextContents(),['本日','4','7']);
  assert.doesNotMatch(await frame.locator('#countdownRows').innerText(),/試験past|試験ignored/);
- await page.screenshot({path:path.join(root,'..','countdown-tested.png')});
+ await page.screenshot({path:path.join(tmp,'countdown-tested.png')});
+ await page.clock.fastForward(10000);assert.equal(await page.locator('.bg-stage').isVisible(),true);
  await page.clock.fastForward(10000);assert.equal(await page.locator('.bg-stage').isVisible(),false);
- await page.getByRole('button',{name:'案内を編集',exact:true}).click();await page.locator('[name=mainSeconds]').fill('25');await page.locator('[data-seconds]').fill('7');
+ await page.getByRole('button',{name:'案内を編集',exact:true}).click();await page.locator('[name=mainSeconds]').fill('25');await page.locator('[data-seconds]').fill('23');
  await page.getByRole('button',{name:'公開して保存',exact:true}).click();await page.locator('.bg-editor').waitFor({state:'detached'});await page.reload();
  await page.waitForFunction(()=>document.querySelector('.bg-controls span')?.textContent.includes('25秒'));
- await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[data-seconds]').inputValue(),'7');await page.getByRole('button',{name:'閉じる',exact:true}).click();
+ await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[data-seconds]').inputValue(),'23');await page.getByRole('button',{name:'閉じる',exact:true}).click();
  // More than three events page correctly; empty and past-only lists are explicit.
- await page.goto(url+'/countdown.html?embed=1');events=[event('one','2026-10-08'),event('two','2026-10-09'),event('three','2026-10-10'),event('fourth','2026-10-11')];await page.reload();await page.locator('.countdown-row').first().waitFor();assert.equal(await page.locator('.countdown-row').count(),3);await page.locator('#countdownNext').click();assert.equal(await page.locator('.countdown-row').count(),1);
+ await page.goto(url+'/countdown.html?embed=1');events=[event('one','2026-10-08'),event('two','2026-10-09'),event('three','2026-10-10'),event('fourth','2026-10-11')];await page.reload();await page.locator('.countdown-row').first().waitFor();assert.equal(await page.locator('.countdown-row').count(),3);assert.equal(await page.locator('header').isVisible(),false);assert.equal(await page.locator('footer').isVisible(),false);await page.clock.fastForward(10000);assert.equal(await page.locator('.countdown-row').count(),1);
  events=[event('past','2026-10-03')];await page.reload();await page.locator('.countdown-empty').waitFor();events=[];await page.reload();await page.locator('.countdown-empty').waitFor();
  // The same open monitor crosses Japan midnight and reads the new daily content.
  events=[event('four','2026-10-08')];await page.clock.setSystemTime(new Date('2026-10-04T14:59:50Z'));await page.goto(url+'/daily_board.html?mode=monitor');await page.waitForFunction(()=>document.querySelector('.bg-controls span')?.textContent.includes('25秒'));
  await page.clock.fastForward(30000);await page.waitForFunction(()=>document.querySelector('.db-rows')?.textContent.includes('2026-10-05'));await page.getByRole('button',{name:'次へ',exact:true}).click();await page.frameLocator('.bg-countdown').locator('.countdown-row').waitFor();assert.equal(await page.frameLocator('.bg-countdown').locator('.countdown-number strong').innerText(),'3');
- await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[name=mainSeconds]').inputValue(),'25');assert.equal(await page.locator('[data-seconds]').inputValue(),'7');
- assert.deepEqual(errors,[]);console.log('PASS: real countdown drawing, 20/10 rotation, saved 25/7 reload, Japan midnight content/settings, today/past/empty/multiple events, hidden board rows; isolated data only.');
+ await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[name=mainSeconds]').inputValue(),'25');assert.equal(await page.locator('[data-seconds]').inputValue(),'23');
+ assert.deepEqual(errors,[]);console.log('PASS: real countdown drawing, minimum 20-second monitor display, compact embedded layout, saved 25/23 reload, Japan midnight content/settings, today/past/empty/multiple events, hidden board rows; isolated data only.');
  }finally{await browser?.close();server.kill();fs.rmSync(tmp,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});
