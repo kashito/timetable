@@ -62,7 +62,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("setInterval(updateClock,1000)", script)
         self.assertIn("：", script)
         for page in ("daily_board.html", "room_board.html"):
-            self.assertIn("20261006-copy-today", self.text(page))
+            self.assertIn("20261006-pc-row-drag", self.text(page))
 
     def test_both_boards_share_advance_notice_and_time_pulse_rules(self):
         script = self.text("daily-board.js")
@@ -76,6 +76,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("選択した記事を今日へコピー", script)
         self.assertIn("data-copy-today", script)
         self.assertIn("rows:[...destination.rows,...copies]", script)
+        self.assertIn("directRowDrag=boardId==='blue'&&monitor", script)
         self.assertIn("db-time-pulse", css)
         self.assertIn("dbReleased", api)
         self.assertIn("予告の表示開始日時を入力してください", api)
