@@ -26,9 +26,9 @@ try{
  $actor=$method==='POST'?staffRequire(true):staffCurrent();$admin=$actor&&$actor['role']==='admin'&&empty($actor['mustChange']);if($method==='GET'&&($in['preview']??'')==='student')$admin=false;
  $boardId=dbText($in,'board',20)?:'all';if(!in_array($boardId,['all','blue'],true))staffFail('掲示板を確認してください。',400);$GLOBALS['dbBoardId']=$boardId;
  $file=__DIR__.'/data/'.($boardId==='blue'?'blue_board.php':'daily_board.php');$data=readJsonStrict($file,['schema'=>1,'days'=>[]]);
- if(($data['schema']??null)!==1||!is_array($data['days']??null))dataError('今日の動きのデータ形式を確認してください。上書きせず停止しました。');
+ if(($data['schema']??null)!==1||!is_array($data['days']??null))dataError('掲示板のデータ形式を確認してください。上書きせず停止しました。');
  $day=$data['days'][$date]??[];
- $settings=$data['settings']??['title'=>$boardId==='blue'?'青教室の指示':'今日の動き','background'=>$boardId==='blue'?'gray':'blue'];$GLOBALS['dbSettings']=$settings;
+ $settings=$data['settings']??['title'=>$boardId==='blue'?'PC':'掲示板','background'=>$boardId==='blue'?'gray':'blue'];$GLOBALS['dbSettings']=$settings;
  if($method==='GET'){dbReply(['ok'=>true,'board'=>dbProjection($day,$date,$admin)]);exit;}
  $rows=$in['rows']??null;
  if(!is_array($rows)||$rows!==array_values($rows)||count($rows)>150)staffFail('指示は1日150件以内で登録してください。',400);
@@ -57,4 +57,4 @@ try{
  if($settings!==$nextSettings)$data['settingsHistory'][]=['settings'=>$settings,'at'=>date('c'),'by'=>$actor['name']];$data['settings']=$nextSettings;$GLOBALS['dbSettings']=$nextSettings;
  if(!safeJsonWriteAtomic($file,$data))staffFail('保存できませんでした。入力内容を残して再度お試しください。',500);
  dbReply(['ok'=>true,'board'=>dbProjection($day,$date,true)]);
-}catch(Throwable $e){error_log('[daily_board] '.get_class($e).' at '.basename($e->getFile()).':'.$e->getLine());http_response_code(500);dbReply(['ok'=>false,'error'=>'今日の動きを処理できませんでした。入力内容を残して再度お試しください。']);}
+}catch(Throwable $e){error_log('[daily_board] '.get_class($e).' at '.basename($e->getFile()).':'.$e->getLine());http_response_code(500);dbReply(['ok'=>false,'error'=>'掲示板を処理できませんでした。入力内容を残して再度お試しください。']);}

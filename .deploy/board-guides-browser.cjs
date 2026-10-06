@@ -13,7 +13,7 @@ function dataError($m){staffFail($m,500);}
 function readJsonStrict($p,$fallback=[]){return is_file($p)?json_decode(substr(file_get_contents($p),15),true):$fallback;}
 function safeJsonWriteAtomic($p,$d){return file_put_contents($p,"<?php exit; ?>\\n".json_encode($d,JSON_UNESCAPED_UNICODE))!==false;}
 `);
-fs.writeFileSync(path.join(tmp,'daily_board.html'),`<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="daily-board.css"><link rel="stylesheet" href="board-guides.css"><script>window.StaffAuth={ready:Promise.resolve(),user:{role:'admin'}};</script><script defer src="board-guides.js"></script><script defer src="daily-board.js"></script><section data-daily-board="page" data-board-id="blue"></section>`);
+fs.writeFileSync(path.join(tmp,'daily_board.html'),`<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="daily-board.css"><link rel="stylesheet" href="board-guides.css"><script>window.StaffAuth={ready:Promise.resolve(),user:{role:'admin'}};</script><script defer src="board-guides.js"></script><script defer src="daily-board.js"></script><section data-daily-board="page"></section>`);
 const server=spawn(process.env.TIMETABLE_TEST_PHP||'php',['-S',`127.0.0.1:${port}`,'-t',tmp],{windowsHide:true,stdio:'ignore'});
 let browser;
 const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate:date,kind:'school',schoolId:'s',schoolName:'検証学校',targetClasses:[]});
@@ -46,5 +46,6 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
  events=[event('four','2026-10-08')];await page.clock.setSystemTime(new Date('2026-10-04T14:59:50Z'));await page.goto(url+'/daily_board.html?mode=monitor');await page.waitForFunction(()=>document.querySelector('.bg-controls span')?.textContent.includes('25秒'));
  await page.clock.fastForward(30000);await page.waitForFunction(()=>document.querySelector('.db-rows')?.textContent.includes('2026-10-05'));await page.getByRole('button',{name:'次へ',exact:true}).click();await page.frameLocator('.bg-countdown').locator('.countdown-row').waitFor();assert.equal(await page.frameLocator('.bg-countdown').locator('.countdown-number strong').innerText(),'3');
  await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[name=mainSeconds]').inputValue(),'25');assert.equal(await page.locator('[data-seconds]').inputValue(),'23');
+ const blue=await fetch(url+'/board_guides_api.php?board=blue&date=2026-10-05').then(r=>r.json());assert.deepEqual(blue.guide.slides,[]);
  assert.deepEqual(errors,[]);console.log('PASS: real countdown drawing, minimum 20-second monitor display, compact embedded layout, saved 25/23 reload, Japan midnight content/settings, today/past/empty/multiple events, hidden board rows; isolated data only.');
  }finally{await browser?.close();server.kill();fs.rmSync(tmp,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -6,7 +6,7 @@ function bgFail($s,$code=400){staffFail($s,$code);}
 function bgText($in,$k,$max){$v=$in[$k]??'';if(!is_string($v)||strlen($v)>$max||preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/',$v))bgFail('案内の文字数・形式を確認してください。');return trim($v);}
 function bgVersion($r){return hash('sha256',json_encode($r,JSON_UNESCAPED_UNICODE));}
 function bgSeconds($v){if(!is_int($v)||$v<5||$v>600)bgFail('表示時間は5〜600秒で指定してください。');return $v;}
-function bgProjection($r,$board,$date,$admin){$out=['board'=>$board,'date'=>$date,'mainSeconds'=>$r['mainSeconds']??20,'slides'=>array_values(array_filter($r['slides']??[],fn($s)=>$admin||$s['visible'])),'canEdit'=>$admin,'updatedAt'=>$r['updatedAt']??null];if($admin)$out['version']=$GLOBALS['bgStateVersion'];return $out;}
+function bgProjection($r,$board,$date,$admin){$out=['board'=>$board,'date'=>$date,'mainSeconds'=>$r['mainSeconds']??20,'slides'=>array_values(array_filter($r['slides']??[],fn($s)=>($board!=='blue'||($s['kind']??'notice')!=='countdown')&&($admin||$s['visible']))),'canEdit'=>$admin,'updatedAt'=>$r['updatedAt']??null];if($admin)$out['version']=$GLOBALS['bgStateVersion'];return $out;}
 try{
  $method=$_SERVER['REQUEST_METHOD'];if(!in_array($method,['GET','POST'],true))bgFail('Method not allowed',405);
  $in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))bgFail('入力内容を確認してください。');
@@ -31,7 +31,7 @@ try{
  foreach($incoming as $s){
   if(!is_array($s))bgFail('案内の形式を確認してください。');$id=bgText($s,'id',32);if(!preg_match('/^[a-f0-9]{32}$/D',$id)||isset($ids[$id]))bgFail('案内の番号を確認してください。');$ids[$id]=true;
   if(!is_bool($s['visible']??null))bgFail('表示チェックを確認してください。');
-  $kind=$s['kind']??'notice';if(!in_array($kind,['notice','countdown'],true))bgFail('案内の種類を確認してください。');
+  $kind=$s['kind']??'notice';if(!in_array($kind,['notice','countdown'],true)||($board==='blue'&&$kind==='countdown'))bgFail('案内の種類を確認してください。');
   $r=['kind'=>$kind,'id'=>$id,'title'=>bgText($s,'title',300),'body'=>bgText($s,'body',12000),'visible'=>$s['visible'],'seconds'=>bgSeconds($s['seconds']??null),'image'=>null];
   $upload=$s['imageData']??'';if(!is_string($upload))bgFail('画像を確認してください。');
   if($upload!==''){

@@ -6,7 +6,7 @@ header('Content-Type: text/html; charset=utf-8');
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Codex修正キュー</title>
 <link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="codex-queue.css?v=20260920-q1">
-<script src="staff-auth.js?v=20260917-r56-ready" data-staff="required"></script><script defer src="workspace-ui.js?v=20260920-q1"></script><script defer src="codex-queue.js?v=20260920-q1"></script></head>
+<script src="staff-auth.js?v=20260917-r56-ready" data-staff="required"></script><script defer src="workspace-ui.js?v=20261006-board-names"></script><script defer src="codex-queue.js?v=20260920-q1"></script></head>
 <body><main class="workspace-page cq-page">
 <header class="cq-head"><div><p class="cq-eyebrow">CODEX MEMOS / 第1段階</p><h1>Codex修正キュー</h1><p>Codexへ送った修正メモの処理待ち一覧と、候補・テスト結果を確認できます。</p></div><a class="ws-button" href="codex_memos.php">メモ一覧へ</a></header>
 <section class="cq-phase"><strong>修正・テストで停止します。本番には反映しません。</strong><p>「Codexへ送信」を押したメモだけを処理します。LEVEL 1限定運用では、色・文言などの軽微な変更だけ候補を作成します。LEVEL 2・3、複合依頼、不明点のある依頼は候補作成前に「要確認」にします。</p><small>このPCの処理プログラムが起動している間に、1件ずつ処理します。メモの内容と添付画像をCodexへ渡します。</small></section>

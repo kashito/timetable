@@ -6,7 +6,7 @@
   "updated_at": "2026-10-03T00:00:00+09:00",
   "production_url": "https://224236.com/2026summer/",
   "status": "production",
-  "description": "講師・生徒の時間割、講師NG、今日の動き、授業管理を扱うシステム。",
+  "description": "講師・生徒の時間割、講師NG、掲示板・PC、授業管理を扱うシステム。",
   "pages": [
     {
       "name": "2026 時間割",
@@ -47,7 +47,7 @@
       "source": "student.html",
       "buttons": [
         "☰ 日付・メニュー",
-        "📋 今日の動き",
+        "📋 掲示板",
         "🔔 塾からのお知らせ",
         "決定",
         "×",
@@ -62,7 +62,7 @@
       "status": "production"
     },
     {
-      "name": "今日の動き｜志学館",
+      "name": "掲示板｜志学館",
       "url": "https://224236.com/2026summer/daily_board.html",
       "source": "daily_board.html",
       "buttons": [],
@@ -110,7 +110,7 @@
     }
   ],
   "features": [
-    "今日の動き",
+    "掲示板",
     "講師NG"
   ],
   "operations": [
@@ -147,20 +147,20 @@
     {
       "id": "today-timetable",
       "question": "今日の時間割はどこ？",
-      "answer": "メニューから「今日の動き」を開くと、当日の授業と連絡を確認できます。全体の時間割は時間割画面を開いてください。",
+      "answer": "メニューから「掲示板」を開くと、当日の授業と連絡を確認できます。全体の時間割は時間割画面を開いてください。",
       "steps": [
         "ログイン",
-        "メニューから「今日の動き」を開く",
+        "メニューから「掲示板」を開く",
         "必要なら日付を今日に戻す"
       ],
-      "page": "今日の動き",
+      "page": "掲示板",
       "url": "https://224236.com/2026summer/daily_board.html",
       "roles": [
         "teacher",
         "admin"
       ],
       "buttons": [
-        "今日の動き"
+        "掲示板"
       ],
       "status": "production",
       "keywords": [

@@ -1,7 +1,7 @@
 <?php require_once __DIR__.'/admin_page_guard.php'; requireAdminPage('payroll.html'); $payrollExcludedNames=staffSiteSettings(true)['payrollExcludedNames']; ?>
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20260917-r56-ready" data-staff="required"></script><script src="workspace-ui.js?v=20260916-r54-ready"></script>
+<head><script src="staff-auth.js?v=20260917-r56-ready" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>給与計算</title>
 <style>
