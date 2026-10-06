@@ -4,6 +4,6 @@
 
 .board-student-preview #boardGuidesPage>a.ws-button:first-child{display:none!important}
 
-.bg-countdown{display:block;width:100%;height:72dvh;min-height:450px;border:0;border-radius:10px;background:#657180}.bg-editor [hidden]{display:none!important}.bg-stage:has(.bg-countdown){padding:8px}.bg-card:has(.bg-countdown){padding:0;overflow:hidden}
+.bg-countdown{display:block;width:100%;height:72dvh;min-height:0;border:0;border-radius:12px;background:transparent}.bg-editor [hidden]{display:none!important}.bg-stage:has(.bg-countdown){padding:0}.bg-card:has(.bg-countdown){padding:0;overflow:hidden}.bg-card .bg-countdown{min-height:360px}
 
-.bg-stage .bg-countdown{min-height:300px}
+.bg-stage .bg-countdown{min-height:0}.daily-monitor.bg-guide-active{overflow:hidden}.daily-monitor .bg-stage:has(.bg-countdown){overflow:hidden}

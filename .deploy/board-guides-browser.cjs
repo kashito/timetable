@@ -53,6 +53,10 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
  const frame=page.frameLocator('.bg-countdown');await frame.locator('.countdown-row').first().waitFor();
  assert.equal(await frame.locator('.countdown-row').count(),3);assert.deepEqual(await frame.locator('.countdown-number strong').allTextContents(),['本日','4','7']);
  assert.doesNotMatch(await frame.locator('#countdownRows').innerText(),/試験past|試験ignored/);
+ const outerFit=await page.evaluate(()=>{const box=document.querySelector('.bg-countdown').getBoundingClientRect();return{overflow:getComputedStyle(document.body).overflowY,bottom:box.bottom,height:innerHeight};});
+ assert.equal(outerFit.overflow,'hidden');assert(outerFit.bottom<=outerFit.height+1,`countdown frame exceeds viewport: ${JSON.stringify(outerFit)}`);
+ const innerFit=await frame.locator('body').evaluate(()=>({htmlOverflow:getComputedStyle(document.documentElement).overflowY,bodyOverflow:getComputedStyle(document.body).overflowY,background:getComputedStyle(document.body).backgroundColor,hostBackground:getComputedStyle(document.documentElement).getPropertyValue('--countdown-host-bg').trim(),scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}));
+ assert.equal(innerFit.htmlOverflow,'hidden');assert.equal(innerFit.bodyOverflow,'hidden');assert.equal(innerFit.background,'rgba(0, 0, 0, 0)');assert(innerFit.hostBackground);assert(innerFit.scrollWidth<=innerFit.clientWidth+1,`countdown frame scrolls horizontally: ${JSON.stringify(innerFit)}`);
  await page.screenshot({path:path.join(tmp,'countdown-tested.png')});
  await page.clock.fastForward(10000);assert.equal(await page.locator('.bg-stage').isVisible(),true);
  await page.clock.fastForward(10000);assert.equal(await page.locator('.bg-stage').isVisible(),false);
