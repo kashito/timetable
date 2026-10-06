@@ -13,7 +13,7 @@ HTML_PAGES = {
     'teacher2026summer.html': '全体スケ2026',
     'student.html': '生徒個人2026',
     'lesson_records.html': 'カルテ',
-    'daily_board.html': '今日の動き',
+    'daily_board.html': '掲示板',
 }
 
 
