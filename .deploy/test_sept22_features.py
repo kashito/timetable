@@ -62,7 +62,18 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("setInterval(updateClock,1000)", script)
         self.assertIn("：", script)
         for page in ("daily_board.html", "room_board.html"):
-            self.assertIn("20260922-clock", self.text(page))
+            self.assertIn("20261006-board-schedule", self.text(page))
+
+    def test_both_boards_share_advance_notice_and_time_pulse_rules(self):
+        script = self.text("daily-board.js")
+        api = self.text("daily_board_api.php")
+        css = self.text("daily-board.css")
+        for token in ("advanceNotice", "displayStartAt", "plannedAt-180000", "plannedAt+120000"):
+            self.assertIn(token, script)
+        self.assertIn("paintRows();", script)
+        self.assertIn("db-time-pulse", css)
+        self.assertIn("dbReleased", api)
+        self.assertIn("予告の表示開始日時を入力してください", api)
 
     def test_generator_header_has_requested_breathing_room(self):
         css = self.text("whole-time-header.css")

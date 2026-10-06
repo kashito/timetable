@@ -10,8 +10,14 @@ function dbText($in,$key,$max,$required=false){
  return trim($v);
 }
 function dbVersion($day){return hash('sha256',json_encode($day,JSON_UNESCAPED_UNICODE));}
+function dbReleased($row,$now){
+ if(($row['visible']??true)===false)return false;
+ if(($row['advanceNotice']??false)!==true)return true;
+ $at=$row['displayStartAt']??'';
+ return is_string($at)&&preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/D',$at)&&$now>=$at;
+}
 function dbProjection($day,$date,$admin){
- $rows=$day['rows']??[];if(!$admin)$rows=array_values(array_filter($rows,fn($r)=>($r['visible']??true)!==false));
+ $rows=$day['rows']??[];if(!$admin){$now=date('Y-m-d\TH:i');$rows=array_values(array_filter($rows,fn($r)=>dbReleased($r,$now)));}
  $out=['date'=>$date,'rows'=>$rows,'settings'=>$GLOBALS['dbSettings'],'boardId'=>$GLOBALS['dbBoardId'],'updatedAt'=>$day['updatedAt']??null,'serverTime'=>date('c'),'canEdit'=>$admin];
  if($admin){$out['version']=dbVersion([$day,$GLOBALS['dbSettings']]);$out['updatedBy']=$day['updatedBy']??'';}
  return $out;
@@ -38,8 +44,14 @@ try{
   $id=dbText($r,'id',80,true);if(!preg_match('/^[a-zA-Z0-9_-]{12,80}$/D',$id)||isset($ids[$id]))staffFail('編集画面を開き直してください。',400);$ids[$id]=true;
   $kind=$r['kind']??'instruction';$visible=$r['visible']??true;if(!in_array($kind,['instruction','note'],true)||!is_bool($visible))staffFail('指示の種類・表示チェックを確認してください。',400);
   $time=dbText($r,'time',5,$kind==='instruction');if(($time!==''||$kind==='instruction')&&!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$time))staffFail('開始時刻を入力してください。',400);
+  $advanceNotice=$r['advanceNotice']??false;if(!is_bool($advanceNotice))staffFail('予告の設定を確認してください。',400);
+  $displayStartAt=dbText($r,'displayStartAt',16);if($advanceNotice&&$displayStartAt==='')staffFail('予告の表示開始日時を入力してください。',400);
+  if($displayStartAt!==''){
+   if(!preg_match('/^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)$/D',$displayStartAt,$parts)||!checkdate((int)$parts[2],(int)$parts[3],(int)$parts[1]))staffFail('予告の表示開始日時を確認してください。',400);
+  }
+  if(!$advanceNotice)$displayStartAt='';
   $highlight=$r['highlight']??($oldRows[$id]['highlight']??false);$animation=$r['animation']??($oldRows[$id]['animation']??'none');if(!is_bool($highlight)||!in_array($animation,['none','pulse','scroll'],true))staffFail('ハイライト・アニメーションの設定を確認してください。',400);
-  $normalized[]=array_replace($oldRows[$id]??[],['id'=>$id,'kind'=>$kind,'visible'=>$visible,'highlight'=>$highlight,'animation'=>$animation,'time'=>$time,'target'=>dbText($r,'target',600,$kind==='instruction'),'place'=>dbText($r,'place',300,$kind==='instruction'),'instruction'=>dbText($r,'instruction',12000,true)]);
+  $normalized[]=array_replace($oldRows[$id]??[],['id'=>$id,'kind'=>$kind,'visible'=>$visible,'advanceNotice'=>$advanceNotice,'displayStartAt'=>$displayStartAt,'highlight'=>$highlight,'animation'=>$animation,'time'=>$time,'target'=>dbText($r,'target',600,$kind==='instruction'),'place'=>dbText($r,'place',300,$kind==='instruction'),'instruction'=>dbText($r,'instruction',12000,true)]);
  }
  $nextSettings=$settings;
  if(isset($in['settings'])){if(!is_array($in['settings']))staffFail('タイトル・背景色を確認してください。',400);$nextSettings=['title'=>dbText($in['settings'],'title',300,true),'background'=>dbText($in['settings'],'background',20,true)];if(!in_array($nextSettings['background'],['gray','blue','green','cream','white','dark'],true))staffFail('背景色を選んでください。',400);}
