@@ -26,7 +26,7 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
 (async()=>{try{
  for(let i=0;i<50;i++){try{await fetch(url+'/countdown.html');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({executablePath:process.env.BROWSER_EXE||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
- const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:1280,height:1200}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  let events=[event('past','2026-10-03'),event('today','2026-10-04'),event('four','2026-10-08'),event('seven','2026-10-11'),event('ignored','2026-10-12','other')];
  await page.route('**/calendar_events_api.php',r=>r.fulfill({json:{ok:true,events,schools:[{id:'s',name:'検証学校'}]}}));
  const publicBoard=await page.request.get(url+'/daily_board_api.php?date=2099-01-01&preview=student').then(r=>r.json());
@@ -47,9 +47,11 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
  assert.match(await page.locator('.db-rows').innerText(),/当日 2026-10-04/);assert.match(await page.locator('.db-rows').innerText(),/前日からの予告/);assert.doesNotMatch(await page.locator('.db-rows').innerText(),/非公開行/);
  assert.doesNotMatch(await page.locator('.db-rows').innerText(),/12時1分から表示|点滅終了後に表示/);assert.equal(await page.locator('.db-time-pulse').count(),1);
  assert.equal(await page.locator('.db-quick [name=advanceNotice]').count(),1);await page.locator('.db-edit').click();
- const notice=page.locator('.db-edit-row [data-advance-notice]').first(),start=page.locator('.db-edit-row [data-field=displayStartAt]').first();assert.equal(await start.isVisible(),false);await notice.check();assert.equal(await start.isVisible(),true);assert.equal(await start.getAttribute('required'),'');page.once('dialog',d=>d.accept());await page.locator('.db-edit-dialog .db-close').click();
- await page.clock.fastForward(19500);assert.equal(await page.locator('.bg-stage').isVisible(),false);
- await page.clock.fastForward(500);await page.locator('.bg-stage').waitFor({state:'visible'});
+ assert.equal(await page.locator('.db-edit-row').filter({hasText:'12時1分から表示'}).count(),1);assert.match(await page.locator('.db-edit-row').filter({hasText:'12時1分から表示'}).innerText(),/予告：2026-10-04 12:01から公開/);
+ const editRows=page.locator('.db-edit-row'),firstText=await editRows.first().locator('textarea').inputValue(),firstHandle=editRows.first().locator('.db-edit-drag-handle'),secondBox=await editRows.nth(1).boundingBox();await firstHandle.hover();await page.mouse.down();await page.mouse.move(secondBox.x+20,secondBox.y+secondBox.height-4,{steps:5});await page.mouse.up();assert.notEqual(await editRows.first().locator('textarea').inputValue(),firstText);
+ const notice=page.locator('.db-edit-row [data-advance-notice]').first(),start=page.locator('.db-edit-row [data-field=displayStartAt]').first();if(await start.isVisible())await notice.uncheck();assert.equal(await start.isVisible(),false);await notice.check();assert.equal(await start.isVisible(),true);assert.equal(await start.getAttribute('required'),'');page.once('dialog',d=>d.accept());await page.locator('.db-edit-dialog .db-close').click();
+ await page.clock.fastForward(18000);assert.equal(await page.locator('.bg-stage').isVisible(),false);
+ await page.clock.fastForward(2500);await page.locator('.bg-stage').waitFor({state:'visible'});
  const frame=page.frameLocator('.bg-countdown');await frame.locator('.countdown-row').first().waitFor();
  assert.equal(await frame.locator('.countdown-row').count(),3);assert.deepEqual(await frame.locator('.countdown-number strong').allTextContents(),['本日','4','7']);
  assert.doesNotMatch(await frame.locator('#countdownRows').innerText(),/試験past|試験ignored/);
@@ -76,5 +78,5 @@ const event=(id,date,category='test')=>({id,title:'試験'+id,category,startDate
  await page.clock.fastForward(30000);await page.waitForFunction(()=>document.querySelector('.db-rows')?.textContent.includes('2026-10-05'));await page.getByRole('button',{name:'次へ',exact:true}).click();await page.frameLocator('.bg-countdown').locator('.countdown-row').waitFor();assert.equal(await page.frameLocator('.bg-countdown').locator('.countdown-number strong').innerText(),'3');
  await page.getByRole('button',{name:'案内を編集',exact:true}).click();assert.equal(await page.locator('[name=mainSeconds]').inputValue(),'25');assert.equal(await page.locator('[data-seconds]').inputValue(),'23');
  const blue=await fetch(url+'/board_guides_api.php?board=blue&date=2026-10-05').then(r=>r.json());assert.deepEqual(blue.guide.slides,[]);
- assert.deepEqual(errors,[]);console.log('PASS: advance notice public filtering/validation, automatic -3/+2 minute pulse without reload, late release without pulse, countdown drawing/settings, Japan midnight content, hidden board rows; isolated data only.');
+ assert.deepEqual(errors,[]);console.log('PASS: advance notice admin editing/drag order and public filtering/validation, automatic -3/+2 minute pulse without reload, late release without pulse, countdown drawing/settings, Japan midnight content, hidden board rows; isolated data only.');
  }finally{await browser?.close();server.kill();fs.rmSync(tmp,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});

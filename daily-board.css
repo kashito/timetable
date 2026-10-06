@@ -14,6 +14,7 @@
 @media(max-width:650px){.db-quick form{grid-template-columns:1fr 1fr}}
 
 .db-row-controls{grid-column:1/-1;display:flex;gap:12px;align-items:center}.db-drag-handle{touch-action:none;cursor:grab;color:inherit;border:1px solid currentColor;border-radius:6px;background:transparent;font:inherit;font-size:13px;padding:5px 9px}.db-dragging{outline:3px solid #f4c956;outline-offset:-3px;opacity:.8}.db-row-controls .db-visibility{margin:0}:fullscreen .db-row-controls{display:none!important}
+.db-edit-row-head{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.db-edit-row-head .db-edit-visible{grid-column:auto}.db-edit-drag-handle{touch-action:none;cursor:grab;border:1px solid #708ba3;border-radius:7px;background:#fff;color:#294b68;font:700 13px/1.4 system-ui,sans-serif;padding:7px 10px}.db-edit-drag-handle:active{cursor:grabbing}.db-edit-row.db-edit-dragging{outline:3px solid #f4c956;outline-offset:-3px;background:#fffbea;opacity:.86}
 
 /* Screen edges stay clear on classroom televisions, including full screen. */
 .daily-monitor{--db-safe-x:clamp(24px,4vw,90px);--db-safe-y:clamp(24px,4vh,64px)}
