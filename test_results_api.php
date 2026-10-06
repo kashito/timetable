@@ -30,23 +30,26 @@ try{
  if($action!=='save')staffFail('操作を確認してください。',400);
  $name=trText($in['name']??'',600);$total=$in['total']??null;$scores=$in['scores']??null;$note=trText($in['note']??'',12000);
  if($name===''||!is_int($total)||$total<1||$total>100000||!is_array($scores)||count($scores)>500)staffFail('テスト名・問題数（1〜100000問）・生徒の結果を確認してください。',400);
- $allowed=array_fill_keys(array_merge($context['students'],array_keys($old['scores']??[])),true);$normalized=$old['scores']??[];$statuses=trStatuses($old??[]);$inputStatuses=$in['statuses']??null;
+ $allowed=array_fill_keys(array_merge($context['students'],array_keys($old['scores']??[])),true);$normalized=$old['scores']??[];$statuses=trStatuses($old??[]);$inputStatuses=$in['statuses']??null;$inputPartials=$in['partialScores']??null;$partials=$old['partialScores']??[];
+ if($inputPartials!==null&&(!is_array($inputPartials)||array_diff_key($inputPartials,$scores)||array_diff_key($scores,$inputPartials)))staffFail('生徒ごとの△数を確認してください。',400);
  if($inputStatuses!==null&&(!is_array($inputStatuses)||array_diff_key($inputStatuses,$scores)||array_diff_key($scores,$inputStatuses)))staffFail('生徒ごとの報告状態を確認してください。',400);
  foreach($scores as $student=>$score){
   if(!is_string($student)||!isset($allowed[$student]))staffFail('生徒の一覧が変わりました。再読み込みしてください。',409);
   if($score!==null&&(!is_int($score)||$score<0||$score>$total))staffFail($student.'の正解数を0〜'.$total.'問で入力してください。',400);
   $status=$inputStatuses!==null?$inputStatuses[$student]:($score!==null?'reported':(($statuses[$student]??'ungraded')==='reported'?'ungraded':($statuses[$student]??'ungraded')));
   if(!in_array($status,['reported','unreported','exempt','ungraded'],true)||($status==='reported')!==($score!==null))staffFail($student.'の報告状態と正解数を確認してください。',400);
-  $normalized[$student]=$score;$statuses[$student]=$status;
+  $part=$inputPartials!==null?$inputPartials[$student]:($score!==null?($partials[$student]??0):0);
+  if(!is_int($part)||$part<0||($score===null&&$part!==0)||($score!==null&&$score+$part>$total))staffFail($student.'の正解数と△数の合計を0〜'.$total.'問で入力してください。',400);
+  $normalized[$student]=$score;$statuses[$student]=$status;$partials[$student]=$part;
  }
- foreach($normalized as $student=>$score)if($score!==null&&$score>$total)staffFail('問題数が保存済みの正解数より少なくなっています。',400);
+ foreach($normalized as $student=>$score)if($score!==null&&$score+($partials[$student]??0)>$total)staffFail('問題数が保存済みの正解数と△数の合計より少なくなっています。',400);
  $requestId=trText($in['requestId']??'',80);if(!preg_match('/^[a-zA-Z0-9_-]{16,80}$/D',$requestId))staffFail('画面を開き直してください。',400);
- $hash=trVersion([$context['key'],$id,$name,$total,$scores,$note,$inputStatuses]);
+ $hashFields=[$context['key'],$id,$name,$total,$scores,$note,$inputStatuses];if($inputPartials!==null)$hashFields[]=$inputPartials;$hash=trVersion($hashFields);
  foreach($data['items'] as $r)if(($r['requestId']??'')===$requestId&&($r['updatedById']??'')===$actor['id']){if(($r['requestHash']??'')!==$hash)staffFail('前の内容は保存済みです。一覧を確認してください。',409);trReply(['item'=>trPublic($r),'duplicate'=>true]);}
  if($old&&!hash_equals(trPublic($old)['version'],(string)($in['version']??'')))staffFail('別の画面で結果が更新されました。入力を控えて再読み込みしてください。',409);
  $id=$id?:bin2hex(random_bytes(12));$r=$old??['id'=>$id,'createdAt'=>date('c'),'createdBy'=>$actor['name'],'history'=>[],'archived'=>false];
  if($old){$previous=$old;unset($previous['history'],$previous['requestHash'],$previous['requestId']);$r['history'][]=['action'=>'edit','at'=>date('c'),'by'=>$actor['name'],'previous'=>$previous];}
  foreach(['key','date','className','teacher','slots','groupId','sources'] as $field)$r[$field]=$context[$field];
- $r['name']=$name;$r['total']=$total;$r['scores']=$normalized;$r['statuses']=$statuses;$r['note']=$note;$r['updatedAt']=date('c');$r['updatedBy']=$actor['name'];$r['updatedById']=$actor['id'];$r['requestId']=$requestId;$r['requestHash']=$hash;$data['items'][$id]=$r;
+ $r['name']=$name;$r['total']=$total;$r['scores']=$normalized;$r['statuses']=$statuses;$r['partialScores']=$partials;$r['note']=$note;$r['updatedAt']=date('c');$r['updatedBy']=$actor['name'];$r['updatedById']=$actor['id'];$r['requestId']=$requestId;$r['requestHash']=$hash;$data['items'][$id]=$r;
  if(!safeJsonWriteAtomic($file,$data))staffFail('保存できませんでした。入力を残しています。',500);trReply(['item'=>trPublic($r)]);
 }catch(Throwable $e){error_log('[test_results] '.get_class($e).' '.$e->getLine());staffFail('テスト結果を処理できませんでした。再読み込みしてください。',500);}
