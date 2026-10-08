@@ -296,7 +296,10 @@ def preview(output):
     (output / 'rsync-dry-run.txt').write_bytes(raw)
     changes = parse_changes(raw, manifest, verified_root=True)
     expected = sorted(p for p, digest in manifest['files'].items() if before['files'].get(p) != digest)
-    require(changes == expected, 'SSH content comparison and rsync dry-run disagree')
+    require(changes == expected, 'SSH content comparison and rsync dry-run disagree: ' + json.dumps({
+        'missing_from_dry_run': sorted(set(expected) - set(changes)),
+        'extra_in_dry_run': sorted(set(changes) - set(expected)),
+    }))
     after = probe(manifest)
     unchanged = before['all_digest'] == after['all_digest']
     result = {'commit': manifest['commit'], 'source_files': len(manifest['files']),
