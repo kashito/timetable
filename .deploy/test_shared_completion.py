@@ -66,6 +66,12 @@ class SharedCompletionTests(unittest.TestCase):
         current=next(t for t in self.catalog() if t['text']==TEXT[0]);self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked'])
         _,plan=self.request('lesson_group_api.php?action=candidates&sourceKey='+urllib.parse.quote(extra['_sourceKey']));code,j=self.post('lesson_group_api.php',dict(action='create',sources=[self.rows[2]['_sourceKey'],extra['_sourceKey']],version=plan['version'],mealBreak=False));self.assertEqual(code,200,j)
         current=next(t for t in self.catalog() if t['text']==TEXT[0]);self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked'])
+    def test_archived_check_and_original_record_identity_are_preserved(self):
+        import hashlib
+        records=self.read('lesson_records.json');source=fixture.key(self.rows[2]);identity='historical-source';records[source]['eventKey']=identity
+        task='hw_'+hashlib.sha256((identity+'\0'+'0'+'\0'+TEXT[0]).encode()).hexdigest()[:24]
+        records[fixture.key(self.rows[3])]['sourceRecords']={'old-target':{'homeworkChecks':{task:{'checked':True}}}};self.write('lesson_records.json',records)
+        self.assertTrue(next(t for t in self.catalog() if t['text']==TEXT[0])['checked']);self.assertTrue(next(t for t in self.previous()['items'] if t['text']==TEXT[0])['checked'])
     def test_legacy_check_survives_reordered_lines(self):
         old=self.previous()['items'][0];records=self.read('lesson_records.json');records[fixture.key(self.rows[3])]['homeworkChecks']={old['id']:{'checked':True}};records[fixture.key(self.rows[2])]['homework']='\n'.join(reversed(TEXT));self.write('lesson_records.json',records);self.assertTrue(next(t for t in self.catalog() if t['text']==old['text'])['checked']);self.assertTrue(next(t for t in self.previous()['items'] if t['text']==old['text'])['checked'])
     def test_exemption_and_class_alias_respect_membership(self):

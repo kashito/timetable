@@ -2,10 +2,11 @@
 require_once __DIR__.'/recording_context.php';
 function homeworkCanonicalId($series,$date,$kind,$text){return 'hwc_'.substr(hash('sha256',implode("\0",[$series,$date,$kind,trim($text)])),0,24);}
 function homeworkStudentStates(){return readJsonStrict(__DIR__.'/data/student_homework_checks.php');}
+function homeworkHistoricalRecords($records){$result=[];$visit=function($record)use(&$visit,&$result){if(!is_array($record))return;$result[]=$record;foreach(['sourceRecords','recordHistory'] as $field)foreach($record[$field]??[] as $old)$visit($old);};foreach($records as $record)$visit($record);return $result;}
 function homeworkLegacyChecked($aliases,$records){
  // Old records also contain automatically seeded false entries. Preserve any
  // historic completion until a new explicit, student-scoped change is saved.
- foreach($records as $record)foreach($aliases as $id){$entry=$record['homeworkChecks'][$id]??false;if(is_array($entry)?!empty($entry['checked']):(bool)$entry)return true;}return false;
+ foreach(homeworkHistoricalRecords($records) as $record)foreach($aliases as $id){$entry=$record['homeworkChecks'][$id]??false;if(is_array($entry)?!empty($entry['checked']):(bool)$entry)return true;}return false;
 }
 function homeworkState($student,$id,$legacy,$states=null){$entry=($states??homeworkStudentStates())[$student][$id]??null;return ['checked'=>$entry===null?$legacy:!empty($entry['checked']),'revision'=>hash('sha256',json_encode($entry??['legacy'=>$legacy]))];}
 function homeworkEligibleRows($student,$rows,$master,$directory,$states){
@@ -16,9 +17,9 @@ function homeworkEligibleRows($student,$rows,$master,$directory,$states){
  return array_values(array_filter($eligible,function($row)use($eligible,$priorities,$resolve){foreach($eligible as $other)if(recordingDate($other['日付'])===recordingDate($row['日付'])&&($priorities[$resolve($other['クラス'])]??0)>($priorities[$resolve($row['クラス'])]??0)&&groupRowTime($row,'開始')<groupRowTime($other,'終了')&&groupRowTime($other,'開始')<groupRowTime($row,'終了'))return false;return true;}));
 }
 function homeworkSourceAliases($rows,$records,$text){
- $aliases=[];$keyAliases=readJsonStrict(__DIR__.'/data/lesson_key_aliases.json');$checkedIds=[];foreach($records as $record)foreach($record['homeworkChecks']??[] as $id=>$entry)if(is_array($entry)?!empty($entry['checked']):(bool)$entry)$checkedIds[$id]=true;
+ $aliases=[];$keyAliases=readJsonStrict(__DIR__.'/data/lesson_key_aliases.json');$checkedIds=[];foreach(homeworkHistoricalRecords($records) as $record)foreach($record['homeworkChecks']??[] as $id=>$entry)if(is_array($entry)?!empty($entry['checked']):(bool)$entry)$checkedIds[$id]=true;
  foreach($rows as $row){$key=canonicalLessonKey(policyKey($row));$source=$records[$key]??[];$sources=[$key=>$source];foreach($keyAliases as $oldKey=>$destination)if(canonicalLessonKey($oldKey)===$key)$sources[$oldKey]=$source;$group=groupForSource($row['_sourceKey']);if($group){$common=$records[$group['key']]??[];$sources[$group['key']]=$common;foreach($common['sourceRecords']??[] as $oldKey=>$old)$sources[$oldKey]=$old;}
-  foreach($sources as $sourceKey=>$record){$lines=recordingHomeworkLines($record['homework']??'');$matched=false;foreach($lines as $i=>$line)if($line===$text){$id=recordingHomeworkTaskId($sourceKey,$i,$text);$aliases[]=$id;if(isset($checkedIds[$id]))$matched=true;}if(!$matched&&in_array($text,$lines,true)&&$checkedIds)for($i=0;$i<max(2000,count($lines));$i++){$id=recordingHomeworkTaskId($sourceKey,$i,$text);if(isset($checkedIds[$id])){$aliases[]=$id;break;}}}
+  foreach($sources as $sourceKey=>$record){$lines=recordingHomeworkLines($record['homework']??'');foreach(array_unique([$sourceKey,$record['eventKey']??$sourceKey]) as $identity){$matched=false;foreach($lines as $i=>$line)if($line===$text){$id=recordingHomeworkTaskId($identity,$i,$text);$aliases[]=$id;if(isset($checkedIds[$id]))$matched=true;}if(!$matched&&in_array($text,$lines,true)&&$checkedIds)for($i=0;$i<max(2000,count($lines));$i++){$id=recordingHomeworkTaskId($identity,$i,$text);if(isset($checkedIds[$id])){$aliases[]=$id;break;}}}}
  }return array_values(array_unique($aliases));
 }
 function homeworkCatalog($student){
