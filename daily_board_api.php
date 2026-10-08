@@ -16,6 +16,11 @@ function dbReleased($row,$now){
  $at=$row['displayStartAt']??'';
  return is_string($at)&&preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/D',$at)&&$now>=$at;
 }
+function dbLegacyScheduleUnchanged($row,$old){
+ if(!is_array($old)||empty($old['advanceNotice'])||($row['displayStartAt']??'')!==($old['displayStartAt']??''))return false;
+ foreach(['kind','time','target','place','instruction'] as $field)if(trim((string)($row[$field]??($field==='kind'?'instruction':'')))!==trim((string)($old[$field]??($field==='kind'?'instruction':''))))return false;
+ return true;
+}
 function dbProjection($day,$date,$admin){
  $rows=$day['rows']??[];if(!$admin){$now=date('Y-m-d\TH:i');$rows=array_values(array_filter($rows,fn($r)=>dbReleased($r,$now)));}
  $out=['date'=>$date,'rows'=>$rows,'settings'=>$GLOBALS['dbSettings'],'boardId'=>$GLOBALS['dbBoardId'],'updatedAt'=>$day['updatedAt']??null,'serverTime'=>date('c'),'canEdit'=>$admin];
@@ -49,6 +54,7 @@ try{
   if($displayStartAt!==''){
    if(!preg_match('/^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)$/D',$displayStartAt,$parts)||!checkdate((int)$parts[2],(int)$parts[3],(int)$parts[1]))staffFail('予告の表示開始日時を確認してください。',400);
   }
+  if($advanceNotice&&substr($displayStartAt,0,10)!==$date&&!dbLegacyScheduleUnchanged($r,$oldRows[$id]??null))staffFail('表示開始日は対象日 '.$date.' と同じ日にしてください。別の日に表示する内容は、その対象日を開いて登録してください。',400);
   if(!$advanceNotice)$displayStartAt='';
   $highlight=$r['highlight']??($oldRows[$id]['highlight']??false);$animation=$r['animation']??($oldRows[$id]['animation']??'none');if(!is_bool($highlight)||!in_array($animation,['none','pulse','scroll'],true))staffFail('ハイライト・アニメーションの設定を確認してください。',400);
   $normalized[]=array_replace($oldRows[$id]??[],['id'=>$id,'kind'=>$kind,'visible'=>$visible,'advanceNotice'=>$advanceNotice,'displayStartAt'=>$displayStartAt,'highlight'=>$highlight,'animation'=>$animation,'time'=>$time,'target'=>dbText($r,'target',600,$kind==='instruction'),'place'=>dbText($r,'place',300,$kind==='instruction'),'instruction'=>dbText($r,'instruction',12000,true)]);

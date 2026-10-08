@@ -62,7 +62,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("setInterval(updateClock,1000)", script)
         self.assertIn("：", script)
         for page in ("daily_board.html", "room_board.html"):
-            self.assertIn("20261006-pc-row-drag", self.text(page))
+            self.assertIn("20261008-board-dates", self.text(page))
 
     def test_both_boards_share_advance_notice_and_time_pulse_rules(self):
         script = self.text("daily-board.js")
