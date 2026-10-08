@@ -71,5 +71,11 @@ class CommonHomeworkTests(unittest.TestCase):
         self.assertEqual(result.exception.code,304)
         all=self.read('lesson_records.json');all[self.g['key']]['homework']='連続更新';self.write('lesson_records.json',all)
         with client.open(request) as response:self.assertNotEqual(response.headers['ETag'],revision)
+    def test_public_homework_serves_current_schedule_key_and_historical_alias(self):
+        self.write('lesson_key_aliases.json',{self.keys[0]:'changed-lesson-key'})
+        code,j=self.request('lesson_record_api.php?action=homework',client=self.client());self.assertEqual(code,200,j)
+        self.assertEqual(j['records'][self.keys[0]],j['records']['changed-lesson-key'])
+        self.assertEqual(j['records'][self.keys[0]]['homework'],'最新宿題')
+        self.assertEqual(self.get(self.keys[0]),self.get(self.keys[1]))
 
 if __name__=='__main__':unittest.main()

@@ -61,7 +61,7 @@ function groupNextLesson($group,$rows,$allRows){
 function groupRecordList($records,$homework=false){
  $out=$records;$rows=policyRows();
  foreach(lessonGroups() as $g){if(empty($g['active']))continue;$common=$records[$g['key']]??null;if(!$common)continue;$common=commonGroupRecord($g,$records,groupRows($g,$rows));$out[$g['key']]=$common;
-  foreach(groupRows($g,$rows) as $r){$key=canonicalLessonKey(policyKey($r));if($homework)$out[$key]=['homework'=>$common['homework']??'','dueHomework'=>$common['dueHomework']??''];else unset($out[$key]);}
+  foreach(groupRows($g,$rows) as $r){$rawKey=policyKey($r);$key=canonicalLessonKey($rawKey);if($homework){$value=['homework'=>$common['homework']??'','dueHomework'=>$common['dueHomework']??''];$out[$key]=$value;$out[$rawKey]=$value;}else unset($out[$key]);}
  }
  return $out;
 }
