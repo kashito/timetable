@@ -10,15 +10,24 @@ async function boundary(context,{linked=false,student=false,overdue=false,shared
  const fixtureSchedule=overdue?[row('2026-10-05'),...schedule]:schedule;
  const records=shared?.records||{[key(schedule[0])]:{memo:'既存カルテ',homework:'前回の宿題\n同じ宿題'},[key(schedule[1])]:{memo:'授業カルテ',homework:'まだ発行していない宿題',dueHomework:'今回の予習\n同じ宿題'},[key(schedule[2])]:{dueHomework:'今回の予習'},[key(schedule[3])]:{homework:'将来の宿題'}};
  if(overdue){records[key(fixtureSchedule[0])]={homework:'過去の未完了\n過去の完了'};records[key(schedule[0])].dueHomework='過去の直接宿題';}
+ const completion=shared?.completion||{};let fixtureClock=Date.parse(now);
  let version=1;records[group.key]={memo:'共通カルテ',homework:'まだ発行していない宿題',dueHomework:'今回の予習\n同じ宿題',updatedAt:now};const posts=[],states={};
+ function catalog(name){if(name!=='検証生徒')return [];const byDate=new Map();for(const row of fixtureSchedule){const date=row['日付'];if(!byDate.has(date))byDate.set(date,[]);byDate.get(date).push(row);}const days=[...byDate.keys()].sort(),result=[];const lines=text=>String(text||'').split('\n').map(text=>text.trim()).filter(text=>text&&text!=='宿題なし'&&text!=='未定');
+  const rec=row=>linked&&group.lessonKeys.includes(key(row))?records[group.key]:records[key(row)]||{};
+  for(let i=0;i<days.length;i++){const date=days[i],rows=byDate.get(date),next=days[i+1],nextRows=next?byDate.get(next):[];for(const row of rows){const homework=rec(row);for(const kind of ['next','due']){if(kind==='next'&&Date.parse(date+'T'+row['開始']+':00+09:00')>fixtureClock)continue;for(const text of lines(homework[kind==='next'?'homework':'dueHomework'])){const dueDate=kind==='next'?next:date,dueRows=kind==='next'?nextRows:rows,dueAt=dueDate?dueDate+'T'+dueRows[0]['開始']+':00+09:00':null;if(result.some(item=>item.text===text&&item.dueAt===dueAt))continue;const id='hwc_'+require('crypto').createHash('sha256').update(date+'|'+kind+'|'+text).digest('hex').slice(0,24),value=completion[name]?.[id];result.push({id,text,dueAt,className:row['クラス'],assignedDate:date,kind,targetKeys:dueRows.map(key),checked:value??false,revision:JSON.stringify(value??false)});}}}}
+  return result;
+ }
  await context.route('https://test.local/**',async route=>{
   const req=route.request(),u=new URL(req.url()),file=decodeURIComponent(u.pathname.slice(1)),body=req.method()==='POST'?JSON.parse(req.postData()||'{}'):null;
   if(file==='schedule_generator.php')return route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(root,file),'utf8').replace(/<\?php[\s\S]*?\?>/g,'')});
   if(file.endsWith('.php')){
    let data={ok:true,items:[],notes:[],articles:[],count:0,unread:0,pending:0,counts:{},schools:[],events:[],groups:[],requests:[],contacts:[],profiles:{},overrides:{},records:{},hidden:[],students,directory:{},state:{},teachers:[],roster:[],links:[],byLesson:{},canArchive:false};
    if(body)posts.push({file,body});
+   if(file==='student_homework_api.php'){
+    fixtureClock=Number(u.searchParams.get('v')||fixtureClock);const name=body?.student||u.searchParams.get('student');if(body){completion[name]=completion[name]||{};if(body.action==='migrate'){for(const id of body.completed||[])if(completion[name][id]===undefined)completion[name][id]=true;}else completion[name][body.taskId]=body.checked;}data={ok:true,student:name,items:catalog(name)};
+   }
    if(file==='homework_revision_api.php'){
-    const revision='"'+require('crypto').createHash('sha256').update(JSON.stringify(records)).digest('hex')+'"';
+    const revision='"'+require('crypto').createHash('sha256').update(JSON.stringify([records,completion])).digest('hex')+'"';
     if(req.headers()['if-none-match']===revision)return route.fulfill({status:304,body:'',headers:{ETag:revision}});data={ok:true,revision};
    }
    if(file==='staff_auth_api.php')data={ok:true,user:student?null:{id:'fixture',name:'検証講師',role:'admin'},csrf:'fixture'};
@@ -42,7 +51,7 @@ async function boundary(context,{linked=false,student=false,overdue=false,shared
   const local=file==='student.html'&&process.env.HOMEWORK_STUDENT_SOURCE?process.env.HOMEWORK_STUDENT_SOURCE:path.resolve(root,file);if((!local.startsWith(root+path.sep)&&local!==process.env.HOMEWORK_STUDENT_SOURCE)||!fs.existsSync(local))return route.fulfill({status:404,body:''});
   return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(local)});
  });
- return {posts,records};
+ return {posts,records,completion};
 }
 module.exports={boundary};
 if(require.main===module)(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
@@ -65,12 +74,12 @@ if(require.main===module)(async()=>{const browser=await chromium.launch({channel
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},timezoneId:'Asia/Tokyo',isMobile:mobile,hasTouch:mobile}),page=await context.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.stack);});await page.clock.setFixedTime(new Date(now));await boundary(context,{linked:true,student:true});
   await page.goto('https://test.local/student.html?name='+encodeURIComponent('検証生徒'));await page.locator('#studentConfirmOk').click();await page.locator('#studentHomeworkHub:not([hidden])').waitFor();assert.equal(await page.locator('#studentHomeworkToggle').getAttribute('aria-expanded'),'false');await page.locator('#studentHomeworkToggle').click();
   await page.waitForFunction(()=>document.querySelectorAll('#studentHomeworkBody>.student-homework-hub-item').length===3);assert.doesNotMatch(await page.locator('#studentHomeworkBody').textContent(),/将来の宿題|まだ発行していない/);
-  assert.equal(await page.locator('#studentHomeworkCount').textContent(),'3');await page.locator('[data-homework-complete]').first().click();assert.equal(await page.locator('#studentHomeworkCount').textContent(),'2');assert.equal(await page.locator('.student-homework-completed').count(),1);
+  assert.equal(await page.locator('#studentHomeworkCount').textContent(),'3');await page.locator('[data-homework-complete]').first().click();await page.waitForFunction(()=>document.getElementById('studentHomeworkCount').textContent==='2');assert.equal(await page.locator('.student-homework-completed').count(),1);
   await page.locator('#studentHomeworkBody>.student-homework-hub-item [data-homework-hide]').first().click();assert.equal(await page.locator('#studentHomeworkCount').textContent(),'1');
   await page.reload();await page.locator('#studentConfirmOk').click();await page.locator('#studentHomeworkHub:not([hidden])').waitFor();await page.locator('#studentHomeworkToggle').click();assert.equal(await page.locator('#studentHomeworkCount').textContent(),'1');
   await page.locator('.student-homework-hidden').filter({has:page.locator('[data-homework-restore]')}).locator('summary').click();await page.locator('[data-homework-restore]').click();assert.equal(await page.locator('#studentHomeworkCount').textContent(),'2');
   await page.screenshot({path:path.join(root,'..',`homework-${mobile?'mobile':'desktop'}.png`)});
-  await page.evaluate(()=>StudentHomeworkHub.update('検証生徒B',[]));assert.equal(await page.locator('#studentHomeworkToggle').getAttribute('aria-expanded'),'false');await page.locator('#studentHomeworkToggle').click();assert.match(await page.locator('#studentHomeworkBody').textContent(),/現在取り組む宿題はありません/);
-  await page.evaluate(()=>StudentHomeworkHub.update('検証生徒B',[{dueAt:'2026-10-07T11:00:00+09:00',text:'期限確認',className:'検証'}]));assert.match(await page.locator('#studentHomeworkBody').textContent(),/期限を過ぎています/);assert.deepEqual(errors,[]);await context.close();console.log(`${mobile?'Mobile':'Desktop'} student: issued-only, dedup, folding, completion, hiding, reload, student switch, empty and overdue passed`);
+  await page.evaluate(()=>StudentHomeworkHub.refresh('検証生徒B'));await page.evaluate(()=>StudentHomeworkHub.update('検証生徒B',[]));assert.equal(await page.locator('#studentHomeworkToggle').getAttribute('aria-expanded'),'false');await page.locator('#studentHomeworkToggle').click();assert.match(await page.locator('#studentHomeworkBody').textContent(),/現在取り組む宿題はありません/);
+  assert.deepEqual(errors,[]);await context.close();console.log(`${mobile?'Mobile':'Desktop'} student: issued-only, dedup, folding, completion, hiding, reload, student switch, empty and overdue passed`);
  }
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

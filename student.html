@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261008-homework-live"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261008-shared-completion"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
 <meta charset="utf-8"><meta name="timetable-view-version" content="20260914-r41">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>生徒個人2026</title>
@@ -352,7 +352,7 @@ window.SharedClassState=(()=>{
 <style id="student-to-teacher-upload-v65">
 .student-send-box{margin-top:14px;padding:13px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}.student-send-box strong{display:block;margin-bottom:8px}.student-send-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.student-send-row input[type=file]{flex:1;min-width:210px}.student-send-btn{border:0;border-radius:9px;padding:9px 13px;background:#15803d;color:#fff;font-weight:900;cursor:pointer}.student-send-status{display:block;margin-top:7px;font-weight:800}.attachment-source{font-size:11px;margin-right:5px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-weight:900}
 </style>
-<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="student-homework-hub.css?v=20261006-homework"><script defer src="student-homework-hub.js?v=20261007-due-homework"></script><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
+<link rel="stylesheet" href="workspace-ui.css?v=20260912-r24"><link rel="stylesheet" href="student-homework-hub.css?v=20261006-homework"><script defer src="student-homework-hub.js?v=20261008-shared-completion"></script><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script defer src="lesson-fixed.js?v=20260913-r28"></script><link rel="stylesheet" href="student-participation.css?v=20260912-r22"><link rel="stylesheet" href="lesson-group.css?v=20260913-r28"><link rel="stylesheet" href="calendar-events.css?v=20260920-events-group"><link rel="stylesheet" href="student-contacts.css?v=20260914-r41"><script defer src="student-contacts.js?v=20260914-r41"></script><link rel="stylesheet" href="student-header.css?v=20260914-r39"><script defer src="student-header.js?v=20260914-r39"></script><script defer src="student-notices.js?v=20260914-r39"></script><link rel="stylesheet" href="test-results.css?v=20260916-r54-ready"><script defer src="student-test-notices.js?v=20260916-r52"></script></head>
 <body>
 <div class="app">
   <header class="student-header" id="studentHeader">
@@ -922,7 +922,7 @@ window.SharedClassState=(()=>{
     }
     const homeworkHubItems=[...homeworkHubByKey.values()];
     window.__studentHomeworkHubData={name:selectedStudent.name,items:homeworkHubItems};
-    window.StudentHomeworkHub?.update(selectedStudent.name,homeworkHubItems);
+    window.StudentHomeworkHub?.update(selectedStudent.name,homeworkHubItems);window.StudentHomeworkHub?.refresh(selectedStudent.name).catch(e=>console.warn(e.message));
     const rangeStart = window.HistoryWindow ? HistoryWindow.start() : today;
     const horizon = new Date((rangeStart>today?rangeStart:today)+'T00:00:00');horizon.setDate(horizon.getDate()+120);
     const rangeEnd = [availableDates[availableDates.length-1]||'',horizon.toLocaleDateString('sv-SE')].sort().at(-1);
@@ -1121,6 +1121,7 @@ window.SharedClassState=(()=>{
           `<div class="schedule-item">${esc(r.date)}（${dayName(r.date)}）　${esc(r.slot)} ${esc(r.start)}–${esc(r.end)}　${esc(r.room)}</div>`
         ).join('')}
       </div>`;
+    let homeworkBox=$('modalBody').querySelector('.detail-homework');if(!homeworkBox){homeworkBox=document.createElement('div');homeworkBox.className='detail-homework';$('modalBody').prepend(homeworkBox);}window.StudentHomeworkHub?.mountDetail(homeworkBox,key);
     $('modal').classList.remove('hidden');
     const sendBtn=document.getElementById('studentToTeacherUpload');
     const sendInput=document.getElementById('studentToTeacherFile');
@@ -1308,14 +1309,14 @@ window.SharedClassState=(()=>{
   async function refreshHomework(){
     const response=await fetch('lesson_record_api.php?action=homework&v='+Date.now(),{cache:'no-store'});const data=await response.json();
     if(!response.ok||!data.ok||!data.records||Array.isArray(data.records)&&data.records.length)throw Error('宿題を読み込めません');
-    await LessonGroups.refresh();lessonRecords=data.records;render();
+    await LessonGroups.refresh();lessonRecords=data.records;await window.StudentHomeworkHub?.refresh(selectedStudent?.name||'');render();
     // Refresh just the read-only homework region; preserve upload selection/drafts.
     if(!$('modal').classList.contains('hidden')&&detailKey){
       const target=rows.find(r=>lessonRoomKey(r)===detailKey);if(target){
         const timeline=rows.filter(r=>!specialDayLabel(r)&&r.cls===target.cls),dates=[...new Set(timeline.map(r=>r.date).filter(d=>d<target.date))].sort(),previous=dates.at(-1);
         const values=timeline.filter(r=>r.date===previous).map(r=>lessonRecords[lessonRoomKey(r)]?.homework||'');
         const members=LinkedSchedule.merge(renderedRows,lessonRoomKey,effectiveRoom).find(r=>lessonRoomKey(r)===detailKey)?._linked?.members||[target];values.push(...members.map(r=>lessonRecords[lessonRoomKey(r)]?.dueHomework||''));
-        const text=[...new Set(values.join('\n').split('\n').map(x=>x.trim()).filter(Boolean))].join('\n');let box=$('modalBody').querySelector('.detail-homework');if(!box){box=document.createElement('div');box.className='detail-homework';$('modalBody').prepend(box);}box.hidden=!text;box.innerHTML='<strong>📚 宿題</strong><br>'+esc(text);
+        const text=[...new Set(values.join('\n').split('\n').map(x=>x.trim()).filter(Boolean))].join('\n');let box=$('modalBody').querySelector('.detail-homework');if(!box){box=document.createElement('div');box.className='detail-homework';$('modalBody').prepend(box);}box.hidden=!text;box.innerHTML='<strong>📚 宿題</strong><br>'+esc(text);window.StudentHomeworkHub?.mountDetail(box,detailKey);
       }
     }
   }

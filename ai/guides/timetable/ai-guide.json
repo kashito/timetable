@@ -322,7 +322,7 @@
       "source": [
         {
           "file": "student.html",
-          "line": 1275,
+          "line": 1276,
           "code": "schedulePrivateFrom=publicSettings?.ok?String(publicSettings.privateFrom||''):'';"
         },
         {
@@ -438,7 +438,7 @@
         "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
         "一部だけ確定している日は「授業あり・現在調整中（確定した授業のみ表示）」と表示し、全予定が確定したように見せない",
         "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
-        "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。生徒ごとの完了チェックと非表示はその端末に保存する",
+        "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。完了チェックは生徒ごとにサーバー保存し、授業詳細・上部一覧・別端末で共有する。非表示はその端末に保存する",
         "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
         "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
         "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
@@ -466,8 +466,8 @@
         },
         {
           "file": "student-homework-hub.js",
-          "line": 24,
-          "code": "window.StudentHomeworkHub={update};if(window.__studentHomeworkHubData)update(window.__studentHomeworkHubData.name,window.__studentHomeworkHubData.items);setInterval(()=>{if(open)render();},60000);"
+          "line": 30,
+          "code": "window.addEventListener('storage',event=>{if(event.key===key())render();});window.StudentHomeworkHub={update,refresh,mountDetail};if(window.__studentHomeworkHubData)update(window.__studentHomeworkHubData.name,window.__studentHomeworkHubData.items);document.addEventListener('lesson-recording-saved',()=>refresh().catch(e=>{error=e.message;render();}));setInterval(()=>{if(open)render();},60000);"
         },
         {
           "file": "student.html",
@@ -496,7 +496,7 @@
   "generated_sections": {
     "display_rules": {
       "generator": ".deploy/generate_ai_guide_states.py",
-      "source_digest_sha256": "e33e186f0881546060494a8e0ddecad0bf4c4dc291cbfdc90566326ef539e9a8",
+      "source_digest_sha256": "c9113ad06d4c1b4a1293dba11e113bb11712586bf38012cb2fb05da9adb15c38",
       "sources": [
         "student.html",
         "school-holidays.js",

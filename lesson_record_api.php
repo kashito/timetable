@@ -17,7 +17,7 @@ function uid($prefix='r'){ try{return $prefix.bin2hex(random_bytes(6));}catch(Th
 function cleanText($v){ return trim((string)$v); }
 
 if($_SERVER['REQUEST_METHOD']==='GET'){
-  if(($_GET['action']??'')==='previous_homework'){staffRequire();require_once __DIR__.'/recording_context.php';echo json_encode(['ok'=>true]+recordingPreviousHomework((string)($_GET['key']??'')),JSON_UNESCAPED_UNICODE);exit;}
+  if(($_GET['action']??'')==='previous_homework'){staffRequire();require_once __DIR__.'/recording_context.php';echo json_encode(['ok'=>true]+recordingPreviousHomework((string)($_GET['key']??''),null,(string)($_GET['student']??'')),JSON_UNESCAPED_UNICODE);exit;}
   $all=groupRecordList(currentLessonEntries(readRecords($file)));
   foreach($all as &$item)$item['_revision']=recordRevision($item);unset($item);
   if(($_GET['action']??'')==='homework'){$all=groupRecordList($all,true);foreach($all as $k=>$r){$all[$k]=['homework'=>(string)($r['homework']??''),'dueHomework'=>(string)($r['dueHomework']??'')];} echo json_encode(['ok'=>true,'records'=>$all],JSON_UNESCAPED_UNICODE);exit;}
@@ -40,7 +40,13 @@ require_once __DIR__.'/recording_context.php';foreach(['memo','homework','dueHom
 
 if($action==='homework_check'){
  $taskId=trim((string)($in['taskId']??''));$checked=$in['checked']??null;if(!preg_match('/^hw_[a-f0-9]{24}$/D',$taskId)||!is_bool($checked))staffFail('宿題のチェック内容を確認してください',400);
- $previous=recordingPreviousHomework($key,$all);$known=false;foreach($previous['items'] as $item)if($item['id']===$taskId){$known=true;break;}if(!$known)staffFail('宿題が更新されています。再読み込みしてください。',409);
+ $student=(string)($in['student']??'');$previous=recordingPreviousHomework($key,$all,$student);$known=false;foreach($previous['items'] as $item)if($item['id']===$taskId){$known=true;break;}if(!$known)staffFail('宿題が更新されています。再読み込みしてください。',409);
+ if($student!==''){
+  $item=null;foreach($previous['items'] as $candidate)if($candidate['id']===$taskId)$item=$candidate;
+  if(!$item||!hash_equals($item['revision'],(string)($in['expectedRevision']??'')))staffFail('宿題の完了が更新されました。最新の状態を確認してください。',409);
+  $states=homeworkStudentStates();$states[$student][$item['canonicalId']]=['checked'=>$checked,'at'=>nowIso(),'origin'=>'explicit'];if(!safeJsonWriteAtomic(__DIR__.'/data/student_homework_checks.php',$states))staffFail('完了を保存できません',500);
+  echo json_encode(['ok'=>true,'record'=>$existing,'previousHomework'=>recordingPreviousHomework($key,$all,$student)],JSON_UNESCAPED_UNICODE);exit;
+ }
  $context=recordingContext($key);$record=$existing;if(!$record)$record=['eventKey'=>$key,'date'=>$context['date'],'slot'=>$context['slots'],'className'=>$context['className'],'teacher'=>$context['teacher'],'memo'=>'','homework'=>'','author'=>$actor['name'],'createdAt'=>nowIso(),'replies'=>[],'reads'=>[]];
  $record['homeworkChecks']=$record['homeworkChecks']??[];foreach($previous['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>nowIso(),'by'=>$actor['name']];$record['homeworkChecks'][$taskId]=['checked'=>$checked,'at'=>nowIso(),'by'=>$actor['name']];$record['updatedAt']=nowIso();$record['editedBy']=$actor['name'];$all[$key]=$record;
  if(!safeJsonWriteAtomic($file,$all))staffFail('宿題のチェックを保存できません',500);echo json_encode(['ok'=>true,'record'=>$record+['_revision'=>recordRevision($record)],'previousHomework'=>recordingPreviousHomework($key,$all)],JSON_UNESCAPED_UNICODE);exit;

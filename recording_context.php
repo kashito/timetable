@@ -18,8 +18,8 @@ function recordingHomeworkLines($text){
 // Direct assignments remain on their target lesson, separate from homework for the next lesson.
 function recordingNormalizeHomework($text){if(!is_string($text)||strlen($text)>120000)staffFail('宿題の内容を確認してください',400);return implode("\n",array_unique(recordingHomeworkLines($text)));}
 function recordingHomeworkTaskId($eventKey,$index,$text){return 'hw_'.substr(hash('sha256',$eventKey."\0".$index."\0".$text),0,24);}
-function recordingPreviousHomework($key,$storedRecords=null){
- $context=recordingContext($key);$raw=currentLessonEntries($storedRecords??readJsonStrict(__DIR__.'/data/lesson_records.json'));$records=groupRecordList($raw,true);$rows=[];$date='';$end='';
+function recordingPreviousHomework($key,$storedRecords=null,$student=''){
+ $context=recordingContext($key);require_once __DIR__.'/homework_completion.php';if($student===''&&count($context['students'])===1)$student=$context['students'][0];if($student!==''&&!in_array($student,$context['students'],true))staffFail('この授業の生徒を選んでください',400);$raw=currentLessonEntries($storedRecords??readJsonStrict(__DIR__.'/data/lesson_records.json'));$records=groupRecordList($raw,true);$rows=[];$date='';$end='';
  foreach(policyRows() as $r){$rowDate=recordingDate($r['日付']??'');if($rowDate===''||groupSeriesId($r)!==$context['seriesId']||$rowDate>=$context['date'])continue;$rows[]=$r;if($rowDate>$date){$date=$rowDate;$end='';}if($rowDate===$date){$time=groupRowTime($r,'終了');if(preg_match('/^(\d{1,2}):(\d{2})$/D',$time,$m)&&((int)$m[1])<24&&((int)$m[2])<60){$time=sprintf('%02d:%02d',(int)$m[1],(int)$m[2]);if($time>$end)$end=$time;}}}
  usort($rows,fn($a,$b)=>strcmp(recordingDate($a['日付']).' '.groupRowTime($a,'開始'),recordingDate($b['日付']).' '.groupRowTime($b,'開始')));
  // A linked lesson exposes the same common homework through each member period. Treat
@@ -32,6 +32,11 @@ function recordingPreviousHomework($key,$storedRecords=null){
   // Once the consolidated id is saved it is authoritative, including an explicit
   // uncheck. Before that, accept a checked state stored under any former member id.
   if(array_key_exists($id,$current))$checked=is_array($current[$id])?!empty($current[$id]['checked']):(bool)$current[$id];else{$checked=false;$sourceChecks=$hasCurrent?$current:$checks;foreach($aliases as $alias)if(array_key_exists($alias,$sourceChecks)){ $value=$sourceChecks[$alias];if(is_array($value)?!empty($value['checked']):(bool)$value){$checked=true;break;} }}
-  $visible=$hasCurrent||$task['assignedDate']===$latestTaskDate||($hasSaved&&!$checked);if($visible&&(!$checked||$hasCurrent)){unset($task['aliases']);$task['checked']=$checked;$items[]=$task;}}
- return ['date'=>$date,'endTime'=>$end,'endedAt'=>$date!==''&&$end!==''?$date.'T'.$end.':00+09:00':null,'serverNow'=>date('c'),'homework'=>implode("\n",array_column($items,'text')),'items'=>$items,'dueDate'=>$context['date']];
+  $canonical=homeworkCanonicalId($context['seriesId'],$task['assignedDate'],'next',$task['text']);$sourceRows=array_values(array_filter($rows,fn($row)=>recordingDate($row['日付'])===$task['assignedDate']));$legacy=homeworkLegacyChecked(homeworkSourceAliases($sourceRows,$raw,$task['text']),$raw);$personal=$student!==''?(homeworkStudentStates()[$student][$canonical]??null):null;if($student!=='')$checked=homeworkState($student,$canonical,$legacy)['checked'];
+  $visible=$student!==''?($hasCurrent||$task['assignedDate']===$latestTaskDate||!$checked||$personal!==null):($hasCurrent||$task['assignedDate']===$latestTaskDate||($hasSaved&&!$checked));if($visible&&($student!==''||!$checked||$hasCurrent)){unset($task['aliases']);$task['checked']=$checked;$items[]=$task;}}
+ require_once __DIR__.'/homework_completion.php';if($student===''&&count($context['students'])===1)$student=$context['students'][0];if($student!==''&&!in_array($student,$context['students'],true))staffFail('この授業の生徒を選んでください',400);
+ $eligible=$student!==''?array_column(homeworkCatalog($student),null,'id'):null;
+ foreach($items as &$item){$item['canonicalId']=homeworkCanonicalId($context['seriesId'],$item['assignedDate'],'next',$item['text']);if($student!=='')$item=array_replace($item,homeworkState($student,$item['canonicalId'],$item['checked']));}unset($item);
+ if($eligible!==null)$items=array_values(array_filter($items,fn($item)=>isset($eligible[$item['canonicalId']])));
+ return ['student'=>$student,'students'=>$context['students'],'date'=>$date,'endTime'=>$end,'endedAt'=>$date!==''&&$end!==''?$date.'T'.$end.':00+09:00':null,'serverNow'=>date('c'),'homework'=>implode("\n",array_column($items,'text')),'items'=>$items,'dueDate'=>$context['date']];
 }

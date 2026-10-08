@@ -11,7 +11,7 @@
   }).catch(e=>{document.documentElement.classList.remove('staff-pending');document.addEventListener('DOMContentLoaded',()=>{const p=document.createElement('p');p.className='workspace-error';p.textContent=e.message+'。再読み込みしてください。';document.body.prepend(p);});throw e;});
   window.StaffAuth={ready,page,get user(){return session.user;},async api(payload){const r=await fetch('staff_auth_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'操作に失敗しました');if(j.csrf)session.csrf=j.csrf;if(j.user)session.user=j.user;return j;}};
   ready.then(j=>{if(j.user?.role==='admin'&&!j.user.mustChange){const s=document.createElement('script');s.src='codex-memos.js?v=20260916-r54-ready';document.head.append(s);}}).catch(()=>{});
-  ready.then(j=>{if(j.user&&!j.user.mustChange){const style=document.createElement('link');style.rel='stylesheet';style.href='recording-tools.css?v=20261002-homework-check';document.head.append(style);const script=document.createElement('script');script.src='recording-tools.js?v=20261007-due-homework';document.head.append(script);const links=document.createElement('script');links.src='test-result-links.js?v=20260916-r53';document.head.append(links);}}).catch(()=>{});
+  ready.then(j=>{if(j.user&&!j.user.mustChange){const style=document.createElement('link');style.rel='stylesheet';style.href='recording-tools.css?v=20261002-homework-check';document.head.append(style);const script=document.createElement('script');script.src='recording-tools.js?v=20261008-completion';document.head.append(script);const links=document.createElement('script');links.src='test-result-links.js?v=20260916-r53';document.head.append(links);}}).catch(()=>{});
   window.fetch=async(input,init={})=>{
     const url=new URL(typeof input==='string'?input:input.url,location.href);
     if(url.origin!==location.origin||!url.pathname.endsWith('.php'))return nativeFetch(input,init);
@@ -30,7 +30,7 @@
       response=await nativeFetch(input,options);
     }
     if(response.status===401&&required)location.assign('staff_login.html?next='+encodeURIComponent(location.pathname.split('/').pop()+location.search));
-    if(method==='POST'&&response.ok&&/\/(state_api|lesson_record_api|lesson_group_api|student_contact_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('lesson-recording-saved'));try{localStorage.setItem('lesson-homework-saved',String(Date.now()));if(window.BroadcastChannel){const channel=new BroadcastChannel('lesson-homework');channel.postMessage('saved');channel.close();}}catch(_){}}}).catch(()=>{});
+    if(method==='POST'&&response.ok&&/\/(state_api|lesson_record_api|lesson_group_api|student_contact_api|student_homework_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('lesson-recording-saved'));try{localStorage.setItem('lesson-homework-saved',String(Date.now()));if(window.BroadcastChannel){const channel=new BroadcastChannel('lesson-homework');channel.postMessage('saved');channel.close();}}catch(_){}}}).catch(()=>{});
     return response;
   };
 })();

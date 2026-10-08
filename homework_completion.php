@@ -1,0 +1,34 @@
+<?php
+require_once __DIR__.'/recording_context.php';
+function homeworkCanonicalId($series,$date,$kind,$text){return 'hwc_'.substr(hash('sha256',implode("\0",[$series,$date,$kind,trim($text)])),0,24);}
+function homeworkStudentStates(){return readJsonStrict(__DIR__.'/data/student_homework_checks.php');}
+function homeworkLegacyChecked($aliases,$records){
+ // Old records also contain automatically seeded false entries. Preserve any
+ // historic completion until a new explicit, student-scoped change is saved.
+ foreach($records as $record)foreach($aliases as $id){$entry=$record['homeworkChecks'][$id]??false;if(is_array($entry)?!empty($entry['checked']):(bool)$entry)return true;}return false;
+}
+function homeworkState($student,$id,$legacy,$states=null){$entry=($states??homeworkStudentStates())[$student][$id]??null;return ['checked'=>$entry===null?$legacy:!empty($entry['checked']),'revision'=>hash('sha256',json_encode($entry??['legacy'=>$legacy]))];}
+function homeworkEligibleRows($student,$rows,$master,$directory,$states){
+ $resolve=function($class)use($directory){$seen=[];while(isset($directory['classNameAliases'][$class])&&!isset($seen[$class])){$seen[$class]=true;$class=$directory['classNameAliases'][$class];}return $class;};$own=array_values(array_filter($master,fn($row)=>($row['生徒名']??'')===$student));$priorities=[];foreach($own as $row)$priorities[$resolve($row['クラス']??'')]=(float)($row['優先度']??0);$eligible=[];$dir=__DIR__.'/data';$settings=readJsonStrict($dir.'/schedule_confirmed.json');$fixed=readJsonStrict($dir.'/lesson_fixed.json');$staff=staffCurrent();
+ foreach($rows as $row){if(!empty($row['日区分']))continue;$date=recordingDate($row['日付']??'');$class=$resolve($row['クラス']??'');if(!empty($directory['hiddenClasses'][$class]))continue;$key=canonicalLessonKey(policyKey($row));if(!$staff&&!empty($settings['privateFrom'])&&$date>($settings['date']??'')&&$date>=$settings['privateFrom']&&empty($fixed[$key]['fixed']))continue;$state=$states[$key]??[];$members=array_values(array_filter($own,fn($member)=>$resolve($member['クラス']??'')===$class&&lessonStudentActive($member,$date)));if(!$members&&!in_array($student,lessonInvitedStudents($state),true))continue;
+  $attendance=$state['attendance'][$student]??'';$exempt=false;if($attendance!==''&&$attendance!=='---')$exempt=$attendance==='免除';elseif(array_key_exists($student,$state['exemptionOverrides']??[]))$exempt=(bool)$state['exemptionOverrides'][$student];else foreach($members as $member)foreach($member['免除期間']??[] as $period)if((empty($period['from'])||$period['from']<=$date)&&(empty($period['until'])||$date<$period['until']))$exempt=true;if(!$exempt)$eligible[]=$row;
+ }
+ return array_values(array_filter($eligible,function($row)use($eligible,$priorities,$resolve){foreach($eligible as $other)if(recordingDate($other['日付'])===recordingDate($row['日付'])&&($priorities[$resolve($other['クラス'])]??0)>($priorities[$resolve($row['クラス'])]??0)&&groupRowTime($row,'開始')<groupRowTime($other,'終了')&&groupRowTime($other,'開始')<groupRowTime($row,'終了'))return false;return true;}));
+}
+function homeworkSourceAliases($rows,$records,$text){
+ $aliases=[];$keyAliases=readJsonStrict(__DIR__.'/data/lesson_key_aliases.json');$checkedIds=[];foreach($records as $record)foreach($record['homeworkChecks']??[] as $id=>$entry)if(is_array($entry)?!empty($entry['checked']):(bool)$entry)$checkedIds[$id]=true;
+ foreach($rows as $row){$key=canonicalLessonKey(policyKey($row));$source=$records[$key]??[];$sources=[$key=>$source];foreach($keyAliases as $oldKey=>$destination)if(canonicalLessonKey($oldKey)===$key)$sources[$oldKey]=$source;$group=groupForSource($row['_sourceKey']);if($group){$common=$records[$group['key']]??[];$sources[$group['key']]=$common;foreach($common['sourceRecords']??[] as $oldKey=>$old)$sources[$oldKey]=$old;}
+  foreach($sources as $sourceKey=>$record){$lines=recordingHomeworkLines($record['homework']??'');$matched=false;foreach($lines as $i=>$line)if($line===$text){$id=recordingHomeworkTaskId($sourceKey,$i,$text);$aliases[]=$id;if(isset($checkedIds[$id]))$matched=true;}if(!$matched&&in_array($text,$lines,true)&&$checkedIds)for($i=0;$i<max(2000,count($lines));$i++){$id=recordingHomeworkTaskId($sourceKey,$i,$text);if(isset($checkedIds[$id])){$aliases[]=$id;break;}}}
+ }return array_values(array_unique($aliases));
+}
+function homeworkCatalog($student){
+ $dir=__DIR__.'/data';$master=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$directory=readJsonStrict($dir.'/directory_state.json');$known=false;foreach($master as $row)if(($row['生徒名']??'')===$student&&!empty($student)&&empty($directory['hiddenStudents'][$student]))$known=true;if(!$known)staffFail('生徒が見つかりません',404);
+ $raw=readJsonStrict($dir.'/lesson_records.json');$records=groupRecordList(currentLessonEntries($raw),true);$states=readJsonStrict($dir.'/class_state.json');$completion=homeworkStudentStates();$series=[];
+ foreach(homeworkEligibleRows($student,policyRows(),$master,$directory,$states) as $row){$date=recordingDate($row['日付']??'');$sid=groupSeriesId($row);$series[$sid][$date][]=$row;}
+ $items=[];foreach($series as $sid=>$days){ksort($days);$dates=array_keys($days);foreach($dates as $index=>$date){$rows=$days[$date];usort($rows,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$nextDate=$dates[$index+1]??'';$nextRows=$nextDate!==''?$days[$nextDate]:[];usort($nextRows,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$class=$rows[0]['クラス'];
+  foreach($rows as $row){$key=canonicalLessonKey(policyKey($row));$record=$records[$key]??[];$start=groupRowTime($row,'開始');
+   if(strtotime($date.'T'.$start.':00+09:00')<=time())foreach(recordingHomeworkLines($record['homework']??'') as $text){$id=homeworkCanonicalId($sid,$date,'next',$text);$aliases=homeworkSourceAliases($rows,$raw,$text);$dueAt=$nextDate!==''?$nextDate.'T'.groupRowTime($nextRows[0],'開始').':00+09:00':null;$items[$id]=['id'=>$id,'text'=>$text,'className'=>$class,'assignedDate'=>$date,'dueAt'=>$dueAt,'kind'=>'next','aliases'=>$aliases,'targetKeys'=>array_map('policyKey',$nextRows)]+homeworkState($student,$id,homeworkLegacyChecked($aliases,$raw),$completion);}
+   foreach(recordingHomeworkLines($record['dueHomework']??'') as $text){$duplicate=false;foreach($items as $item)if($item['kind']==='next'&&$item['className']===$class&&$item['text']===$text&&substr($item['dueAt']??'',0,10)===$date&&array_intersect($item['targetKeys'],array_map('policyKey',$rows)))$duplicate=true;if($duplicate)continue;$id=homeworkCanonicalId($sid,$date,'due',$text);$items[$id]=['id'=>$id,'text'=>$text,'className'=>$class,'assignedDate'=>$date,'dueAt'=>$date.'T'.groupRowTime($rows[0],'開始').':00+09:00','kind'=>'due','aliases'=>[],'targetKeys'=>array_map('policyKey',$rows)]+homeworkState($student,$id,false,$completion);}
+  }
+ }}return array_values($items);
+}

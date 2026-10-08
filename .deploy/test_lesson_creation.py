@@ -19,7 +19,7 @@ ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parent
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
 FILES = ['data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
-         'recording_context.php', 'lesson_record_api.php', 'lesson_group_api.php',
+         'recording_context.php', 'homework_completion.php', 'student_homework_api.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
 SLOTS = list('①②③④⑤⑥⑦⑧⑨⑩⑪')
 TIMES = [('13:30','14:10'),('14:20','15:00'),('15:10','15:50'),('16:00','16:40'),
