@@ -66,6 +66,12 @@ class SharedCompletionTests(unittest.TestCase):
         current=next(t for t in self.catalog() if t['text']==TEXT[0]);self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked'])
         _,plan=self.request('lesson_group_api.php?action=candidates&sourceKey='+urllib.parse.quote(extra['_sourceKey']));code,j=self.post('lesson_group_api.php',dict(action='create',sources=[self.rows[2]['_sourceKey'],extra['_sourceKey']],version=plan['version'],mealBreak=False));self.assertEqual(code,200,j)
         current=next(t for t in self.catalog() if t['text']==TEXT[0]);self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked'])
+    def test_common_only_group_recovers_old_member_checks_without_source_text(self):
+        old=self.previous()['items'];extra=dict(self.rows[2]);extra.update(時間番号='⑦',開始='18:30',_追加ID='extra',_sourceKey='ADD:extra');self.write('added_lessons.json',self.rows+[extra])
+        _,plan=self.request('lesson_group_api.php?action=candidates&sourceKey='+urllib.parse.quote(extra['_sourceKey']));code,j=self.post('lesson_group_api.php',dict(action='create',sources=[self.rows[2]['_sourceKey'],extra['_sourceKey']],version=plan['version'],mealBreak=False));self.assertEqual(code,200,j)
+        records=self.read('lesson_records.json');group=j['group'];records[group['key']].pop('sourceRecords',None);records[group['key']].pop('recordHistory',None);records.pop(fixture.key(self.rows[2]),None);records.pop(fixture.key(extra),None)
+        records[fixture.key(self.rows[3])]['homeworkChecks']={item['id']:{'checked':True}for item in old};self.write('lesson_records.json',records);before=self.snapshot()
+        self.assertTrue(all(t['checked'] for t in self.catalog() if t['text'] in TEXT));self.assertTrue(all(t['checked']for t in self.previous()['items']if t['text']in TEXT));self.assertEqual(before,self.snapshot())
     def test_archived_check_and_original_record_identity_are_preserved(self):
         import hashlib
         records=self.read('lesson_records.json');source=fixture.key(self.rows[2]);identity='historical-source';records[source]['eventKey']=identity
