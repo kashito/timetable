@@ -11,18 +11,19 @@ def read(name):
  if text.startswith('<?php exit; ?>'):text=text[14:]
  return json.loads(text)
 records=read('lesson_records.json');all_records=[]
+def pairs(value):return value.items() if isinstance(value,dict) else enumerate(value or [])
 def visit(key,record):
  if not isinstance(record,dict):return
  all_records.append((key,record))
  for field in ('sourceRecords','recordHistory'):
-  for old_key,old in record.get(field,{}).items():visit(old_key,old)
+  for old_key,old in pairs(record.get(field,{})):visit(str(old_key),old)
 for key,record in records.items():visit(key,record)
 checks={}
 for key,record in all_records:
- for identity,value in record.get('homeworkChecks',{}).items():
+ for identity,value in pairs(record.get('homeworkChecks',{})):
   if (value.get('checked',False) if isinstance(value,dict) else value):checks[identity]=True
 sources=[(key,record)for key,record in all_records if 'P18.19' in record.get('homework','')]
-result={'checkedTaskCount':len(checks),'topLevelCheckedCount':sum(1 for r in records.values()for v in r.get('homeworkChecks',{}).values()if(v.get('checked',False)if isinstance(v,dict)else v)), 'sourceRecords':[]}
+result={'checkedTaskCount':len(checks),'topLevelCheckedCount':sum(1 for r in records.values()for k,v in pairs(r.get('homeworkChecks',{}))if(v.get('checked',False)if isinstance(v,dict)else v)), 'sourceRecords':[]}
 for key,record in sources:
  lines=[line.strip()for line in record.get('homework','').splitlines()if line.strip()]
  matched=[]
