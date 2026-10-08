@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261007-due-homework"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
+<head><script src="staff-auth.js?v=20261008-homework-live"></script><script src="workspace-ui.js?v=20261006-board-names"></script><script src="student-participation.js?v=20260912-r22"></script><script src="lesson-groups.js?v=20260916-r53"></script><script src="linked-schedule.js?v=20260913-r27"></script><script src="history-window.js?v=20260915-r50"></script>
 <meta charset="utf-8"><meta name="timetable-view-version" content="20260914-r41">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>生徒個人2026</title>
@@ -912,7 +912,7 @@ window.SharedClassState=(()=>{
     const today = japanNow.date;
     const homeworkHubByKey=new Map(),noHomework=['宿題','なし'].join('');
     for(const current of studentTimeline){
-      if(current.date<today)continue;
+      // Keep overdue assignments; completion and explicit hiding are handled by the hub.
       const value=[issuedHomeworkForKey.get(lessonRoomKey(current))||'',lessonRecords[lessonRoomKey(current)]?.dueHomework||''].filter(Boolean).join('\n').trim();
       if(!value||value===noHomework||value==='未定')continue;
       for(const task of value.replace(/\r/g,'').split('\n').map(item=>item.trim()).filter(item=>item&&item!==noHomework&&item!=='未定')){
@@ -1075,7 +1075,9 @@ window.SharedClassState=(()=>{
     });
   }
 
+  let detailKey='';
   async function showDetail(key) {
+    detailKey=key;
     const original = rows.find(r => lessonRoomKey(r) === key);
     const target=LinkedSchedule.merge(renderedRows,lessonRoomKey,effectiveRoom).find(r=>lessonRoomKey(r)===key)||original;
     if (!target) return;
@@ -1303,7 +1305,21 @@ window.SharedClassState=(()=>{
     });
   }, {passive:true});
 
-  window.StudentSchedule={ready:loadData(),search:searchStudent,getStudentName:()=>selectedStudent?.name||'',render};
+  async function refreshHomework(){
+    const response=await fetch('lesson_record_api.php?action=homework&v='+Date.now(),{cache:'no-store'});const data=await response.json();
+    if(!response.ok||!data.ok||!data.records||Array.isArray(data.records)&&data.records.length)throw Error('宿題を読み込めません');
+    await LessonGroups.refresh();lessonRecords=data.records;render();
+    // Refresh just the read-only homework region; preserve upload selection/drafts.
+    if(!$('modal').classList.contains('hidden')&&detailKey){
+      const target=rows.find(r=>lessonRoomKey(r)===detailKey);if(target){
+        const timeline=rows.filter(r=>!specialDayLabel(r)&&r.cls===target.cls),dates=[...new Set(timeline.map(r=>r.date).filter(d=>d<target.date))].sort(),previous=dates.at(-1);
+        const values=timeline.filter(r=>r.date===previous).map(r=>lessonRecords[lessonRoomKey(r)]?.homework||'');
+        const members=LinkedSchedule.merge(renderedRows,lessonRoomKey,effectiveRoom).find(r=>lessonRoomKey(r)===detailKey)?._linked?.members||[target];values.push(...members.map(r=>lessonRecords[lessonRoomKey(r)]?.dueHomework||''));
+        const text=[...new Set(values.join('\n').split('\n').map(x=>x.trim()).filter(Boolean))].join('\n');let box=$('modalBody').querySelector('.detail-homework');if(!box){box=document.createElement('div');box.className='detail-homework';$('modalBody').prepend(box);}box.hidden=!text;box.innerHTML='<strong>📚 宿題</strong><br>'+esc(text);
+      }
+    }
+  }
+  window.StudentSchedule={ready:loadData(),refreshHomework,search:searchStudent,getStudentName:()=>selectedStudent?.name||'',render};
   document.addEventListener('history-window-change',()=>{if(rows.length)render();});
 })();
 </script>
@@ -1747,5 +1763,5 @@ window.applyPastVisibility=applyPastVisibility;window.drawNowLine=drawNowLine;do
 </script>
 <link rel="stylesheet" href="student-schedule-v2.css?v=20261002-countdown-visible">
 <script src="student-display-settings.js?v=20260927-priority-ui"></script>
-<script defer src="calendar-view.js?v=20260922-events"></script></body>
+<script defer src="calendar-view.js?v=20260922-events"></script><script defer src="student-homework-live.js?v=20261008-live"></script></body>
 </html>

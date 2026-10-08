@@ -6,8 +6,10 @@ const key=r=>['日付','時間番号','クラス','担当講師','種別','科�
 const row=(date,slot='①',cls='検証クラス')=>({'日付':date,'時間番号':slot,'クラス':cls,'担当講師':'検証講師','種別':'授業','科目':'英語','教室':'青','開始':slot==='①'?'13:30':'14:20','終了':slot==='①'?'14:10':'15:00','_sourceKey':'fixture:'+date+slot});
 const now='2026-10-07T03:00:00Z',schedule=[row('2026-10-06'),row('2026-10-07'),row('2026-10-07','②'),row('2026-10-08'),row('2026-10-09')],students=[{'生徒名':'検証生徒','クラス':'検証クラス'},{'生徒名':'検証生徒B','クラス':'別クラス'}];
 const group={id:'a'.repeat(24),key:'GROUP:'+'a'.repeat(24),active:true,mealBreak:false,date:'2026-10-07',slots:'①②',className:'検証クラス',teacher:'検証講師',room:'青',start:'13:30',end:'15:00',sources:schedule.slice(1,3).map(r=>r._sourceKey),lessonKeys:schedule.slice(1,3).map(key)};
-async function boundary(context,{linked=false,student=false}={}){
- const records={[key(schedule[0])]:{memo:'既存カルテ',homework:'前回の宿題\n同じ宿題'},[key(schedule[1])]:{memo:'授業カルテ',homework:'まだ発行していない宿題',dueHomework:'今回の予習\n同じ宿題'},[key(schedule[2])]:{dueHomework:'今回の予習'},[key(schedule[3])]:{homework:'将来の宿題'}};
+async function boundary(context,{linked=false,student=false,overdue=false,shared=null}={}){
+ const fixtureSchedule=overdue?[row('2026-10-05'),...schedule]:schedule;
+ const records=shared?.records||{[key(schedule[0])]:{memo:'既存カルテ',homework:'前回の宿題\n同じ宿題'},[key(schedule[1])]:{memo:'授業カルテ',homework:'まだ発行していない宿題',dueHomework:'今回の予習\n同じ宿題'},[key(schedule[2])]:{dueHomework:'今回の予習'},[key(schedule[3])]:{homework:'将来の宿題'}};
+ if(overdue){records[key(fixtureSchedule[0])]={homework:'過去の未完了\n過去の完了'};records[key(schedule[0])].dueHomework='過去の直接宿題';}
  let version=1;records[group.key]={memo:'共通カルテ',homework:'まだ発行していない宿題',dueHomework:'今回の予習\n同じ宿題',updatedAt:now};const posts=[],states={};
  await context.route('https://test.local/**',async route=>{
   const req=route.request(),u=new URL(req.url()),file=decodeURIComponent(u.pathname.slice(1)),body=req.method()==='POST'?JSON.parse(req.postData()||'{}'):null;
@@ -15,8 +17,12 @@ async function boundary(context,{linked=false,student=false}={}){
   if(file.endsWith('.php')){
    let data={ok:true,items:[],notes:[],articles:[],count:0,unread:0,pending:0,counts:{},schools:[],events:[],groups:[],requests:[],contacts:[],profiles:{},overrides:{},records:{},hidden:[],students,directory:{},state:{},teachers:[],roster:[],links:[],byLesson:{},canArchive:false};
    if(body)posts.push({file,body});
+   if(file==='homework_revision_api.php'){
+    const revision='"'+require('crypto').createHash('sha256').update(JSON.stringify(records)).digest('hex')+'"';
+    if(req.headers()['if-none-match']===revision)return route.fulfill({status:304,body:'',headers:{ETag:revision}});data={ok:true,revision};
+   }
    if(file==='staff_auth_api.php')data={ok:true,user:student?null:{id:'fixture',name:'検証講師',role:'admin'},csrf:'fixture'};
-   if(file==='data_api.php')data={ok:true,initialized:true,schedule,students};
+   if(file==='data_api.php')data={ok:true,initialized:true,schedule:fixtureSchedule,students};
    if(file==='class_members_api.php')data={ok:true,students,directory:{}};
    if(file==='schedule_confirmed_api.php')data={ok:true,date:'2026-12-31',privateFrom:''};
    if(file==='student_attachment_api.php')data={ok:true,attachments:u.searchParams.get('action')==='all'?{}:[]};
@@ -33,12 +39,13 @@ async function boundary(context,{linked=false,student=false}={}){
    if(file==='state_api.php'){if(body)states[body.eventKey]=body;data={ok:true,state:body?states[body.eventKey]:states};}
    return route.fulfill({json:data});
   }
-  const local=path.resolve(root,file);if(!local.startsWith(root+path.sep)||!fs.existsSync(local))return route.fulfill({status:404,body:''});
+  const local=file==='student.html'&&process.env.HOMEWORK_STUDENT_SOURCE?process.env.HOMEWORK_STUDENT_SOURCE:path.resolve(root,file);if((!local.startsWith(root+path.sep)&&local!==process.env.HOMEWORK_STUDENT_SOURCE)||!fs.existsSync(local))return route.fulfill({status:404,body:''});
   return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(local)});
  });
  return {posts,records};
 }
-(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+module.exports={boundary};
+if(require.main===module)(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
  for(const mobile of [false,true]){
   for(const entry of ['vertical','whole','linked']){const linked=entry==='linked';
    const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},timezoneId:'Asia/Tokyo',isMobile:mobile,hasTouch:mobile});const page=await context.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.stack);});page.on('console',m=>{if(m.type()==='error')console.error('CONSOLE',m.text());});await page.clock.setFixedTime(new Date(now));

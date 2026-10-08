@@ -24,6 +24,7 @@ $version=hash('sha256',json_encode([$g,$rows,$record],JSON_UNESCAPED_UNICODE));
 if($method==='GET'){echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'choices'=>$choices,'version'=>$version],JSON_UNESCAPED_UNICODE);exit;}
 if(!hash_equals($version,$in['version']))staffFail('授業またはカルテが更新されました。開き直して確認してください。',409);
 $allowed=array_column($choices,'source');if(!in_array($source,$allowed,true))staffFail('連結の途中のコマは外せません。先頭または末尾を選んでください。',400);
+$detached=array_values(array_filter($rows,fn($row)=>$row['_sourceKey']===$source));$records=detachGroupRecords($g,$detached,$records);
 $remaining=array_values(array_filter($rows,fn($row)=>$row['_sourceKey']!==$source));
 $g['sources']=array_column($remaining,'_sourceKey');$g['snapshot']=$remaining;$g['shortenHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'source'=>$source];$g['lastShorten']=['requestId'=>$requestId,'hash'=>$requestHash];
 $record['slot']=implode('',array_column($remaining,'時間番号'));$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$g['key']]=$record;$groups[$g['id']]=$g;

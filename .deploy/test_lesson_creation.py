@@ -298,7 +298,8 @@ class LessonCreationTests(unittest.TestCase):
         before_rows=self.read('added_lessons.json');before_records=self.read('lesson_records.json');before_states=self.read('class_state.json')
         code,result=self.post('lesson_group_api.php',dict(action='unlink',id=g['id'],version=detail['version']));self.assertEqual(code,200,result)
         saved=self.read('lesson_groups.json')[g['id']];self.assertFalse(saved['active']);self.assertEqual(saved['snapshot'],rows[:2])
-        self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json'),before_records);self.assertEqual(self.read('class_state.json'),before_states)
+        self.assertEqual(self.read('added_lessons.json'),before_rows);self.assertEqual(self.read('lesson_records.json')[g['key']],before_records[g['key']]);self.assertEqual(self.read('class_state.json'),before_states)
+        for r in rows[:2]: self.assertEqual(self.read('lesson_records.json')[key(r)]['homework'],before_records[g['key']]['homework'])
 
     def test_shorten_rejects_middle_stale_and_two_period_groups_without_writes(self):
         g,rows=self.prepare_group(deleted=False);g['sources']=[r['_sourceKey'] for r in rows];g['snapshot']=rows;self.write('lesson_groups.json',{g['id']:g})

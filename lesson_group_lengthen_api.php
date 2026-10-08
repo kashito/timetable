@@ -104,6 +104,7 @@ $g['sources']=array_column($members,'_sourceKey');$g['snapshot']=$members;
 $g['extendHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'sources'=>[$new['_sourceKey']],'mode'=>$existing?'lengthen-existing':($recover?'lengthen-preserve-records':'lengthen'),'mealBreakBefore'=>!empty($g['mealBreak']),'mealBreakAfter'=>$mealBreak];
 $g['mealBreak']=$mealBreak;
 $g['lastLengthen']=['requestId'=>$requestId,'hash'=>$requestHash];$groups[$g['id']]=$g;
+$records[$g['key']]=commonGroupRecord($g,$records,$members);
 $records[$g['key']]['slot']=implode('',array_column($members,'時間番号'));
 $records[$g['key']]['updatedAt']=date('c');$records[$g['key']]['updatedBy']=$actor['name'];
 $changes[$dir.'/lesson_groups.json']=$groups;$changes[$dir.'/lesson_records.json']=$records;

@@ -1,11 +1,37 @@
 <?php
 require_once __DIR__.'/lesson_policy.php';
 function lessonGroups(){return readJsonStrict(__DIR__.'/data/lesson_groups.json');}
+// All active member keys resolve to the same logical record, independently of UI.
+function logicalRecordKey($key){
+ $key=canonicalLessonKey($key);$rows=policyRows();foreach(lessonGroups() as $g){if(empty($g['active']))continue;if($key===$g['key'])return $key;foreach(groupRows($g,$rows) as $r)if(canonicalLessonKey(policyKey($r))===$key)return $g['key'];}return $key;
+}
+function recordRevision($record){return hash('sha256',json_encode($record,JSON_UNESCAPED_UNICODE));}
+function commonGroupRecord($g,$records,$rows=null){
+ $record=$records[$g['key']]??[];$rows=$rows??groupRows($g);$archive=$record['sourceRecords']??[];$history=$record['recordHistory']??[];
+ foreach($rows as $r){$key=canonicalLessonKey(policyKey($r));$old=$records[$key]??[];if(!$old)continue;
+  if(!empty($old['sourceRecords'])){foreach($old['sourceRecords'] as $sourceKey=>$source)if(!isset($archive[$sourceKey]))$archive[$sourceKey]=$source;foreach($old['recordHistory']??[] as $identity=>$snapshot)$history[$identity]=$snapshot;$snapshot=$old;unset($snapshot['sourceRecords'],$snapshot['recordHistory']);$history[recordRevision($snapshot)]=$snapshot;}
+  elseif(!isset($archive[$key]))$archive[$key]=$old;
+ }
+ $record['sourceRecords']=$archive;
+ if($history)$record['recordHistory']=$history;$sources=array_merge(array_values($archive),array_values($history));
+ // Preserve conversations from the original records, without restoring superseded homework.
+ $replies=[];foreach(array_merge([$record],$sources) as $source)foreach($source['replies']??[] as $reply){$identity=hash('sha256',json_encode([$reply['id']??'', $reply['author']??'', $reply['text']??'', $reply['createdAt']??''],JSON_UNESCAPED_UNICODE));if(!isset($replies[$identity]))$replies[$identity]=$reply;}
+ $record['replies']=array_values($replies);$reads=$record['reads']??[];
+ foreach($sources as $source)foreach($source['reads']??[] as $name=>$read)if(!isset($reads[$name])||strcmp($read['at']??'',$reads[$name]['at']??'')>0)$reads[$name]=$read;
+ $record['reads']=$reads;
+ foreach(['homeworkChecks','reactions'] as $field){$values=$record[$field]??[];foreach($sources as $source)foreach($source[$field]??[] as $id=>$value)if(!array_key_exists($id,$values))$values[$id]=$value;if($values)$record[$field]=$values;}
+ return $record;
+}
+function detachGroupRecords($g,$rows,$records){
+ $common=commonGroupRecord($g,$records,$rows);foreach($rows as $r){$key=canonicalLessonKey(policyKey($r));$copy=$common;$copy['sourceRecords']=$common['sourceRecords']??[];$copy['eventKey']=$key;$copy['slot']=$r['時間番号'];$copy['detachedFrom']=$g['key'];unset($copy['groupId']);$records[$key]=$copy;}return $records;
+}
 function lgCompatible($a,$b){foreach(['クラス','担当講師','種別','科目','教室'] as $f)if(trim((string)($a[$f]??''))!==trim((string)($b[$f]??'')))return false;return str_replace('/','-',$a['日付']??'')===str_replace('/','-',$b['日付']??'');}
 function buildLessonGroup($rows,$records,$actor,$mealBreak=false){
- $id=bin2hex(random_bytes(12));$key='GROUP:'.$id;$g=['id'=>$id,'key'=>$key,'sources'=>array_column($rows,'_sourceKey'),'snapshot'=>$rows,'active'=>true,'mealBreak'=>$mealBreak,'createdAt'=>date('c'),'createdBy'=>$actor['name']];$summary=groupSummary($g,$rows);$memo=[];$homework=[];$dueHomework=[];
- foreach($rows as $r){$record=$records[canonicalLessonKey(policyKey($r))]??[];if(trim((string)($record['memo']??''))!=='')$memo[]='【'.$r['時間番号'].'】'."\n".$record['memo'];if(trim((string)($record['homework']??''))!=='')$homework[]=$record['homework'];foreach(preg_split('/\R/u',trim((string)($record['dueHomework']??''))) as $line)if(trim($line)!=='')$dueHomework[]=trim($line);}
+ $id=bin2hex(random_bytes(12));$key='GROUP:'.$id;$g=['id'=>$id,'key'=>$key,'sources'=>array_column($rows,'_sourceKey'),'snapshot'=>$rows,'active'=>true,'mealBreak'=>$mealBreak,'createdAt'=>date('c'),'createdBy'=>$actor['name']];$summary=groupSummary($g,$rows);$memo=[];$memoSeen=[];$homework=[];$dueHomework=[];
+ foreach($rows as $r){$record=$records[canonicalLessonKey(policyKey($r))]??[];if(trim((string)($record['memo']??''))!==''&&!isset($memoSeen[$record['memo']])){$memo[]='【'.$r['時間番号'].'】'."\n".$record['memo'];$memoSeen[$record['memo']]=true;}if(trim((string)($record['homework']??''))!=='')$homework[]=$record['homework'];foreach(preg_split('/\R/u',trim((string)($record['dueHomework']??''))) as $line)if(trim($line)!=='')$dueHomework[]=trim($line);}
  $record=['eventKey'=>$key,'date'=>$summary['date'],'slot'=>$summary['slots'],'className'=>$summary['className'],'teacher'=>$summary['teacher'],'room'=>$summary['room'],'subject'=>$rows[0]['科目']??'','memo'=>implode("\n\n",$memo),'homework'=>implode("\n",array_unique($homework)),'dueHomework'=>implode("\n",array_unique($dueHomework)),'author'=>$actor['name'],'createdAt'=>date('c'),'updatedAt'=>date('c'),'groupId'=>$id,'replies'=>[],'reads'=>[]];
+ // Full original records remain available as history, including conflicting values.
+ $records[$key]=$record;$record=commonGroupRecord($g,$records,$rows);
  return [$g,$record];
 }
 function groupRows($group,$allRows=null){$allRows=$allRows??policyRows();$by=[];foreach($allRows as $r)$by[$r['_sourceKey']]=$r;$rows=[];foreach($group['sources']??[] as $s)if(isset($by[$s]))$rows[]=$by[$s];return $rows;}
@@ -34,7 +60,7 @@ function groupNextLesson($group,$rows,$allRows){
 }
 function groupRecordList($records,$homework=false){
  $out=$records;$rows=policyRows();
- foreach(lessonGroups() as $g){if(empty($g['active']))continue;$common=$records[$g['key']]??null;if(!$common)continue;
+ foreach(lessonGroups() as $g){if(empty($g['active']))continue;$common=$records[$g['key']]??null;if(!$common)continue;$common=commonGroupRecord($g,$records,groupRows($g,$rows));$out[$g['key']]=$common;
   foreach(groupRows($g,$rows) as $r){$key=canonicalLessonKey(policyKey($r));if($homework)$out[$key]=['homework'=>$common['homework']??'','dueHomework'=>$common['dueHomework']??''];else unset($out[$key]);}
  }
  return $out;

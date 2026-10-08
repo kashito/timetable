@@ -7,6 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class HomeworkPresentationTests(unittest.TestCase):
+    def test_live_refresh_concurrency_and_recovery(self):
+        result = subprocess.run(["node", "--test", str(ROOT / ".deploy" / "homework-live.test.cjs")], cwd=ROOT, text=True, capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_overdue_homework_collection(self):
+        result = subprocess.run(["node", "--test", str(ROOT / ".deploy" / "homework-overdue.test.cjs")], cwd=ROOT, text=True, capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def text(self, name):
         return (ROOT / name).read_text(encoding="utf-8")
 

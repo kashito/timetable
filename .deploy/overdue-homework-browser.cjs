@@ -1,0 +1,20 @@
+// Past assignments retain their original identity across midnight and reload.
+const assert=require('node:assert/strict'),path=require('path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {boundary}=require('./homework-detail-browser.cjs');
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+ for(const mobile of [false,true]){
+  const c=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:mobile,hasTouch:mobile,timezoneId:'Asia/Tokyo'}),p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.clock.setFixedTime(new Date('2026-10-07T03:00:00Z'));const f=await boundary(c,{linked:true,student:true,overdue:true});
+  async function load(){await p.goto('https://test.local/student.html?name='+encodeURIComponent('検証生徒'));await p.locator('#studentConfirmOk').click();await p.evaluate(()=>StudentSchedule.ready);await p.locator('#studentHomeworkHub:not([hidden])').waitFor();await p.locator('#studentHomeworkToggle').click();}
+  const pending=()=>p.locator('#studentHomeworkBody>.student-homework-hub-item');
+  const item=text=>pending().filter({has:p.getByText(text,{exact:true})});
+  await load();assert.equal(await pending().count(),6);for(const text of ['過去の未完了','過去の完了','過去の直接宿題'])assert.equal(await item(text).count(),1);assert.match(await item('過去の未完了').textContent(),/期限を過ぎています/);assert.equal(await item('今回の予習').count(),1);assert.doesNotMatch(await p.locator('#studentHomeworkBody').textContent(),/将来の宿題|まだ発行していない/);
+  const oldId=await item('過去の未完了').locator('input').getAttribute('data-homework-complete');await item('過去の完了').locator('input').click();assert.equal(await item('過去の完了').count(),0);assert.equal(await p.locator('.student-homework-completed').count(),1);await item('過去の直接宿題').locator('[data-homework-hide]').click();assert.equal(await item('過去の直接宿題').count(),0);
+  const stored=await p.evaluate(()=>({...localStorage}));await load();assert.equal(await item('過去の未完了').count(),1);assert.equal(await item('過去の完了').count(),0);assert.equal(await item('過去の直接宿題').count(),0);assert.deepEqual(await p.evaluate(()=>({...localStorage})),stored);
+  await p.clock.setFixedTime(new Date('2026-10-07T14:59:00Z'));await load();assert.equal(await item('過去の未完了').count(),1);await p.clock.setFixedTime(new Date('2026-10-07T15:01:00Z'));await load();assert.equal(await item('過去の未完了').locator('input').getAttribute('data-homework-complete'),oldId);assert.equal(await item('前回の宿題').count(),1);assert.equal(await item('今回の予習').count(),1);assert.equal(await item('過去の完了').count(),0);assert.doesNotMatch(await p.locator('#studentHomeworkBody').textContent(),/将来の宿題/);assert.deepEqual(await p.evaluate(()=>({...localStorage})),stored);
+  await p.locator('.student-homework-hidden').filter({has:p.locator('[data-homework-restore]')}).locator('summary').click();await p.locator('[data-homework-restore]').click();assert.equal(await item('過去の直接宿題').count(),1);
+  await p.screenshot({path:path.resolve(__dirname,'..','..',`overdue-${mobile?'mobile':'desktop'}.png`)});
+  // Switching away and back must not mark another student's tasks complete or hidden.
+  const data=await p.evaluate(()=>window.__studentHomeworkHubData);await p.evaluate(items=>StudentHomeworkHub.update('検証生徒B',items),data.items);await p.locator('#studentHomeworkToggle').click();assert.equal(await item('過去の完了').count(),1);await p.evaluate(data=>StudentHomeworkHub.update(data.name,data.items),data);await p.locator('#studentHomeworkToggle').click();assert.equal(await item('過去の完了').count(),0);assert.equal(await item('過去の未完了').count(),1);assert.equal(f.posts.length,0);assert.deepEqual(errors,[]);await c.close();console.log(`${mobile?'Mobile':'Desktop'}: old unchecked/checked, direct, linked dedup, midnight, reload, student switch, hide/restore and zero server writes passed`);
+ }
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

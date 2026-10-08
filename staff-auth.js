@@ -30,7 +30,7 @@
       response=await nativeFetch(input,options);
     }
     if(response.status===401&&required)location.assign('staff_login.html?next='+encodeURIComponent(location.pathname.split('/').pop()+location.search));
-    if(method==='POST'&&response.ok&&/\/(state_api|lesson_record_api|lesson_group_api|student_contact_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok)document.dispatchEvent(new Event('lesson-recording-saved'));}).catch(()=>{});
+    if(method==='POST'&&response.ok&&/\/(state_api|lesson_record_api|lesson_group_api|student_contact_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('lesson-recording-saved'));try{localStorage.setItem('lesson-homework-saved',String(Date.now()));if(window.BroadcastChannel){const channel=new BroadcastChannel('lesson-homework');channel.postMessage('saved');channel.close();}}catch(_){}}}).catch(()=>{});
     return response;
   };
 })();

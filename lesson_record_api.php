@@ -18,9 +18,10 @@ function cleanText($v){ return trim((string)$v); }
 
 if($_SERVER['REQUEST_METHOD']==='GET'){
   if(($_GET['action']??'')==='previous_homework'){staffRequire();require_once __DIR__.'/recording_context.php';echo json_encode(['ok'=>true]+recordingPreviousHomework((string)($_GET['key']??'')),JSON_UNESCAPED_UNICODE);exit;}
-  $all=currentLessonEntries(readRecords($file));
+  $all=groupRecordList(currentLessonEntries(readRecords($file)));
+  foreach($all as &$item)$item['_revision']=recordRevision($item);unset($item);
   if(($_GET['action']??'')==='homework'){$all=groupRecordList($all,true);foreach($all as $k=>$r){$all[$k]=['homework'=>(string)($r['homework']??''),'dueHomework'=>(string)($r['dueHomework']??'')];} echo json_encode(['ok'=>true,'records'=>$all],JSON_UNESCAPED_UNICODE);exit;}
-  $key=canonicalLessonKey(trim((string)($_GET['key']??'')));if($key==='')$all=groupRecordList($all);
+  $key=logicalRecordKey(trim((string)($_GET['key']??'')));if($key==='')$all=groupRecordList($all);
   if($key!==''){ echo json_encode(['ok'=>true,'record'=>$all[$key]??[]],JSON_UNESCAPED_UNICODE); }
   else { $response=['ok'=>true,'records'=>$all];if(!empty($_GET['includeAttendance'])){require_once __DIR__.'/lesson_record_context.php';$response['attendance']=recordAttendanceContext($all);}if(!empty($_GET['includeTiming'])){require_once __DIR__.'/lesson_record_context.php';$response['timings']=recordLessonTimings($all);}echo json_encode($response,JSON_UNESCAPED_UNICODE); }
   exit;
@@ -28,12 +29,13 @@ if($_SERVER['REQUEST_METHOD']==='GET'){
 if($_SERVER['REQUEST_METHOD']!=='POST'){ http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method not allowed'],JSON_UNESCAPED_UNICODE); exit; }
 $in=json_decode(file_get_contents('php://input'),true);
 if(!is_array($in)){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'JSON形式が不正です'],JSON_UNESCAPED_UNICODE); exit; }
-$key=canonicalLessonKey(trim((string)($in['eventKey']??'')));
+$key=logicalRecordKey(trim((string)($in['eventKey']??'')));
 if($key===''){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'eventKeyがありません'],JSON_UNESCAPED_UNICODE); exit; }
-$groupRows=policyRows();foreach(lessonGroups() as $group)if(!empty($group['active']))foreach(groupRows($group,$groupRows) as $gr)if(canonicalLessonKey(policyKey($gr))===$key)staffFail('この授業は連結中です。連結詳細の共通カルテから入力してください。',409);
 $all=readRecords($file);
 $action=trim((string)($in['action']??'save'));
 $existing=(isset($all[$key]) && is_array($all[$key]))?$all[$key]:[];
+foreach(lessonGroups() as $group)if(!empty($group['active'])&&$group['key']===$key)$existing=commonGroupRecord($group,$all);
+if(str_starts_with($key,'GROUP:')&&in_array($action,['edit','save'],true)&&(!isset($in['expectedRevision'])||!hash_equals(recordRevision($existing),(string)$in['expectedRevision'])))staffFail('共通カルテが更新されました。入力内容を残したまま再確認してください。',409);
 require_once __DIR__.'/recording_context.php';foreach(['memo','homework','dueHomework'] as $field)if(array_key_exists($field,$in))recordingTbdGuard($in[$field],$existing[$field]??'');
 
 if($action==='homework_check'){
@@ -41,7 +43,7 @@ if($action==='homework_check'){
  $previous=recordingPreviousHomework($key,$all);$known=false;foreach($previous['items'] as $item)if($item['id']===$taskId){$known=true;break;}if(!$known)staffFail('宿題が更新されています。再読み込みしてください。',409);
  $context=recordingContext($key);$record=$existing;if(!$record)$record=['eventKey'=>$key,'date'=>$context['date'],'slot'=>$context['slots'],'className'=>$context['className'],'teacher'=>$context['teacher'],'memo'=>'','homework'=>'','author'=>$actor['name'],'createdAt'=>nowIso(),'replies'=>[],'reads'=>[]];
  $record['homeworkChecks']=$record['homeworkChecks']??[];foreach($previous['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>nowIso(),'by'=>$actor['name']];$record['homeworkChecks'][$taskId]=['checked'=>$checked,'at'=>nowIso(),'by'=>$actor['name']];$record['updatedAt']=nowIso();$record['editedBy']=$actor['name'];$all[$key]=$record;
- if(!safeJsonWriteAtomic($file,$all))staffFail('宿題のチェックを保存できません',500);echo json_encode(['ok'=>true,'record'=>$record,'previousHomework'=>recordingPreviousHomework($key,$all)],JSON_UNESCAPED_UNICODE);exit;
+ if(!safeJsonWriteAtomic($file,$all))staffFail('宿題のチェックを保存できません',500);echo json_encode(['ok'=>true,'record'=>$record+['_revision'=>recordRevision($record)],'previousHomework'=>recordingPreviousHomework($key,$all)],JSON_UNESCAPED_UNICODE);exit;
 }
 
 if($action==='reaction'){
@@ -57,7 +59,7 @@ if($action==='reaction'){
   $target['reactions']=$reactions;unset($target);$all[$key]=$existing;
   if(!safeJsonWriteAtomic($file,$all))staffFail('リアクションを保存できません',500);
  }
- echo json_encode(['ok'=>true,'record'=>$existing],JSON_UNESCAPED_UNICODE);exit;
+ echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)]],JSON_UNESCAPED_UNICODE);exit;
 }
 
 if($action==='edit'){
@@ -70,7 +72,7 @@ if($action==='edit'){
   $existing['updatedAt']=nowIso();
   $all[$key]=$existing;
   if(!safeJsonWriteAtomic($file,$all)){ http_response_code(500); echo json_encode(['ok'=>false,'error'=>'カルテ編集の保存に失敗しました'],JSON_UNESCAPED_UNICODE); exit; }
-  echo json_encode(['ok'=>true,'record'=>$existing],JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)]],JSON_UNESCAPED_UNICODE); exit;
 }
 
 if($action==='reply'){
@@ -84,7 +86,7 @@ if($action==='reply'){
   $existing['updatedAt']=nowIso();
   $all[$key]=$existing;
   if(!safeJsonWriteAtomic($file,$all)){ http_response_code(500); echo json_encode(['ok'=>false,'error'=>'返信の保存に失敗しました'],JSON_UNESCAPED_UNICODE); exit; }
-  echo json_encode(['ok'=>true,'record'=>$existing],JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)]],JSON_UNESCAPED_UNICODE); exit;
 }
 
 if($action==='read'){
@@ -96,7 +98,7 @@ if($action==='read'){
   $existing['reads']=$reads;
   $all[$key]=$existing;
   if(!safeJsonWriteAtomic($file,$all)){ http_response_code(500); echo json_encode(['ok'=>false,'error'=>'既読スタンプの保存に失敗しました'],JSON_UNESCAPED_UNICODE); exit; }
-  echo json_encode(['ok'=>true,'record'=>$existing],JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)]],JSON_UNESCAPED_UNICODE); exit;
 }
 
 $memo=(string)($in['memo']??($existing['memo']??''));
@@ -106,7 +108,7 @@ $homework=(string)($homeworkProvided?$in['homework']:($existing['homework']??'')
 // これにより「宿題だけ登録していた記録」の宿題も消去できる。
 // 何も送られていない空データだけは、従来どおり既存カルテを保護する。
 if(trim($memo)==='' && trim($homework)==='' && !$homeworkProvided && !array_key_exists('dueHomework',$in)){
-  if($existing){ echo json_encode(['ok'=>true,'record'=>$existing,'protected'=>true],JSON_UNESCAPED_UNICODE); }
+  if($existing){ echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)],'protected'=>true],JSON_UNESCAPED_UNICODE); }
   else { echo json_encode(['ok'=>true,'record'=>[]],JSON_UNESCAPED_UNICODE); }
   exit;
 }
@@ -131,4 +133,4 @@ if(!isset($record['replies']) || !is_array($record['replies'])) $record['replies
 if(!isset($record['reads']) || !is_array($record['reads'])) $record['reads']=[];
 $all[$key]=$record;
 if(!safeJsonWriteAtomic($file,$all)){ http_response_code(500); echo json_encode(['ok'=>false,'error'=>'保存に失敗しました'],JSON_UNESCAPED_UNICODE); exit; }
-echo json_encode(['ok'=>true,'record'=>$record],JSON_UNESCAPED_UNICODE);
+echo json_encode(['ok'=>true,'record'=>$record+['_revision'=>recordRevision($record)]],JSON_UNESCAPED_UNICODE);

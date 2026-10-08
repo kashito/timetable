@@ -22,6 +22,7 @@ if(count(array_unique($keys))!==count($keys))staffFail('同じコマが含まれ
 $record=$records[$g['key']]??[];
 foreach($extra as $r){$old=$records[canonicalLessonKey(policyKey($r))]??[];foreach(['memo','homework'] as $field)if(trim((string)($old[$field]??''))!=='')$record[$field]=rtrim((string)($record[$field]??'')).(trim((string)($record[$field]??''))!==''?"\n\n":'').'【追加 '.$r['時間番号'].'】' . "\n".$old[$field];}
 $g['extendHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'sources'=>$sources];$g['sources']=array_column($rows,'_sourceKey');$g['snapshot']=$rows;$g['lastExtend']=['requestId'=>$requestId,'hash'=>$hash];
+$records[$g['key']]=$record;$record=commonGroupRecord($g,$records,$rows);foreach($extra as $r){$old=$records[canonicalLessonKey(policyKey($r))]??[];$lines=array_merge(preg_split('/\R/u',$record['dueHomework']??''),preg_split('/\R/u',$old['dueHomework']??''));$record['dueHomework']=implode("\n",array_unique(array_filter($lines,fn($line)=>trim($line)!=='')));}
 $record['slot']=implode('',array_column($rows,'時間番号'));$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$g['key']]=$record;$groups[$g['id']]=$g;
 if(!safeDataTransaction([$dir.'/lesson_groups.json'=>$groups,$dir.'/lesson_records.json'=>$records]))staffFail('追加の連結を保存できませんでした。',500);
 echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows)],JSON_UNESCAPED_UNICODE);

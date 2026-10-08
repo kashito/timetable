@@ -26,10 +26,10 @@ if($method==='POST'&&$action==='create'){
 }
 $id=(string)($in['id']??'');$g=$groups[$id]??null;if(!$g)staffFail('連結した授業が見つかりません',404);$rows=groupRows($g,$allRows);if(empty($g['active']))$rows=$g['snapshot']??$rows;
 if(!empty($g['active'])&&count($rows)!==count($g['sources']))staffFail('連結中の授業が変更されています。管理者に確認してください。',409);
-$key=$g['key'];$record=$records[$key]??[];$version=lgVersion($g,$rows,$record,$states);
+$key=$g['key'];$record=commonGroupRecord($g,$records,$rows);$version=lgVersion($g,$rows,$record,$states);
 if($method==='GET'&&$action==='detail'){
  $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
- $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$records[$k]??[]];}
+ $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$record,'sourceRecord'=>$record['sourceRecords'][$k]??($records[$k]??[])];}
  $regular=lessonRosterNames($students,$directory,$class,$date,[]);$names=array_fill_keys($regular,true);foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)if(empty($directory['hiddenStudents'][$name]))$names[$name]=true;$roster=array_keys($names);sort($roster,SORT_NATURAL);
  $invited=[];foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)$invited[$name]=true;$invited=array_keys($invited);sort($invited,SORT_NATURAL);
  echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>$roster,'regularStudents'=>$regular,'invitedStudents'=>$invited,'availableStudents'=>lessonVisibleStudentNames($students,$directory,$date),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
@@ -38,7 +38,7 @@ if($method!=='POST')staffFail('Method not allowed',405);
 if(empty($g['active']))staffFail('連結は解除済みです。履歴として表示しています。',409);
 if(!hash_equals($version,(string)($in['version']??'')))staffFail('連結した授業・カルテ・出席が更新されました。再読み込みして確認してください。',409);
 if($action==='delete'){foreach($rows as $r)guardFixedLesson(policyKey($r),$in);$edits=readJsonStrict($dir.'/edited_lessons.json');foreach($rows as $r)$edits[$r['_sourceKey']]=['_deleted'=>true,'_削除日時'=>date('c'),'_変更者'=>$actor['name']];$groups[$id]['active']=false;$groups[$id]['snapshot']=$rows;$groups[$id]['deletedAt']=date('c');$groups[$id]['deletedBy']=$actor['name'];if(!safeDataTransaction([$dir.'/edited_lessons.json'=>$edits,$dir.'/lesson_groups.json'=>$groups]))staffFail('削除を保存できません。',500);echo json_encode(['ok'=>true]);exit;}
-if($action==='unlink'){$groups[$id]['active']=false;$groups[$id]['snapshot']=$rows;$groups[$id]['unlinkedAt']=date('c');$groups[$id]['unlinkedBy']=$actor['name'];if(!safeJsonWriteAtomic($dir.'/lesson_groups.json',$groups))staffFail('解除できません',500);echo json_encode(['ok'=>true],JSON_UNESCAPED_UNICODE);exit;}
+if($action==='unlink'){$groups[$id]['active']=false;$groups[$id]['snapshot']=$rows;$groups[$id]['unlinkedAt']=date('c');$groups[$id]['unlinkedBy']=$actor['name'];$records=detachGroupRecords($g,$rows,$records);if(!safeDataTransaction([$dir.'/lesson_groups.json'=>$groups,$dir.'/lesson_records.json'=>$records]))staffFail('解除できません',500);echo json_encode(['ok'=>true],JSON_UNESCAPED_UNICODE);exit;}
 if($action!=='save')staffFail('不明な操作です',400);
 $memo=(string)($in['memo']??'');$homework=(string)($in['homework']??'');if(strlen($memo)>120000||strlen($homework)>120000)staffFail('本文が長すぎます',400);
 $hasInvited=array_key_exists('invitedStudents',$in);if($hasInvited){$studentMaster=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$in['invitedStudents']=lessonValidateInvitedStudents($in['invitedStudents'],$studentMaster,readJsonStrict($dir.'/directory_state.json'),str_replace('/','-',$rows[0]['日付']??''));}
