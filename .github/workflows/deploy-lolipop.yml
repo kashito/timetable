@@ -15,6 +15,10 @@ on:
         description: '本番反映時のみ、対象コミットの40桁SHAを入力'
         type: string
         default: ''
+      diagnose_completion:
+        description: 'Read-only completion migration diagnostics; no learner names or homework text'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -81,6 +85,10 @@ jobs:
 
       - name: Check current public pages
         run: python3 -B .deploy/healthcheck.py
+
+      - name: Diagnose completion migration without data writes
+        if: github.event_name == 'workflow_dispatch' && inputs.diagnose_completion
+        run: python3 -B .deploy/diagnose_completion.py
 
       - name: Preview only - no production writes
         run: python3 -B .deploy/deploy.py preview --output "$DEPLOY_OUTPUT"
