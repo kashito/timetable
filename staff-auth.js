@@ -47,6 +47,7 @@
       response=await nativeFetch(input,options);
     }
     if(required&&(response.status===401||(response.status===403&&(await response.clone().json().catch(()=>({}))).error==='画面を再読み込みして、もう一度操作してください。')))showReauth();
+    if(method==='POST'&&response.ok&&/\/(teacher_ng_api|lesson_add_api|lesson_resize_api|lesson_group_api|lesson_group_move_api|lesson_group_extend_api|lesson_group_shorten_api|lesson_group_lengthen_api|lesson_create_group_api|lesson_repeat_api|class_day_copy_api|data_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('teacher-open-slots-saved'));try{localStorage.setItem('teacher-open-slots-saved',String(Date.now()));}catch(_){}}}).catch(()=>{});
     if(method==='POST'&&response.ok&&/\/(state_api|lesson_record_api|lesson_group_api|student_contact_api|student_homework_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('lesson-recording-saved'));try{localStorage.setItem('lesson-homework-saved',String(Date.now()));if(window.BroadcastChannel){const channel=new BroadcastChannel('lesson-homework');channel.postMessage('saved');channel.close();}}catch(_){}}}).catch(()=>{});
     return response;
   };

@@ -30,7 +30,7 @@ function ngSave($file,$list){
  $dates=[];foreach(array_merge($beforeNg,$list)as $e)if(($e['date']??'')>=$today&&($e['date']??'')<=$limit)$dates[($e['teacher']??'').'|'.$e['date']]=[$e['teacher'],$e['date']];
  $notified=false;
  foreach($dates as [$teacher,$date]){
-  $describe=function($items)use($teacher,$date){foreach($items as $e)if(($e['teacher']??'')===$teacher&&($e['date']??'')===$date)return (!empty($e['allDay'])?'終日NG':implode('・',$e['slots']??[]).' NG').' '.($e['note']??'');return '全コマOK';};
+  $describe=function($items)use($teacher,$date){foreach($items as $e)if(($e['teacher']??'')===$teacher&&($e['date']??'')===$date)return trim((!empty($e['allDay'])?'終日NG':(count($e['slots']??[])?implode('・',$e['slots']).' NG':'全コマOK')).' '.($e['note']??''));return '全コマOK';};
   $old=$describe($beforeNg);$new=$describe($list);
   if($old!==$new && $actor['role']!=='admin'){
    $id=bin2hex(random_bytes(12));$requests[$id]=['id'=>$id,'kind'=>'ng_change','targetRole'=>'admin','text'=>$teacher.'先生 / '.$date."\n変更前：".$old."\n変更後：".$new,'className'=>'','author'=>$actor['name'],'authorId'=>$actor['id'],'createdAt'=>date('c'),'done'=>false];$notified=true;
@@ -43,10 +43,11 @@ if($action==='grid'){
  $teacher=trim((string)($in['teacher']??''));$days=$in['days']??null;
  if($teacher===''||!is_array($days)||count($days)<1||count($days)>366)staffFail('先生と表示期間を確認してください。',400);
  foreach($days as $d){
+  if(!is_array($d)||!isset($d['slots'])||!is_array($d['slots'])||array_diff($d['slots'],$slots))staffFail('勤務予定のコマを確認してください。',400);
   $date=ngDate($d['date']??'');if($date==='')staffFail('日付が不正です',400);
-  $selected=array_values(array_intersect($slots,is_array($d['slots']??null)?$d['slots']:[]));
+  $selected=array_values(array_unique(array_intersect($slots,$d['slots'])));
   $list=array_values(array_filter($list,function($e)use($teacher,$date){return !(($e['teacher']??'')===$teacher&&($e['date']??'')===$date);}));
-  if(count($selected))$list[]=['id'=>'NG-'.bin2hex(random_bytes(8)),'teacher'=>$teacher,'date'=>$date,'allDay'=>count($selected)===11,'slots'=>count($selected)===11?[]:$selected,'note'=>trim((string)($d['note']??'')),'updatedAt'=>date('c'),'updatedBy'=>$actor['name']];
+  $list[]=['id'=>'NG-'.bin2hex(random_bytes(8)),'teacher'=>$teacher,'date'=>$date,'allDay'=>count($selected)===11,'slots'=>count($selected)===11?[]:$selected,'note'=>trim((string)($d['note']??'')),'updatedAt'=>date('c'),'updatedBy'=>$actor['name'],'availabilitySubmitted'=>true];
  }
  if(!ngSave($file,$list))staffFail('保存に失敗しました',500);
  echo json_encode(['ok'=>true,'entries'=>ngVisible($list),'notified'=>$GLOBALS['ngNotified']??false],JSON_UNESCAPED_UNICODE);exit;

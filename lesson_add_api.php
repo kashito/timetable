@@ -10,28 +10,7 @@ $addFile=$dir.'/added_lessons.json';
 $editFile=$dir.'/edited_lessons.json';
 $ngFile=$dir.'/teacher_ng.json';
 
-function normalizeNgDate($v){
-  $s=str_replace('/','-',trim((string)$v));
-  if(preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/',$s,$m)) return sprintf('%04d-%02d-%02d',(int)$m[1],(int)$m[2],(int)$m[3]);
-  return $s;
-}
-function teacherNgConflict($ngFile,$row){
-  $teacher=trim((string)($row['担当講師']??''));
-  if($teacher==='') return null;
-  $date=normalizeNgDate($row['日付']??'');
-  $slot=trim((string)($row['時間番号']??''));
-  if($date===''||$slot==='') return null;
-  $list=readJson($ngFile,[]);
-  foreach($list as $e){
-    if(!is_array($e)) continue;
-    if(trim((string)($e['teacher']??''))!==$teacher) continue;
-    if(normalizeNgDate($e['date']??'')!==$date) continue;
-    $allDay=!empty($e['allDay']);
-    $slots=is_array($e['slots']??null)?array_map('strval',$e['slots']):[];
-    if($allDay || in_array($slot,$slots,true)) return $e;
-  }
-  return null;
-}
+require_once __DIR__.'/teacher_shift.php';
 
 if(!is_dir($dir)){
   if(!@mkdir($dir,0777,true) && !is_dir($dir)){

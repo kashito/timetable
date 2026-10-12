@@ -102,7 +102,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn('（${arrivalTimes[i]}入）', script)
         self.assertIn('${arrivalTimes[slots.indexOf(s)]}入', script)
         self.assertIn('.ng-slot-arrival{', page)
-        self.assertIn('availability.js?v=20260924-arrival', page)
+        self.assertIn('availability.js?v=20261012-open-shifts', page)
 
     def test_linked_lesson_autosaves_and_shows_last_saved_time(self):
         script = self.text("lesson-group.js")
