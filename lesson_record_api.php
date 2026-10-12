@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/api_response.php';
 require_once __DIR__.'/lesson_groups.php';
 require_once __DIR__.'/staff_security.php';
 if(!(($_SERVER['REQUEST_METHOD']??'GET')==='GET' && ($_GET['action']??'')==='homework')) $actor=staffRequire();

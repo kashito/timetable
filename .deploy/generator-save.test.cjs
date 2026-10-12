@@ -9,7 +9,7 @@ const extras=fs.readFileSync(path.join(root,'generator-tools.js'),'utf8');
 function section(source,start,end){const a=source.indexOf(start),b=source.indexOf(end,a);assert(a>=0&&b>a);return source.slice(a,b);}
 const handlers=section(generator,'async function saveGeneratorTeacherMemo()','async function populateModal(')+
  section(generator,"let generatorModalSnapshot=",'async function requestCloseModal()')+
- section(generator,'function forceCloseModal()','async function deleteCurrentLesson()')+
+ section(generator,'function forceCloseModal()','async function deleteCurrentLesson()')+section(generator,'function showGeneratorSaveVerification(','async function saveForm()')+
  section(extras,'async function save(row=current)',"$('generatorRecordSave').onclick").replace('async function save(','async function saveRecord(');
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve};}
 async function dialog(){
@@ -55,3 +55,5 @@ test('main save still closes the dialog after all sections succeed',async()=>{co
 test('main save retains dialog and unsaved record when section save fails',async()=>{const h=await dialog();h.e('generatorRecordMemo').value='記録';h.c.Workspace.api=async()=>{throw Error('test failure');};await h.c.saveForm();assert.equal(h.e('modal').classList.contains('hidden'),false);assert(h.dirty());assert.match(h.e('formMsg').textContent,/保存失敗/);});
 test('direct homework draft blocks duplication until its own save succeeds',async()=>{const h=await dialog();h.e('generatorDueHomework').value=' 予習 ';assert(h.dirty());await h.duplicate();assert.equal(h.calls(),0);await h.c.saveRecord();assert.equal(h.e('generatorDueHomework').value,'予習');assert.equal(h.dirty(),false);await h.duplicate();assert.equal(h.calls(),1);});
 test('direct homework typed during save survives and remains unsaved',async()=>{const h=await dialog(),gate=deferred();h.e('generatorDueHomework').value='送信した予習';h.c.Workspace.api=()=>gate.promise;const saving=h.c.saveRecord();h.e('generatorDueHomework').value='保存中の予習';gate.resolve({record:{memo:'既存カルテ',homework:'',dueHomework:'送信した予習'}});await saving;assert.equal(h.e('generatorDueHomework').value,'保存中の予習');assert(h.dirty());});
+
+test('retry after record failure skips the confirmed schedule write',async()=>{const h=await dialog();let schedule=0;h.request(async(url)=>{if(url==='lesson_add_api.php')schedule++;return {ok:true,json:async()=>({ok:true,row:{'日付':'2026/09/22'}}),text:async()=>JSON.stringify({ok:true,state:{}})};});h.c.Workspace.api=async()=>{throw Error('record failure');};await h.c.saveForm();assert.equal(schedule,1);assert.match(h.e('formMsg').textContent,/授業予定は保存済み.*カルテ・宿題.*保存失敗/);h.c.Workspace.api=async()=>({record:{memo:'再保存',homework:'',dueHomework:''}});await h.c.saveForm();assert.equal(schedule,1);assert(h.e('modal').classList.contains('hidden'));});

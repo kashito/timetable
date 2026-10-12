@@ -37,14 +37,17 @@
     const headers=new Headers(init.headers||(typeof input==='object'?input.headers:undefined));
     if(method!=='GET'&&method!=='HEAD')headers.set('X-CSRF-Token',session.csrf);
     let options={...init,headers,credentials:'same-origin'};
-    let response=await nativeFetch(input,options);
+    const write=method!=='GET'&&method!=='HEAD'&&/_api\.php$/.test(url.pathname);
+    const unknown=()=>Object.assign(new Error(url.pathname.split('/').pop()+'：保存結果を確認できません。入力は残っています。保存状況を確認してから操作してください。'),{unconfirmedWrite:true});
+    const send=async()=>{let r;try{r=await nativeFetch(input,options);}catch(e){if(write)throw unknown();throw e;}if(write){let j;try{j=await r.clone().json();}catch(e){throw unknown();}if(!j||typeof j!=='object'||typeof j.ok!=='boolean')throw unknown();if(j.outcomeUnknown)throw unknown();}return r;};
+    let response=await send();
     for(let retry=0;retry<4&&response.status===409&&typeof options.body==='string';retry++){
       const issue=await response.clone().json().catch(()=>({}));
       const field=issue.fixedConflict?'overrideFixed':issue.roomConflict?'overrideRoom':issue.ngConflict?'overrideNg':issue.recordConflict?'archiveDestination':'';
       if(!field||!confirm(issue.error))break;
       let payload;try{payload=JSON.parse(options.body);}catch(e){break;}
       payload[field]=true;options={...options,body:JSON.stringify(payload)};
-      response=await nativeFetch(input,options);
+      response=await send();
     }
     if(required&&(response.status===401||(response.status===403&&(await response.clone().json().catch(()=>({}))).error==='画面を再読み込みして、もう一度操作してください。')))showReauth();
     if(method==='POST'&&response.ok&&/\/(teacher_ng_api|lesson_add_api|lesson_resize_api|lesson_group_api|lesson_group_move_api|lesson_group_extend_api|lesson_group_shorten_api|lesson_group_lengthen_api|lesson_create_group_api|lesson_repeat_api|class_day_copy_api|data_api)\.php$/.test(url.pathname))response.clone().json().then(j=>{if(j.ok){document.dispatchEvent(new Event('teacher-open-slots-saved'));try{localStorage.setItem('teacher-open-slots-saved',String(Date.now()));}catch(_){}}}).catch(()=>{});

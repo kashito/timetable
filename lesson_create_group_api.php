@@ -1,10 +1,18 @@
 <?php
+require_once __DIR__.'/api_response.php';
 // Create every period and its shared record together, or create none.
 require_once __DIR__.'/lesson_groups.php';
 require_once __DIR__.'/lesson_links.php';
 $actor=staffRequire(true);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+if(($_SERVER['REQUEST_METHOD']??'GET')==='GET'&&isset($_GET['requestId'])){
+ $id=$_GET['requestId'];if(!is_string($id)||!preg_match('/^[a-zA-Z0-9-]{16,80}$/D',$id))staffFail('保存操作の識別子が不正です',400);
+ $matching=[];foreach(readJsonStrict(__DIR__.'/data/added_lessons.json') as $r)if(($r['_連結追加要求ID']??'')===$id)$matching[]=$r;
+ $g=$matching?(lessonGroups()[$matching[0]['_連結追加ID']??'']??null):null;
+ if($matching&&(!$g||empty($g['active'])))staffFail('保存済みの連結授業は変更されています。時間割で確認してください。',409);
+ echo json_encode(['ok'=>true,'group'=>$g?groupSummary($g):null],JSON_UNESCAPED_UNICODE);exit;
+}
 if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')staffFail('Method not allowed',405);
 $in=json_decode(file_get_contents('php://input'),true);
 if(!is_array($in))staffFail('入力形式が不正です。',400);

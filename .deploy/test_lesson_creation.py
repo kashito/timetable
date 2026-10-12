@@ -17,7 +17,7 @@ import urllib.request
 
 ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parents[1]))
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
-FILES = ['teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
+FILES = ['api_response.php', 'teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
          'recording_context.php', 'homework_completion.php', 'student_homework_api.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
@@ -339,5 +339,31 @@ class LessonCreationTests(unittest.TestCase):
         code,_=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:11',expectedStart='18:30',expectedEnd='19:10'));self.assertEqual(code,400);self.assertEqual(before,self.snapshot())
         self.write('lesson_fixed.json',{key(item):{'fixed':True}});before=self.snapshot();code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:30',expectedEnd='19:10'));self.assertEqual(code,409);self.assertTrue(j['fixedConflict']);self.assertEqual(before,self.snapshot())
         code,j=self.post('lesson_resize_api.php',dict(sourceKey=source,edge='end',time='19:05',expectedStart='18:30',expectedEnd='19:10',overrideFixed=True));self.assertEqual(code,200,j)
+
+
+    def test_single_add_retry_is_idempotent_and_can_be_read_confirmed(self):
+        request_id=secrets.token_hex(16);payload=dict(action='add',row=row(),requestId=request_id)
+        code,first=self.post('lesson_add_api.php',payload);self.assertEqual(code,200,first)
+        code,again=self.post('lesson_add_api.php',payload);self.assertEqual(code,200,again)
+        self.assertTrue(again['replayed']);self.assertEqual(first['row']['_追加ID'],again['row']['_追加ID'])
+        self.assertEqual(len(self.read('added_lessons.json')),1)
+        before=self.snapshot();code,status=self.request('lesson_add_api.php?requestId='+request_id)
+        self.assertEqual(code,200,status);self.assertTrue(status['noteSynced']);self.assertEqual(before,self.snapshot())
+        self.assertEqual(status['sourceKey'],'ADD:'+first['row']['_追加ID'])
+
+    def test_single_add_receipt_rejects_changed_input(self):
+        payload=dict(action='add',row=row(),requestId=secrets.token_hex(16));self.post('lesson_add_api.php',payload)
+        before=self.snapshot();payload['row']['備考']='different';code,j=self.post('lesson_add_api.php',payload)
+        self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+
+    def test_single_add_receipt_does_not_recreate_deleted_lesson(self):
+        payload=dict(action='add',row=row(),requestId=secrets.token_hex(16));_,first=self.post('lesson_add_api.php',payload)
+        source='ADD:'+first['row']['_追加ID'];self.post('lesson_add_api.php',dict(action='delete',sourceKey=source))
+        before=self.snapshot();code,j=self.post('lesson_add_api.php',payload);self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+
+    def test_single_add_read_confirmation_is_scoped_to_actor(self):
+        payload=dict(action='add',row=row(),requestId=secrets.token_hex(16));self.post('lesson_add_api.php',payload)
+        code,j=self.request('lesson_add_api.php?requestId='+payload['requestId'],client=self.teacher)
+        self.assertEqual(code,200,j);self.assertIsNone(j['row'])
 
 if __name__=='__main__':unittest.main()

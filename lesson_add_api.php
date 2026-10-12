@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__.'/api_response.php';
 require_once __DIR__.'/lesson_groups.php';
 require_once __DIR__.'/lesson_policy.php';
-staffRequire(($_SERVER['REQUEST_METHOD']??'GET')!=='GET');
+$saveActor=staffRequire(($_SERVER['REQUEST_METHOD']??'GET')!=='GET');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
@@ -53,7 +54,20 @@ function writeJson($file,$data){
  return safeJsonWriteAtomic($file,$data);
 }
 
+function saveRequestKey($id,$actor){
+ if(!is_string($id)||!preg_match('/^[a-zA-Z0-9-]{16,80}$/D',$id))staffFail('保存操作の識別子が不正です',400);
+ return hash('sha256',$actor['id']."\0".$id);
+}
+function saveIntent($row){$fields=['日付','クラス','種別','給与区分','担当講師','教室','時間番号','開始','終了','科目','備考'];$v=[];foreach($fields as $f)$v[$f]=(string)($row[$f]??'');return hash('sha256',json_encode($v,JSON_UNESCAPED_UNICODE));}
 if($_SERVER['REQUEST_METHOD']==='GET'){
+ if(isset($_GET['requestId'])||isset($_GET['sourceKey'])){
+  require_once __DIR__.'/lesson_links.php';$found=null;$source=(string)($_GET['sourceKey']??'');
+  if(isset($_GET['requestId'])){$receipt=saveRequestKey($_GET['requestId'],$saveActor);foreach(readJson($addFile,[]) as $r)if(($r['_saveRequest']??'')===$receipt){$source='ADD:'.$r['_追加ID'];break;}}
+  if($source!=='')$found=lessonBySource($source);
+  $state=$found?readJsonStrict($dir.'/class_state.json'):[];
+  echo json_encode(['ok'=>true,'row'=>$found,'sourceKey'=>$source,'noteSynced'=>$found&&(($state[occurrenceKeyForRow($found)]['publicNote']??null)===(string)($found['備考']??''))],JSON_UNESCAPED_UNICODE);exit;
+ }
+
   echo json_encode([
     'ok'=>true,
     'rows'=>readJson($addFile,[]),
@@ -108,6 +122,17 @@ foreach(['日付','クラス','種別','時間番号'] as $required){
 }
 
 $sourceKey=trim((string)($in['sourceKey']??''));
+$receipt=null;
+if($action==='add'&&isset($in['requestId'])){
+ $receipt=saveRequestKey($in['requestId'],$saveActor);
+ foreach(readJson($addFile,[]) as $prior)if(($prior['_saveRequest']??'')===$receipt){
+  if(($prior['_saveIntent']??'')!==saveIntent($row))staffFail('同じ保存操作の内容が変わっています。保存状況を確認してください。',409);
+  require_once __DIR__.'/lesson_links.php';$saved=lessonBySource('ADD:'.$prior['_追加ID']);
+  if(!$saved||saveIntent($saved)!==saveIntent($row))staffFail('追加済みの授業が変更・削除されています。時間割で確認してください。',409);
+  if(!syncNoteToState($dir,$saved))staffFail('授業は保存済みですが、連絡の同期に失敗しました。',500);
+  echo json_encode(['ok'=>true,'row'=>$saved,'replayed'=>true],JSON_UNESCAPED_UNICODE);exit;
+ }
+}
 if($action==='update'){
  require_once __DIR__.'/lesson_links.php';$original=lessonBySource($sourceKey);
  if(isset($in['sourceVersion'])){$snapshot=$original;if($snapshot)$snapshot['_sourceKey']=$sourceKey;if(!$snapshot||!is_string($in['sourceVersion'])||!hash_equals(hash('sha256',json_encode($snapshot,JSON_UNESCAPED_UNICODE)),$in['sourceVersion']))staffFail('元の授業が変更されました。再読み込みして確認してください。',409);}
@@ -130,6 +155,7 @@ if($action==='add'){
   $rows=readJson($addFile,[]);
   $row['_追加ID']='ADD-'.date('YmdHis').'-'.bin2hex(random_bytes(3));
   $row['_追加日時']=date('c');
+  if($receipt!==null){$row['_saveRequest']=$receipt;$row['_saveIntent']=saveIntent($row);}
   $rows[]=$row;
 
   if(!writeJson($addFile,$rows)){
@@ -140,7 +166,7 @@ if($action==='add'){
 
   if(!syncNoteToState($dir,$row)){
     http_response_code(500);
-    echo json_encode(['ok'=>false,'error'=>'授業は保存されましたが、メッセージ同期に失敗しました'],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok'=>false,'scheduleSaved'=>true,'row'=>$row,'error'=>'授業は保存されましたが、メッセージ同期に失敗しました'],JSON_UNESCAPED_UNICODE);
     exit;
   }
   echo json_encode(['ok'=>true,'row'=>$row],JSON_UNESCAPED_UNICODE);
@@ -171,7 +197,7 @@ if($action==='update'){
 
   if(!syncNoteToState($dir,$row)){
     http_response_code(500);
-    echo json_encode(['ok'=>false,'error'=>'授業は保存されましたが、メッセージ同期に失敗しました'],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok'=>false,'scheduleSaved'=>true,'row'=>$row,'error'=>'授業は保存されましたが、メッセージ同期に失敗しました'],JSON_UNESCAPED_UNICODE);
     exit;
   }
   echo json_encode(['ok'=>true,'row'=>$row,'sourceKey'=>$sourceKey],JSON_UNESCAPED_UNICODE);

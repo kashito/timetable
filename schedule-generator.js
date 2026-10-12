@@ -753,6 +753,7 @@ function updateGeneratorCreateOptions(reset=false,updateEnd=false){
 }
 async function populateModal(row,mode){
   const session=++generatorModalSession;
+  generatorSaveProgress=null; $('generatorVerifySave')?.remove();
   $('fMode').value=mode;
   $('fSourceKey').value=row['_sourceKey']||'';
   $('fDate').value=generatorDateToIso(row['日付']);
@@ -801,10 +802,10 @@ function openAddModal(date,slot,room){
 }
 async function openEditModal(row){
   if(window.LessonGroups){try{await LessonGroups.ready;}catch(e){alert(e.message+'。再読み込みしてください。');return;}const group=LessonGroups.forSource(row._sourceKey);if(group){location.assign(LessonGroups.url(group.id));return;}}
-  populateModal(row,'edit');
+  return populateModal(row,'edit');
 }
 
-let generatorModalSnapshot='',generatorModalSession=0;
+let generatorModalSnapshot='',generatorModalSession=0,generatorSaveProgress=null;
 function generatorModalState(){const ids=['fDate','fSlot','fRoomSelect','fRoomCustom','fClassSelect','fClassCustom','fTypeSelect','fTypeCustom','fPayrollCategory','fTeacherSelect','fTeacherCustom','fSubjectSelect','fSubjectCustom','fStart','fEnd','fCreateCount','fCreateMeal','fNote','fTeacherSharedMemo','generatorRecordMemo','generatorHomework','generatorDueHomework'];const s={};ids.forEach(id=>{const e=$(id);if(e)s[id]=e.value});document.querySelectorAll('.generator-att-select').forEach(e=>s['att:'+e.dataset.name]=e.value);document.querySelectorAll('[data-lesson-invite]').forEach(e=>s['invite:'+e.value]=e.checked);return JSON.stringify(s)}
 function markGeneratorModalSnapshot(){generatorModalSnapshot=generatorModalState()}
 function generatorModalHasChanges(){
@@ -874,6 +875,21 @@ function forceCloseModal(){
   $('generatorSaveConfirm')?.classList.add('hidden');
   $('modal').classList.add('hidden');
 }
+function showGeneratorSaveVerification(progress){
+ if($('generatorVerifySave'))return;
+ const button=document.createElement('button');button.id='generatorVerifySave';button.type='button';button.textContent='保存状況を確認';
+ $('formMsg').after(button);
+ button.onclick=async()=>{button.disabled=true;try{
+  const p=progress.pending;if(!p)throw Error('保存操作を確認できません。');
+  if(p.linked){const r=await fetch('lesson_create_group_api.php?requestId='+encodeURIComponent(p.payload.requestId),{cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'確認できません');progress.unknown=false;button.remove();if(j.group){forceCloseModal();LessonGroups.returnToGenerator(j.group);}else $('formMsg').textContent='今回の連結授業の追加は確認できませんでした。入力は残っています。再度保存できます。';return;}
+  const query=p.payload.action==='add'?'requestId='+encodeURIComponent(p.payload.requestId):'sourceKey='+encodeURIComponent(p.payload.sourceKey);
+  const r=await fetch('lesson_add_api.php?'+query,{cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'確認できません');
+  const same=j.row&&Object.keys(p.row).filter(k=>!k.startsWith('_')).every(k=>String(j.row[k]??'')===String(p.row[k]??''));
+  if(same&&j.noteSynced){progress.confirmed=true;progress.signature=p.signature;progress.row=j.row;progress.source=j.sourceKey;}
+  else if(p.payload.action==='add'&&j.sourceKey)throw Error('追加済みの授業の内容が変更されています。時間割で確認してください。');
+  progress.unknown=false;button.remove();$('formMsg').textContent=same&&!j.noteSynced?'授業予定は保存済みですが、授業連絡の同期は確認できません。もう一度保存すると連絡を同期します。':same?'授業予定の保存を確認しました。残りの項目を保存するには「変更を保存」を押してください。':'今回の内容の保存は確認できませんでした。入力は残っています。再度保存できます。';
+ }catch(e){$('formMsg').textContent='保存状況の確認失敗：'+e.message;}finally{button.disabled=false;}};
+}
 async function saveForm(){
   if($('saveAdd').disabled)return;
   const mode=$('fMode').value;
@@ -900,8 +916,13 @@ async function saveForm(){
     return;
   }
 
+  if(generatorSaveProgress?.unknown){$('formMsg').textContent='保存結果が不明です。「保存状況を確認」を押してください。入力は残っています。';return;}
   $('saveAdd').disabled=true;
   $('formMsg').textContent='保存中…';
+  let stage='授業予定';
+  const signature=JSON.stringify(row);
+  if(!generatorSaveProgress||generatorSaveProgress.session!==generatorModalSession)generatorSaveProgress={session:generatorModalSession};
+  const progress=generatorSaveProgress;
 
   try{
     const payload=mode==='edit'
@@ -910,40 +931,55 @@ async function saveForm(){
 
     const count=mode==='add'?Number($('fCreateCount')?.value||1):1;
     const linked=count>1;
+    if(mode==='add'&&!linked){if(!generatorCreateRequest||generatorCreateRequest.signature!==signature)generatorCreateRequest={signature,id:crypto.randomUUID()};payload.requestId=generatorCreateRequest.id;}
     if(linked){
       const input={row,count,mealBreak:$('fCreateMeal').value==='1'},signature=JSON.stringify(input);
       if(!generatorCreateRequest||generatorCreateRequest.signature!==signature)generatorCreateRequest={signature,id:crypto.randomUUID()};
       Object.assign(payload,input,{requestId:generatorCreateRequest.id});
     }
+    let j;
+    if(progress.confirmed&&progress.signature===signature){j={ok:true,row:progress.row};}
+    else{
+    if(mode==='add'&&progress.confirmed){payload.action='update';payload.sourceKey=progress.source;delete payload.requestId;}
+    progress.pending={signature,row,payload,linked};
     const r=await fetch(linked?'lesson_create_group_api.php':'lesson_add_api.php',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
-    const j=await r.json();
+    try{j=await r.json();}catch(e){throw Object.assign(new Error('サーバーの保存応答を読み取れません。'),{unconfirmedWrite:true});}
+    if(j.scheduleSaved)throw Object.assign(new Error(j.error),{unconfirmedWrite:true});
     if(!r.ok||!j.ok) throw new Error(j.error||'保存失敗');
+    }
+    progress.confirmed=true;progress.signature=signature;progress.row=j.row||row;progress.source=source||('ADD:'+j.row?.['_追加ID']);
 
     if(j.group){forceCloseModal();LessonGroups.returnToGenerator(j.group);return;}
     if(mode==='edit'){
       edits[source]=normalize(j.row||row);
     }else{
-      addedRows.push(normalize(j.row||row));
+      const index=addedRows.findIndex(r=>r['_追加ID']&&r['_追加ID']===j.row?.['_追加ID']);
+      if(index>=0)addedRows[index]=normalize(j.row||row);else addedRows.push(normalize(j.row||row));
+      if(payload.action==='update')edits[progress.source]=normalize(j.row||row);
     }
 
     applyEdits();
     await window.LessonFixed?.refreshAll();
     refreshChoices();
     render();
+    stage='出欠・招待生徒';
     if(mode==='edit' && document.querySelector('.generator-att-select')){
       const attendanceSaved=await persistGeneratorAttendance({row:normalize(j.row||row)});
-      if(!attendanceSaved) return;
+      if(!attendanceSaved){$('formMsg').textContent='授業予定は保存済みです。出欠・招待生徒の保存失敗：'+$('generatorAttendanceMsg').textContent;return;}
     }
+    stage='共有メモ';
     if(mode==='edit'&&!await saveGeneratorTeacherMemo()){$('formMsg').textContent='授業予定は保存済みです。共有メモ：'+$('teacherSharedMemoMsg').textContent;return;}
+    stage='カルテ・宿題';
     if(window.GeneratorExtras && mode==='edit') await GeneratorExtras.save(j.row||row);
     forceCloseModal();
     if(mode==='add')window.HistoryWindow?.goTo(generatorDateToIso((j.row||row)['日付']));
   }catch(e){
-    $('formMsg').textContent='保存失敗：'+(e.message||e);
+    $('formMsg').textContent=(progress.confirmed?'授業予定は保存済みです。':'')+stage+'の'+(e.unconfirmedWrite?'保存結果が不明：':'保存失敗：')+(e.message||e);
+    if(stage==='授業予定'&&e.unconfirmedWrite){progress.unknown=true;showGeneratorSaveVerification(progress);}
   }finally{
     $('saveAdd').disabled=false;
   }

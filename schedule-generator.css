@@ -487,3 +487,7 @@ main{padding:12px}.panel{background:#fff;border:1px solid #dce3ee;border-radius:
 .lesson-visibility-item{display:flex;align-items:center;gap:8px;border:1px solid #dbe3ec;border-radius:8px;padding:8px 10px;background:#fff;font-weight:700;cursor:pointer}
 .lesson-visibility-item input{width:18px;height:18px;flex:0 0 auto}
 .lesson-visibility-empty{color:#64748b;padding:8px 0}
+
+/* Keep recovery instructions readable above the fixed action buttons. */
+#modal #formMsg{max-height:20dvh!important;overflow-wrap:anywhere}
+#modal #generatorVerifySave{flex:none;min-height:40px;margin:4px 14px 8px}

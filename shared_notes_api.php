@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/api_response.php';
 function snRespond($value,$flags=JSON_UNESCAPED_UNICODE){
  $json=json_encode($value,$flags);if($json===false)throw new RuntimeException('Shared-note response encoding failed');echo $json;
 }

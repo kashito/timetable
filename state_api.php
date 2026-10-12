@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/api_response.php';
 require_once __DIR__.'/staff_security.php';
 require_once __DIR__.'/lesson_roster.php';
 if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET' || isset($_GET['action'])) staffRequire();

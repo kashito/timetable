@@ -5,7 +5,7 @@ function policyRows(){
  $dir=__DIR__.'/data';$base=readJsonStrict($dir.'/schedule_data.json');$edits=readJsonStrict($dir.'/edited_lessons.json');$out=[];
  foreach($base['schedule']??[] as $i=>$r){$k='XLSX:'.implode('|',[$i,str_replace('-','/',$r['日付']??''),$r['時間番号']??'',$r['クラス']??'',$r['担当講師']??'']);$r=$edits[$k]??$r;if(empty($r['_deleted'])){$r['_sourceKey']=$k;$out[]=$r;}}
  foreach(readJsonStrict($dir.'/added_lessons.json') as $r){$k='ADD:'.($r['_追加ID']??'');$r=$edits[$k]??$r;if(empty($r['_deleted'])){$r['_sourceKey']=$k;$out[]=$r;}}
- $rooms=readJsonStrict($dir.'/room_overrides.json');foreach($out as &$r){$key=canonicalLessonKey(policyKey($r));if(isset($rooms[$key]['room']))$r['教室']=$rooms[$key]['room'];}unset($r);return $out;
+ $rooms=readJsonStrict($dir.'/room_overrides.json');foreach($out as &$r){$key=canonicalLessonKey(policyKey($r));if(isset($rooms[$key]['room']))$r['教室']=$rooms[$key]['room'];}unset($r);foreach($out as &$r){unset($r['_saveRequest'],$r['_saveIntent']);}unset($r);return $out;
 }
 function policyConflict($flag,$message){http_response_code(409);header('Content-Type: application/json; charset=utf-8');echo json_encode(['ok'=>false,$flag=>true,'error'=>$message],JSON_UNESCAPED_UNICODE);exit;}
 function guardFixedLesson($key,$in){$all=readJsonStrict(__DIR__.'/data/lesson_fixed.json');$key=canonicalLessonKey($key);if(!empty($all[$key]['fixed'])&&empty($in['overrideFixed']))policyConflict('fixedConflict','この授業は「予定を固定」済みで、生徒にも固定として表示されています。それでも変更しますか？');}

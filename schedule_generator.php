@@ -1,11 +1,11 @@
 <?php require_once __DIR__.'/admin_page_guard.php'; requireAdminPage('schedule_generator.html'); ?>
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261012-open-shifts" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script><link rel="stylesheet" href="homework-editor.css?v=20261006-items"><script defer src="homework-editor.js?v=20261006-items"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="history-window.js?v=20260920-keep-date"></script>
+<head><script src="staff-auth.js?v=20261012-json-save" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script><link rel="stylesheet" href="homework-editor.css?v=20261006-items"><script defer src="homework-editor.js?v=20261006-items"></script><script src="lesson-groups.js?v=20261002-return-view"></script><script src="history-window.js?v=20260920-keep-date"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>コマ生成・授業管理2026</title>
-<link rel="stylesheet" href="schedule-generator.css?v=20260910-r1"><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script src="lesson-invitations.js?v=20261003-invites"></script><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
+<link rel="stylesheet" href="schedule-generator.css?v=20261012-json-save"><link rel="stylesheet" href="lesson-invitations.css?v=20261003-invites"><script src="lesson-invitations.js?v=20261003-invites"></script><link rel="stylesheet" href="lesson-resize.css?v=20261002-r1"><link rel="stylesheet" href="lesson-message-preview.css?v=20261002-r1">
 <script src="vendor/xlsx.full.min.js"></script>
 
 <style id="generator-nowline-modal-layer-fix">
@@ -250,7 +250,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20261007-due-homework"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261007-due-homework"></script>
+<script src="generator-tools.js?v=20261007-due-homework"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261012-json-save"></script>
 
 
 <script id="generator-nowline-today-only-v2">
