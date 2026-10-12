@@ -12,9 +12,10 @@ class StudentNgTests(unittest.TestCase):
     snapshot=fixture.LessonCreationTests.snapshot
     tearDown=fixture.LessonCreationTests.tearDown
     post=fixture.LessonCreationTests.post
+    read=fixture.LessonCreationTests.read
     def setUp(self):
         fixture.LessonCreationTests.setUp(self)
-        for name in ['student_ng_api.php','state_api.php','student_manage_api.php','student_master_api.php','data_api.php','lesson_repeat_api.php','lesson_group_move_api.php']:shutil.copyfile(fixture.ROOT/name,self.root/name)
+        for name in ['student_ng_api.php','state_api.php','student_manage_api.php','student_master_api.php','data_api.php','lesson_repeat_api.php','lesson_group_move_api.php','lesson_copy_api.php','week_copy_api.php']:shutil.copyfile(fixture.ROOT/name,self.root/name)
         self.date='2026-10-12';self.master=[{'生徒名':'検証A','クラス':'検証クラス'},{'生徒名':'検証B','クラス':'別クラス'}];self.write('student_master.json',self.master);self.write('teacher_ng.json',[]);self.write('student_ng.php',{'schema':1,'entries':{}});self.write('class_memos.json',{})
     def ng(self,name='検証A'):
         code,j=self.request('student_ng_api.php?student='+urllib.parse.quote(name));self.assertEqual(code,200,j);return j
@@ -70,5 +71,19 @@ class StudentNgTests(unittest.TestCase):
         self.register(start='2026-10-12T18:30',end='2026-10-12T19:10');payload=dict(row=self.row(終了='19:10'),count=2,mealBreak=False,requestId=secrets.token_hex(12));j=self.warning('lesson_create_group_api.php',payload);result=self.accept('lesson_create_group_api.php',payload,j);self.assertEqual(len(result['rows']),2)
     def test_batch_repeat_aggregates_future_ng(self):
         row=self.row(_追加ID='repeat');self.write('added_lessons.json',[row]);self.register(start='2026-10-13T17:40',end='2026-10-13T18:20');self.register(start='2026-10-14T17:40',end='2026-10-14T18:20');plan=self.request('lesson_repeat_api.php?sourceKey=ADD%3Arepeat')[1];payload=dict(sourceKey='ADD:repeat',dates=['2026-10-13','2026-10-14'],requestId=secrets.token_hex(12),version=plan['version']);issue=self.warning('lesson_repeat_api.php',payload);self.assertIn('2026-10-13',issue['error']);self.assertIn('2026-10-14',issue['error']);self.accept('lesson_repeat_api.php',payload,issue)
+
+    def test_linked_move_warns_and_keeps_group_and_records_intact(self):
+        first=self.row(_追加ID='move-first',日付='2026-10-11');second=self.row(_追加ID='move-second',日付='2026-10-11',時間番号='⑦',開始='18:30',終了='19:10');self.write('added_lessons.json',[first,second])
+        plan=self.request('lesson_group_api.php?action=candidates&sourceKey=ADD%3Amove-first')[1];code,g=self.post('lesson_group_api.php',dict(action='create',sources=['ADD:move-first','ADD:move-second'],version=plan['version'],mealBreak=False));self.assertEqual(code,200,g)
+        self.register(start='2026-10-12T18:30',end='2026-10-12T19:10');query='lesson_group_move_api.php?sourceKey=ADD%3Amove-first&date=2026-10-12&slot='+urllib.parse.quote('⑥')+'&room='+urllib.parse.quote('青');code,move=self.request(query);self.assertEqual(code,200,move)
+        payload=dict(sourceKey='ADD:move-first',date=self.date,slot='⑥',room='青',version=move['version'],requestId=secrets.token_hex(12));issue=self.warning('lesson_group_move_api.php',payload);self.accept('lesson_group_move_api.php',payload,issue);self.assertEqual(len(self.read('added_lessons.json')),2);self.assertEqual(len(self.read('lesson_groups.json')),1)
+
+    def test_copy_period_warns_without_creating_extra_lesson(self):
+        row=self.row(_追加ID='copy');self.write('added_lessons.json',[row]);self.register(start='2026-10-12T18:30',end='2026-10-12T19:10');plan=self.request('lesson_copy_api.php?sourceKey=ADD%3Acopy')[1]
+        payload=dict(sourceKey='ADD:copy',version=plan['version'],targets=[dict(date=self.date,slot='⑦',room='青')],link=False,requestId=secrets.token_hex(12));issue=self.warning('lesson_copy_api.php',payload);self.accept('lesson_copy_api.php',payload,issue)
+
+    def test_copy_day_warns_before_batch_change_and_aggregates(self):
+        row=self.row(_追加ID='day-copy',日付='2026-10-11');self.write('added_lessons.json',[row]);self.register();query='week_copy_api.php?from=2026-10-11&to=2026-10-12&mode=empty';plan=self.request(query)[1]
+        payload=dict(**{'from':'2026-10-11','to':self.date},mode='empty',version=plan['version'],requestId=secrets.token_hex(12));issue=self.warning('week_copy_api.php',payload);self.accept('week_copy_api.php',payload,issue)
 
 if __name__=='__main__':unittest.main()

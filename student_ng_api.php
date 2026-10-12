@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/api_response.php';
 require_once __DIR__.'/staff_security.php';$actor=staffRequire(true);require_once __DIR__.'/student_ng_rules.php';
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');header('Vary: Cookie');
 $method=$_SERVER['REQUEST_METHOD'];if(!in_array($method,['GET','POST'],true))staffFail('Method not allowed',405);$in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力を確認してください。',400);
