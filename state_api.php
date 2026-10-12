@@ -210,14 +210,7 @@ if(array_key_exists('invitedStudents',$in)){
   $in['invitedStudents']=lessonValidateInvitedStudents($in['invitedStudents'],$students,$directory,$lessonDate);
 }
 if(isset($in['attendance'])){if(!is_array($in['attendance']))staffFail('出欠を確認してください。',400);$previous=readJsonStrict($stateFile)[$eventKey]['attendance']??[];foreach($in['attendance'] as $name=>$value){$before=$previous[$name]??'';if(trim((string)$value)==='未定'&&trim((string)$before)!=='未定'&&(staffCurrent()['role']??'')!=='admin')staffFail('未定としての記録は管理者のみ行えます。',403);}}
-if(array_key_exists('publicNote',$in)){
-  list($syncOk,$syncErr)=syncPublicNoteToSchedule($dir,$eventKey,(string)$in['publicNote']);
-  if(!$syncOk){
-    http_response_code(500);
-    echo json_encode(['ok'=>false,'error'=>$syncErr],JSON_UNESCAPED_UNICODE); exit;
-  }
-}
-list($ok,$err,$state)=updateJson($stateFile,function($state) use($eventKey,$in){
+$stateMutator=function($state) use($eventKey,$in){
   $cur=(isset($state[$eventKey])&&is_array($state[$eventKey]))?$state[$eventKey]:[];
   foreach(['publicNote','ready','attendance','attendanceTouched','teacherMemo','invitedStudents'] as $field){
     if(array_key_exists($field,$in)){
@@ -236,7 +229,16 @@ list($ok,$err,$state)=updateJson($stateFile,function($state) use($eventKey,$in){
   $cur['updatedAt']=date('c'); $cur['updatedBy']=staffCurrent()['name'];
   $state[$eventKey]=$cur;
   return $state;
-});
+};
+studentNgBeforeWrite([$stateFile=>$stateMutator(readJsonStrict($stateFile))]);
+if(array_key_exists('publicNote',$in)){
+  list($syncOk,$syncErr)=syncPublicNoteToSchedule($dir,$eventKey,(string)$in['publicNote']);
+  if(!$syncOk){
+    http_response_code(500);
+    echo json_encode(['ok'=>false,'error'=>$syncErr],JSON_UNESCAPED_UNICODE); exit;
+  }
+}
+list($ok,$err,$state)=updateJson($stateFile,$stateMutator);
 if(!$ok){
   http_response_code(500);
   echo json_encode(['ok'=>false,'error'=>$err],JSON_UNESCAPED_UNICODE); exit;

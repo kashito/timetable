@@ -23,7 +23,14 @@ function safeDataBackup($file) {
   if(!@copy($file,$dest)) return false;
   @chmod($dest,0664); return true; // Never delete old snapshots automatically.
 }
+function studentNgBeforeWrite($changes){
+ if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST'||!is_file(__DIR__.'/data/student_ng.php'))return;
+ $watched=['schedule_data.json','added_lessons.json','edited_lessons.json','student_master.json','class_state.json','directory_state.json','lesson_groups.json'];
+ if(!array_intersect($watched,array_map('basename',array_keys($changes))))return;
+ require_once __DIR__.'/student_ng_rules.php';studentNgGuardChanges($changes);
+}
 function safeJsonWriteAtomic($file,$value) {
+  studentNgBeforeWrite([$file=>$value]);
   $json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
   if($json===false) return false;
   if(is_file($file)) readJsonStrict($file);

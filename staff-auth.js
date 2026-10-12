@@ -41,12 +41,12 @@
     const unknown=()=>Object.assign(new Error(url.pathname.split('/').pop()+'：保存結果を確認できません。入力は残っています。保存状況を確認してから操作してください。'),{unconfirmedWrite:true});
     const send=async()=>{let r;try{r=await nativeFetch(input,options);}catch(e){if(write)throw unknown();throw e;}if(write){let j;try{j=await r.clone().json();}catch(e){throw unknown();}if(!j||typeof j!=='object'||typeof j.ok!=='boolean')throw unknown();if(j.outcomeUnknown)throw unknown();}return r;};
     let response=await send();
-    for(let retry=0;retry<4&&response.status===409&&typeof options.body==='string';retry++){
+    for(let retry=0;retry<6&&response.status===409&&typeof options.body==='string';retry++){
       const issue=await response.clone().json().catch(()=>({}));
-      const field=issue.fixedConflict?'overrideFixed':issue.roomConflict?'overrideRoom':issue.ngConflict?'overrideNg':issue.recordConflict?'archiveDestination':'';
+      const field=issue.studentNgConflict?'overrideStudentNg':issue.fixedConflict?'overrideFixed':issue.roomConflict?'overrideRoom':issue.ngConflict?'overrideNg':issue.recordConflict?'archiveDestination':'';
       if(!field||!confirm(issue.error))break;
       let payload;try{payload=JSON.parse(options.body);}catch(e){break;}
-      payload[field]=true;options={...options,body:JSON.stringify(payload)};
+      payload[field]=true;if(issue.studentNgConflict)payload.studentNgRevision=issue.studentNgRevision;options={...options,body:JSON.stringify(payload)};
       response=await send();
     }
     if(required&&(response.status===401||(response.status===403&&(await response.clone().json().catch(()=>({}))).error==='画面を再読み込みして、もう一度操作してください。')))showReauth();

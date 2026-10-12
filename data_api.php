@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__.'/lesson_groups.php';
-require_once __DIR__.'/lesson_policy.php';
+require_once __DIR__.'/lesson_policy.php';require_once __DIR__.'/lesson_links.php';
 if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET') staffRequire(true);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -88,5 +88,5 @@ foreach(lessonGroups() as $g)if(!empty($g['active']))staffFail('連結中の授�
 $locked=readJsonStrict($dir.'/lesson_fixed.json');
 if(empty($input['overrideFixed']))foreach(policyRows() as $old){if(empty($locked[canonicalLessonKey(policyKey($old))]['fixed']))continue;$same=false;foreach($input['schedule'] as $new)if(!scheduleFieldsChanged($old,$new)){$same=true;break;}if(!$same)guardFixedLesson(policyKey($old),$input);}
 $payload=['schedule'=>$input['schedule'],'students'=>$input['students'],'updatedAt'=>date('c')];
-if(!safeJsonWriteAtomic($file,$payload) || !safeJsonWriteAtomic($studentMasterFile,$input['students'])) staffFail('保存に失敗しました',500);
+if(!safeDataTransaction([$file=>$payload,$studentMasterFile=>$input['students']])) staffFail('保存に失敗しました',500);
 echo json_encode(['ok'=>true,'updatedAt'=>$payload['updatedAt']],JSON_UNESCAPED_UNICODE);

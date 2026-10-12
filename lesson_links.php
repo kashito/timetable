@@ -9,6 +9,7 @@ function lessonBySource($source){
   return is_array($row)&&empty($row['_deleted'])?$row:null;
 }
 function safeDataTransaction($changes){
+  studentNgBeforeWrite($changes);
   $prepared=[];$original=[];
   $cleanup=function()use(&$prepared){foreach($prepared as $p)if(is_file($p))@unlink($p);};
   // Validate every original before creating any temporary files.
