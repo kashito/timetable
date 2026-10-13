@@ -438,7 +438,7 @@
         "日付直下に授業あり・OFF・現在調整中などの状態、最初の授業開始時刻、最後の授業終了時刻を表示する",
         "一部だけ確定している日は「授業あり・現在調整中（確定した授業のみ表示）」と表示し、全予定が確定したように見せない",
         "授業区間を統合してから空き時間を計算し、重複授業や連結授業の途中を空き時間にしない",
-        "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。完了チェックは生徒ごとにサーバー保存し、授業詳細・上部一覧・別端末で共有する。非表示はその端末に保存する",
+        "宿題は各授業に常時表示し、画面上部の宿題ボタンにも期限・残り時間・未完了件数を表示する。チェックは先生の授業・解説完了として対象宿題で共通保存し、生徒を選択せず授業詳細・上部一覧・別端末で共有する。生徒個人の提出・理解履歴とは別で、生徒・保護者は共通完了を閲覧する。非表示はその端末に保存する",
         "資料を見る・資料を送るを各授業に表示し、資料0件と取得失敗を別の状態として案内する",
         "前回授業からの経過と開始までのカウントダウンは「その他の情報」に折りたたむ",
         "表示設定では20色から端末ごとのテーマを選択でき、標準へ戻せる。警告・欠席・未確定の意味色はテーマと分離する"
@@ -466,7 +466,7 @@
         },
         {
           "file": "student-homework-hub.js",
-          "line": 30,
+          "line": 33,
           "code": "window.addEventListener('storage',event=>{if(event.key===key())render();});window.StudentHomeworkHub={update,refresh,mountDetail};if(window.__studentHomeworkHubData)update(window.__studentHomeworkHubData.name,window.__studentHomeworkHubData.items);document.addEventListener('lesson-recording-saved',()=>refresh().catch(e=>{error=e.message;render();}));setInterval(()=>{if(open)render();},60000);"
         },
         {

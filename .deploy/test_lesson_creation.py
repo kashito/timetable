@@ -17,7 +17,7 @@ import urllib.request
 
 ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parents[1]))
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
-FILES = ['api_response.php', 'student_ng_rules.php', 'teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
+FILES = ['api_response.php','homework_explanation.php', 'student_ng_rules.php', 'teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
          'recording_context.php', 'homework_completion.php', 'student_homework_api.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']
@@ -234,14 +234,14 @@ class LessonCreationTests(unittest.TestCase):
         future=row(6);future.update({'日付':'2026-10-02','_追加ID':'future','_sourceKey':'ADD:future'})
         self.write('added_lessons.json',[old,previous]+rows+[future])
         records=self.read('lesson_records.json');records[key(old)]={'eventKey':key(old),'date':'2026-09-11','homework':'古い完了扱いの宿題'};records[key(previous)]={'eventKey':key(previous),'date':'2026-09-18','homework':'問題1\n問題2'};self.write('lesson_records.json',records)
-        code,j=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(g['key']))
+        code,j=self.request('lesson_record_api.php?action=previous_homework&scope=personal&key='+urllib.parse.quote(g['key']))
         self.assertEqual(code,200,j);self.assertEqual([x['text'] for x in j['items']],['問題1','問題2']);task=j['items'][0]['id']
         code,saved=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':task,'checked':True})
         self.assertEqual(code,200,saved);self.assertTrue(next(x for x in saved['previousHomework']['items'] if x['id']==task)['checked'])
-        code,next_view=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(key(future)))
+        code,next_view=self.request('lesson_record_api.php?action=previous_homework&scope=personal&key='+urllib.parse.quote(key(future)))
         self.assertEqual(code,200,next_view);self.assertNotIn('問題1',[x['text'] for x in next_view['items']]);self.assertIn('問題2',[x['text'] for x in next_view['items']]);self.assertNotIn('古い完了扱いの宿題',[x['text'] for x in next_view['items']])
         code,_=self.post('lesson_record_api.php',{'action':'homework_check','eventKey':g['key'],'taskId':task,'checked':False});self.assertEqual(code,200)
-        code,next_view=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(key(future)))
+        code,next_view=self.request('lesson_record_api.php?action=previous_homework&scope=personal&key='+urllib.parse.quote(key(future)))
         self.assertEqual(code,200,next_view);self.assertIn('問題1',[x['text'] for x in next_view['items']])
 
     def test_linked_previous_homework_is_shown_once_and_keeps_legacy_checks(self):
@@ -256,7 +256,7 @@ class LessonCreationTests(unittest.TestCase):
         legacy_id='hw_'+hashlib.sha256((key(previous_rows[1])+'\0'+'0'+'\0'+texts[0]).encode()).hexdigest()[:24]
         records={previous['key']:{'eventKey':previous['key'],'date':'2026-09-18','homework':'\n'.join(texts)},current['key']:{'eventKey':current['key'],'date':'2026-09-25','homework':'','homeworkChecks':{legacy_id:{'checked':True}}}}
         self.write('lesson_records.json',records)
-        code,result=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(current['key']))
+        code,result=self.request('lesson_record_api.php?action=previous_homework&scope=personal&key='+urllib.parse.quote(current['key']))
         self.assertEqual(code,200,result);self.assertEqual([item['text'] for item in result['items']],texts)
         self.assertEqual(len(result['items']),2);self.assertTrue(result['items'][0]['checked'])
         canonical_id=result['items'][0]['id']

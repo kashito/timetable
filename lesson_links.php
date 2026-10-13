@@ -16,7 +16,7 @@ function safeDataTransaction($changes){
   foreach($changes as $file=>$value)if(is_file($file))readJsonStrict($file);
   foreach($changes as $file=>$value){
     if(is_file($file))readJsonStrict($file);
-    $json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
+    $json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);if($json!==false&&substr($file,-4)==='.php')$json="<?php exit; ?>\n".$json;
     if($json===false||!safeDataBackup($file)){$cleanup();return false;}
     $original[$file]=is_file($file)?file_get_contents($file):null;
     if($original[$file]===false){$cleanup();return false;}

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__.'/lesson_groups.php';require_once __DIR__.'/lesson_links.php';
+require_once __DIR__.'/lesson_groups.php';require_once __DIR__.'/homework_explanation.php';require_once __DIR__.'/lesson_links.php';
 require_once __DIR__.'/lesson_roster.php';
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
 $dir=__DIR__.'/data';$groups=lessonGroups();$allRows=policyRows();
@@ -7,7 +7,7 @@ $method=$_SERVER['REQUEST_METHOD'];$in=$method==='GET'?$_GET:json_decode(file_ge
 if($method==='GET'&&$action==='index'){$out=[];foreach($groups as $g)if(!empty($g['active']))$out[]=groupSummary($g,groupRows($g,$allRows));echo json_encode(['ok'=>true,'groups'=>$out],JSON_UNESCAPED_UNICODE);exit;}
 $actor=staffRequire($method!=='GET'&&$action!=='save');
 $records=readJsonStrict($dir.'/lesson_records.json');$states=readJsonStrict($dir.'/class_state.json');
-function lgVersion($g,$rows,$record,$states){$memberStates=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$memberStates[$k]=$states[$k]??[];}$dir=__DIR__.'/data';$students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$class=$rows[0]['クラス']??'';$roster=array_values(array_filter($students,fn($r)=>($r['クラス']??'')===$class));$directory=readJsonStrict($dir.'/directory_state.json');return hash('sha256',json_encode([$g,$rows,$record,$memberStates,$roster,$directory['hiddenStudents']??[],$directory['hiddenStudentFrom']??[]],JSON_UNESCAPED_UNICODE));}
+function lgVersion($g,$rows,$record,$states){$memberStates=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$memberStates[$k]=$states[$k]??[];}$dir=__DIR__.'/data';$students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$class=$rows[0]['クラス']??'';$roster=array_values(array_filter($students,fn($r)=>($r['クラス']??'')===$class));$directory=readJsonStrict($dir.'/directory_state.json');return hash('sha256',json_encode([$g,$rows,homeworkRevisionRecord($record),$memberStates,$roster,$directory['hiddenStudents']??[],$directory['hiddenStudentFrom']??[]],JSON_UNESCAPED_UNICODE));}
 if($method==='GET'&&$action==='candidates'){
  staffRequire(true);$source=(string)($in['sourceKey']??'');$current=null;foreach($allRows as $r)if($r['_sourceKey']===$source)$current=$r;if(!$current)staffFail('授業が見つかりません',404);
  $out=[];foreach($allRows as $r)if(empty($r['日区分'])&&lgCompatible($current,$r)&&!groupForSource($r['_sourceKey']))$out[]=['row'=>$r,'record'=>$records[canonicalLessonKey(policyKey($r))]??[]];
@@ -28,11 +28,12 @@ $id=(string)($in['id']??'');$g=$groups[$id]??null;if(!$g)staffFail('連結した
 if(!empty($g['active'])&&count($rows)!==count($g['sources']))staffFail('連結中の授業が変更されています。管理者に確認してください。',409);
 $key=$g['key'];$record=commonGroupRecord($g,$records,$rows);$version=lgVersion($g,$rows,$record,$states);
 if($method==='GET'&&$action==='detail'){
+ $record=homeworkDecorateRecord($key,$record,$rows);
  $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
  $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$record,'sourceRecord'=>$record['sourceRecords'][$k]??($records[$k]??[])];}
  $regular=lessonRosterNames($students,$directory,$class,$date,[]);$names=array_fill_keys($regular,true);foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)if(empty($directory['hiddenStudents'][$name]))$names[$name]=true;$roster=array_keys($names);sort($roster,SORT_NATURAL);
  $invited=[];foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)$invited[$name]=true;$invited=array_keys($invited);sort($invited,SORT_NATURAL);
- echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>$record,'members'=>$members,'students'=>$roster,'regularStudents'=>$regular,'invitedStudents'=>$invited,'availableStudents'=>lessonVisibleStudentNames($students,$directory,$date),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
+ echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>homeworkDecorateRecord($key,$record,$rows),'members'=>$members,'students'=>$roster,'regularStudents'=>$regular,'invitedStudents'=>$invited,'availableStudents'=>lessonVisibleStudentNames($students,$directory,$date),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
 }
 if($method!=='POST')staffFail('Method not allowed',405);
 if(empty($g['active']))staffFail('連結は解除済みです。履歴として表示しています。',409);
@@ -49,7 +50,7 @@ if($hasNote){
  $edits=readJsonStrict($dir.'/edited_lessons.json');
  foreach($rows as $r){$source=$r['_sourceKey'];$copy=$r;unset($copy['_sourceKey']);$copy['備考']=$in['publicNote'];$copy['_編集日時']=date('c');$edits[$source]=$copy;}
 }
-if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homework']=$homework;if(array_key_exists('dueHomework',$in))$record['dueHomework']=recordingNormalizeHomework($in['dueHomework']);$record['homeworkChecks']=$record['homeworkChecks']??[];foreach(recordingPreviousHomework($key,$records)['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>date('c'),'by'=>$actor['name']];$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$key]=$record;
+if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homework']=$homework;if(array_key_exists('dueHomework',$in))$record['dueHomework']=recordingNormalizeHomework($in['dueHomework']);$record['homeworkChecks']=$record['homeworkChecks']??[];foreach(recordingPreviousHomework($key,$records)['items'] as $item)if(!array_key_exists($item['id'],$record['homeworkChecks']))$record['homeworkChecks'][$item['id']]=['checked'=>false,'at'=>date('c'),'by'=>$actor['name']];$record=homeworkApplyRefs($key,$record,$records[$key]??[],$in['homeworkTaskRefs']??null,$rows[0]);$record['updatedAt']=date('c');$record['updatedBy']=$actor['name'];$records[$key]=$record;
 $attendance=$in['attendance']??[];if(!is_array($attendance))staffFail('出席の形式が不正です',400);foreach($attendance as $name=>$value)if(!in_array($value,['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'],true))staffFail('出席を確認してください',400);
 foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$state=$states[$k]??[];foreach($attendance as $name=>$value){if($value==='---')unset($state['attendance'][$name]);else $state['attendance'][$name]=$value;if(isset($state['exemptionOverrides'][$name])){$state['exemptionOverrides'][$name]=$value==='免除';unset($state['exemptionUndo'][$name]);}}
  if($hasNote)$state['publicNote']=$in['publicNote'];

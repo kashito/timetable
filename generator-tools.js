@@ -26,21 +26,21 @@ async function open(row,mode){
  $('generatorDetailLinks').innerHTML=`${StaffAuth.user?.role==='admin'?`<button type="button" data-link-lesson="${esc(row._sourceKey||'')}">コマを連結</button>`:''}<a href="${Workspace.classLink(row['クラス'])}">この授業の全予定</a><button type="button" data-manage-class="${esc(row['クラス'])}">参加生徒を編集</button><a href="lesson_records.html?class=${encodeURIComponent(row['クラス'])}">カルテ一覧</a><a href="teacher2026summer_vertical.html?teacher=${encodeURIComponent(row['担当講師']||'')}">講師の予定</a>`;
  if(window.LessonFixed)LessonFixed.editor(Generator.eventKey(row),$('generatorDetailLinks'));
  try{
-  const j=await Workspace.api('lesson_record_api.php?key='+encodeURIComponent(Generator.eventKey(row)));if(id!==requestId)return;record=j.record||{};loaded=true;$('generatorRecordMemo').value=record.memo||'';$('generatorHomework').value=record.homework||'';$('generatorDueHomework').value=record.dueHomework||'';$('generatorRecordMemo').disabled=$('generatorHomework').disabled=$('generatorDueHomework').disabled=false;$('generatorRecordStatus').textContent='';showRecord();
+  const j=await Workspace.api('lesson_record_api.php?key='+encodeURIComponent(Generator.eventKey(row)));if(id!==requestId)return;record=j.record||{};loaded=true;$('generatorRecordMemo').value=record.memo||'';$('generatorHomework').value=record.homework||'';$('generatorDueHomework').value=record.dueHomework||'';window.HomeworkItemEditor?.bind($('generatorHomework'),record,'next');window.HomeworkItemEditor?.bind($('generatorDueHomework'),record,'due');$('generatorRecordMemo').disabled=$('generatorHomework').disabled=$('generatorDueHomework').disabled=false;$('generatorRecordStatus').textContent='';showRecord();
   $('generatorCarriedHomework').dataset.recordingKey=Generator.eventKey(row);window.RecordingTools?.context(Generator.eventKey(row),$('generatorCarriedHomework'),true);await files();
  }catch(e){if(id===requestId)$('generatorRecordStatus').textContent='読込失敗：'+e.message;}
 }
 async function save(row=current){
  if(!row||!loaded)throw new Error('カルテを読み込めていません。保存せず、詳細を開き直してください。');
  const context=Generator.saveContext(),key=Generator.eventKey(row),memo=$('generatorRecordMemo').value,homework=$('generatorHomework').value,dueHomework=$('generatorDueHomework').value;
- const j=await Workspace.api('lesson_record_api.php',{eventKey:key,memo,homework,dueHomework,date:Workspace.iso(row['日付']),slot:row['時間番号'],className:row['クラス'],teacher:row['担当講師'],room:row['教室'],subject:row['科目']});
+ const j=await Workspace.api('lesson_record_api.php',{eventKey:key,memo,homework,dueHomework,homeworkTaskRefs:window.HomeworkItemEditor?.refs({next:$('generatorHomework'),due:$('generatorDueHomework')}),date:Workspace.iso(row['日付']),slot:row['時間番号'],className:row['クラス'],teacher:row['担当講師'],room:row['教室'],subject:row['科目']});
  if(!Generator.isCurrentSave(context))return j.record||{};
  record=j.record||{};current={...row};
- const saved={generatorRecordMemo:record.memo||'',generatorHomework:record.homework||'',generatorDueHomework:record.dueHomework||''};
+ const saved={generatorRecordMemo:record.memo||'',generatorHomework:record.homework||'',generatorDueHomework:record.dueHomework||''};if(window.HomeworkItemEditor){for(const [field,kind] of [['generatorHomework','next'],['generatorDueHomework','due']])saved[field+':refs']=JSON.stringify((record.homeworkTaskRefs?.[kind]||[]).map(({id,text})=>({id,text})));}
  // Preserve text entered during the save, and keep it marked as unsaved.
  if($('generatorRecordMemo').value===memo)$('generatorRecordMemo').value=saved.generatorRecordMemo;
- if($('generatorHomework').value===homework)$('generatorHomework').value=saved.generatorHomework;
- if($('generatorDueHomework').value===dueHomework)$('generatorDueHomework').value=saved.generatorDueHomework;
+ if($('generatorHomework').value===homework){$('generatorHomework').value=saved.generatorHomework;window.HomeworkItemEditor?.bind($('generatorHomework'),record,'next');}
+ if($('generatorDueHomework').value===dueHomework){$('generatorDueHomework').value=saved.generatorDueHomework;window.HomeworkItemEditor?.bind($('generatorDueHomework'),record,'due');}
  Generator.markSaved(saved,context);
  $('generatorRecordStatus').textContent='保存しました。';return record;
 }

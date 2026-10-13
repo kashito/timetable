@@ -5,7 +5,8 @@ function lessonGroups(){return readJsonStrict(__DIR__.'/data/lesson_groups.json'
 function logicalRecordKey($key){
  $key=canonicalLessonKey($key);$rows=policyRows();foreach(lessonGroups() as $g){if(empty($g['active']))continue;if($key===$g['key'])return $key;foreach(groupRows($g,$rows) as $r)if(canonicalLessonKey(policyKey($r))===$key)return $g['key'];}return $key;
 }
-function recordRevision($record){return hash('sha256',json_encode($record,JSON_UNESCAPED_UNICODE));}
+function homeworkRevisionRecord($record){if(isset($record['_homeworkRefSeedRevision'])){$copy=$record;unset($copy['homeworkTaskRefs'],$copy['_homeworkRefSeedRevision']);if(hash_equals((string)$record['_homeworkRefSeedRevision'],hash('sha256',json_encode($copy,JSON_UNESCAPED_UNICODE))))return $copy;}return $record;}
+function recordRevision($record){return hash('sha256',json_encode(homeworkRevisionRecord($record),JSON_UNESCAPED_UNICODE));}
 function commonGroupRecord($g,$records,$rows=null){
  $record=$records[$g['key']]??[];$rows=$rows??groupRows($g);$archive=$record['sourceRecords']??[];$history=$record['recordHistory']??[];
  foreach($rows as $r){$key=canonicalLessonKey(policyKey($r));$old=$records[$key]??[];if(!$old)continue;
@@ -31,7 +32,7 @@ function buildLessonGroup($rows,$records,$actor,$mealBreak=false){
  foreach($rows as $r){$record=$records[canonicalLessonKey(policyKey($r))]??[];if(trim((string)($record['memo']??''))!==''&&!isset($memoSeen[$record['memo']])){$memo[]='【'.$r['時間番号'].'】'."\n".$record['memo'];$memoSeen[$record['memo']]=true;}if(trim((string)($record['homework']??''))!=='')$homework[]=$record['homework'];foreach(preg_split('/\R/u',trim((string)($record['dueHomework']??''))) as $line)if(trim($line)!=='')$dueHomework[]=trim($line);}
  $record=['eventKey'=>$key,'date'=>$summary['date'],'slot'=>$summary['slots'],'className'=>$summary['className'],'teacher'=>$summary['teacher'],'room'=>$summary['room'],'subject'=>$rows[0]['科目']??'','memo'=>implode("\n\n",$memo),'homework'=>implode("\n",array_unique($homework)),'dueHomework'=>implode("\n",array_unique($dueHomework)),'author'=>$actor['name'],'createdAt'=>date('c'),'updatedAt'=>date('c'),'groupId'=>$id,'replies'=>[],'reads'=>[]];
  // Full original records remain available as history, including conflicting values.
- $records[$key]=$record;$record=commonGroupRecord($g,$records,$rows);
+ $records[$key]=$record;$record=commonGroupRecord($g,$records,$rows);require_once __DIR__.'/homework_explanation.php';$record=homeworkDecorateRecord($key,$record,$rows);
  return [$g,$record];
 }
 function groupRows($group,$allRows=null){$allRows=$allRows??policyRows();$by=[];foreach($allRows as $r)$by[$r['_sourceKey']]=$r;$rows=[];foreach($group['sources']??[] as $s)if(isset($by[$s]))$rows[]=$by[$s];return $rows;}

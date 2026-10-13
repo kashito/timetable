@@ -32,7 +32,7 @@ class SharedCompletionTests(unittest.TestCase):
         self.a=self.client();_,auth=self.request('staff_auth_api.php',client=self.a);self.a_csrf=auth['csrf']
         self.b=self.client();_,auth=self.request('staff_auth_api.php',client=self.b);self.b_csrf=auth['csrf']
     def catalog(self,student='検証生徒A',client=None):
-        code,j=self.request('student_homework_api.php?student='+urllib.parse.quote(student),client=client or self.a);self.assertEqual(code,200,j);return j['items']
+        code,j=self.request('student_homework_api.php?scope=personal&student='+urllib.parse.quote(student),client=client or self.a);self.assertEqual(code,200,j);return j['items']
     def previous(self,student='検証生徒A'):
         code,j=self.request('lesson_record_api.php?action=previous_homework&key='+urllib.parse.quote(fixture.key(self.rows[3]))+'&student='+urllib.parse.quote(student));self.assertEqual(code,200,j);return j
     def check(self,item,wanted,student='検証生徒A',client=None,csrf=None):

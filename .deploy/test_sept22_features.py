@@ -114,7 +114,7 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn("Object.hasOwn(current.attendance", script)
         self.assertIn("'groupSharedMemo'", script)
         self.assertIn('id="groupLastSaved"', page)
-        self.assertIn('lesson-group.js?v=20261008-common-record', page)
+        self.assertIn('lesson-group.js?v=20261013-shared-explanation', page)
         self.assertIn('lesson-detail-layout.css?v=20260924-autosave', page)
         self.assertIn('.group-last-saved{', css)
 
@@ -157,8 +157,8 @@ class September22FeatureTests(unittest.TestCase):
         css = self.text("recording-tools.css")
         api = self.text("lesson_record_api.php")
         self.assertIn('data-homework-task', script)
-        self.assertIn("action:'homework_check'", script)
-        self.assertIn('未チェックは次回にも表示されます。変更はすぐ保存されます。', script)
+        self.assertIn('homework_explanation_api.php', script)
+        self.assertIn('未完了は次回にも繰り越します。', script)
         self.assertIn('.recording-homework-item', css)
         self.assertIn("$action==='homework_check'", api)
 

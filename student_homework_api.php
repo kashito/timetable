@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__.'/homework_completion.php';staffSession();header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');header('Vary: Cookie');
-$method=$_SERVER['REQUEST_METHOD']??'GET';$in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式が不正です',400);$student=$in['student']??'';if(!is_string($student)||strlen($student)>300||trim($student)==='')staffFail('生徒を確認してください',400);$items=homeworkCatalog($student);
+require_once __DIR__.'/homework_explanation.php';staffSession();header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');header('Vary: Cookie');
+$method=$_SERVER['REQUEST_METHOD']??'GET';$in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式が不正です',400);$student=$in['student']??'';if(!is_string($student)||strlen($student)>300||trim($student)==='')staffFail('生徒を確認してください',400);$items=($method==='POST'||($in['scope']??'')==='personal')?homeworkCatalog($student):homeworkSharedCatalog($student);
 if($method==='POST'){
  staffCsrf();if(($in['confirmedStudent']??false)!==true)staffFail('生徒を確認してください',400);$states=homeworkStudentStates();$before=$states;$action=$in['action']??'check';
  if($action==='migrate'){$ids=$in['completed']??null;if(!is_array($ids)||count($ids)>1000)staffFail('移行内容を確認してください',400);$known=array_column($items,null,'id');foreach($ids as $id){if(!is_string($id)||!isset($known[$id]))staffFail('宿題が更新されました',409);if(!isset($states[$student][$id]))$states[$student][$id]=['checked'=>true,'at'=>date('c'),'origin'=>'legacy-browser'];}}
