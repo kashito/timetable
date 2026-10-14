@@ -18,7 +18,7 @@
  function keys(card){try{return JSON.parse(card.dataset.linkedKeys||'null')||[card.dataset.key];}catch{return [card.dataset.key];}}
  const cardReady=(card,fallback=()=>false)=>keys(card).every(k=>window.LessonFixed?.isReady(k,fallback(k))??fallback(k));
  const label=r=>r._linked?r._linked.slots.join('')+(r._linked.partial?'（連結の一部）':' 連結'):r.slot;
- function attributes(r){return r._linked?`data-linked-id="${Workspace.esc(r._linked.id)}" data-linked-keys="${Workspace.esc(JSON.stringify(r._linked.keys))}" data-linked-slots="${Workspace.esc(JSON.stringify(r._linked.slots))}"`:'';}
+ function attributes(r){return r._linked?`data-resize-first-end="${Workspace.esc(r._linked.members[0].end)}" data-resize-last-start="${Workspace.esc(r._linked.members.at(-1).start)}" data-linked-partial="${r._linked.partial?1:0}" data-linked-id="${Workspace.esc(r._linked.id)}" data-linked-keys="${Workspace.esc(JSON.stringify(r._linked.keys))}" data-linked-slots="${Workspace.esc(JSON.stringify(r._linked.slots))}"`:'';}
  function controls(r){return ''; } // A merged lesson has one shared pair of controls.
 
  function lanes(rows){const units=merge(rows).map(r=>({row:r,start:slots.indexOf(r.slot),end:slots.indexOf(r._linked?.members.at(-1).slot||r.slot)})).sort((a,b)=>a.start-b.start||b.end-a.end),tracks=[];

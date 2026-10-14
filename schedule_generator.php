@@ -250,7 +250,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20261013-shared-explanation"></script><script src="lesson-resize.js?v=20261002-r2-cross-slot"></script><script src="schedule-generator.js?v=20261013-shared-explanation"></script>
+<script src="generator-tools.js?v=20261013-shared-explanation"></script><script src="lesson-resize.js?v=20261014-resize-boundaries"></script><script src="schedule-generator.js?v=20261013-shared-explanation"></script>
 
 
 <script id="generator-nowline-today-only-v2">
@@ -337,7 +337,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 </script>
 
 <script src="schedule-confirmed.js?v=20260922-private"></script><script>(async()=>{const i=document.getElementById('scheduleConfirmedDate'),m=document.getElementById('scheduleConfirmedStatus'),p=document.getElementById('schedulePrivateFrom'),pm=document.getElementById('schedulePrivateStatus');if(!i||!p)return;try{const s=await ScheduleConfirmed.loadSettings();i.value=s.date;p.value=s.privateFrom;m.textContent=i.value?'ここまで確定':'未設定';pm.textContent=p.value?'この日以降は確定授業だけ公開':'すべて公開';}catch(e){m.textContent=pm.textContent='読込失敗';}i.addEventListener('change',async()=>{i.disabled=true;try{await ScheduleConfirmed.set(i.value);m.textContent=i.value?'✓ '+ScheduleConfirmed.label(i.value)+'まで確定':'✓ 確定日を解除';}catch(e){alert(e.message||e);}finally{i.disabled=false;}});p.addEventListener('change',async()=>{p.disabled=true;try{await ScheduleConfirmed.setPrivateFrom(p.value);pm.textContent=p.value?'✓ '+ScheduleConfirmed.label(p.value)+'以降は確定授業だけ公開':'✓ 全日程を公開';}catch(e){alert(e.message||e);}finally{p.disabled=false;}});})();</script>
-<script src="linked-schedule.js?v=20260915-r50"></script><script src="day-compare.js?v=20260921-scroll"></script><link rel="stylesheet" href="day-compare.css?v=20260920-generator-layout"><script src="week-copy.js?v=20260920-class-day-copy"></script><script src="admin-page-cache.js?v=20260910-r5"></script><script defer src="calendar-view.js?v=20260922-events"></script></body>
+<script src="linked-schedule.js?v=20261014-resize-boundaries"></script><script src="day-compare.js?v=20260921-scroll"></script><link rel="stylesheet" href="day-compare.css?v=20260920-generator-layout"><script src="week-copy.js?v=20260920-class-day-copy"></script><script src="admin-page-cache.js?v=20260910-r5"></script><script defer src="calendar-view.js?v=20260922-events"></script></body>
 </html>
 <style id="school-holiday-layout-v63">
 /* v63: 休講チェックを日付と重ねず、メモ行の上に独立表示 */

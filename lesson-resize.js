@@ -1,4 +1,5 @@
 (()=>{
+ let activeResize=null;
  const SLOT_TIMES={
   '①':['13:30','14:10'],'②':['14:20','15:00'],'③':['15:10','15:50'],'④':['16:00','16:40'],
   '⑤':['16:50','17:30'],'⑥':['17:40','18:20'],'⑦':['18:30','19:10'],'⑧':['19:20','20:00'],
@@ -58,8 +59,10 @@
   }
   throw new Error(result.error||'時刻を保存できませんでした。');
  }
+ function limits(card,edge){const ss=slots(card),firstEnd=minutes(card.dataset.resizeFirstEnd||SLOT_TIMES[ss[0]]?.[1]),lastStart=minutes(card.dataset.resizeLastStart||SLOT_TIMES[ss.at(-1)]?.[0]);return edge==='start'?{min:minutes(SLOT_TIMES['①'][0]),max:(ss.length>1?firstEnd:minutes(card.dataset.end))-5}:{min:(ss.length>1?lastStart:minutes(card.dataset.start))+5,max:minutes(SLOT_TIMES['⑪'][1])};}
+ function unlock(card){if(activeResize===card)activeResize=null;card.classList.remove('is-resize-saving');if('_resizeDraggable' in card){card.draggable=card._resizeDraggable;delete card._resizeDraggable;}for(const control of card.querySelectorAll('.lesson-resize-handle'))control.disabled=false;}
  function addHandles(card,options){
-  if(card.dataset.resizeBound==='1'||!card.dataset.sourceKey||!card.dataset.start||!card.dataset.end)return;
+  if(card.dataset.linkedPartial==='1'||card.dataset.resizeBound==='1'||!card.dataset.sourceKey||!card.dataset.start||!card.dataset.end)return;
   card.dataset.resizeBound='1';card.classList.add('lesson-resizable');
   for(const edge of ['start','end']){
    const handle=document.createElement('button');handle.type='button';handle.className='lesson-resize-handle lesson-resize-'+edge;handle.dataset.resizeEdge=edge;
@@ -67,42 +70,42 @@
    const bubble=document.createElement('span');bubble.className='lesson-resize-time';handle.append(bubble);card.append(handle);
    handle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();});
    handle.addEventListener('pointerdown',event=>{
+    if(activeResize){event.preventDefault();event.stopPropagation();return;}
     if(event.button!==0&&event.pointerType==='mouse')return;
     event.preventDefault();event.stopPropagation();
     const ss=slots(card),boundarySlot=edge==='start'?ss[0]:ss.at(-1),oldStart=card.dataset.start,oldEnd=card.dataset.end;
     if(!SLOT_TIMES[boundarySlot])return;
-    const dayMin=minutes(SLOT_TIMES['①'][0]),dayMax=minutes(SLOT_TIMES['⑪'][1]);
-    const min=edge==='start'?dayMin:minutes(SLOT_TIMES[boundarySlot][0])+5;
-    const max=edge==='start'?minutes(SLOT_TIMES[boundarySlot][1])-5:dayMax;
-    let candidate=edge==='start'?minutes(oldStart):minutes(oldEnd);const oldDraggable=card.draggable;card.draggable=false;card.classList.add('is-resizing');
+    const {min,max}=limits(card,edge);if(!Number.isFinite(min)||!Number.isFinite(max)||min>max)return;activeResize=card;
+    let candidate=edge==='start'?minutes(oldStart):minutes(oldEnd);const oldDraggable=card.draggable;card._resizeDraggable=oldDraggable;card.draggable=false;card.classList.add('is-resizing');
     const update=clientX=>{
      const cell=cellAtX(card,clientX),bounds=cell&&SLOT_TIMES[cell.dataset.slot];if(!cell||!bounds)return;
      const rect=innerRect(cell),raw=minutes(bounds[0])+(Math.max(rect.left,Math.min(rect.right,clientX))-rect.left)/rect.width*40;
-     candidate=edge==='start'?snap(raw,min,minutes(oldEnd)-5):snap(raw,minutes(oldStart)+5,max);
+     candidate=snap(raw,min,max);
      bubble.textContent=time(candidate);paint(card,edge==='start'?time(candidate):oldStart,edge==='end'?time(candidate):oldEnd);
     };
     update(event.clientX);handle.setPointerCapture?.(event.pointerId);
     const move=e=>{e.preventDefault();update(e.clientX)};
     const finish=async e=>{
      handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',finish);handle.removeEventListener('pointercancel',cancel);
-     card.classList.remove('is-resizing');card.draggable=oldDraggable;
+     card.classList.remove('is-resizing');
      const next=time(candidate),before=edge==='start'?oldStart:oldEnd;
-     if(next===before){paint(card,oldStart,oldEnd);return;}
-     if(!confirm((edge==='start'?'開始':'終了')+'時刻を '+before+' → '+next+' に変更しますか？')){paint(card,oldStart,oldEnd);return;}
-     handle.disabled=true;message(options,'授業時刻を保存しています…');
+     if(next===before){paint(card,oldStart,oldEnd);unlock(card);return;}
+     if(!confirm((edge==='start'?'開始':'終了')+'時刻を '+before+' → '+next+' に変更しますか？')){paint(card,oldStart,oldEnd);unlock(card);return;}
+     for(const control of card.querySelectorAll('.lesson-resize-handle'))control.disabled=true;card.classList.add('is-resize-saving');message(options,'授業時刻を保存しています…');
      try{
-      await post({sourceKey:card.dataset.sourceKey,edge,time:next,expectedStart:oldStart,expectedEnd:oldEnd,requestId:crypto.randomUUID?.()||String(Date.now())+'-resize'},options);
+      const saved=await post({sourceKey:card.dataset.sourceKey,edge,time:next,expectedStart:oldStart,expectedEnd:oldEnd,requestId:crypto.randomUUID?.()||String(Date.now())+'-resize'},options);
+      card.dataset.start=saved.start||oldStart;card.dataset.end=saved.end||oldEnd;paint(card,card.dataset.start,card.dataset.end);
       message(options,(card.dataset.linkedId?'連結授業':'授業')+'の時刻を変更しました。');
       if(typeof options.reload==='function')await options.reload();else location.reload();
      }catch(error){paint(card,oldStart,oldEnd);message(options,error.message||String(error),true);if((error.message||'')!=='変更を取り消しました。')alert(error.message||error);}
-     finally{handle.disabled=false;}
+     finally{unlock(card);}
     };
-    const cancel=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',finish);handle.removeEventListener('pointercancel',cancel);card.classList.remove('is-resizing');card.draggable=oldDraggable;paint(card,oldStart,oldEnd);};
+    const cancel=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',finish);handle.removeEventListener('pointercancel',cancel);card.classList.remove('is-resizing');card.draggable=oldDraggable;paint(card,oldStart,oldEnd);unlock(card);};
     handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',cancel);
    });
   }
   paint(card,card.dataset.start,card.dataset.end);
  }
  function bind(root=document,options={}){requestAnimationFrame(()=>root.querySelectorAll('.lesson[data-source-key],.event[data-source-key]').forEach(card=>addHandles(card,options)));}
- window.LessonResize={bind,minutes,time,snap};
+ window.LessonResize={bind,minutes,time,snap,limits};
 })();
