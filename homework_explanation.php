@@ -17,6 +17,7 @@ function homeworkRecordOwner($key,$record,$rows=null){
  return ['日付'=>$record['date']??'','クラス'=>$record['className']??'','担当講師'=>$record['teacher']??'','種別'=>'授業','科目'=>$record['subject']??''];
 }
 function homeworkRecordRefs($record,$owner){
+ if(!recordingHomeworkLines($record['homework']??'')&&!recordingHomeworkLines($record['dueHomework']??''))return ['next'=>[],'due'=>[]];
  $result=[];$sid=homeworkSharedSeriesId($owner);$date=recordingDate($owner['日付']??'');$scope=(string)($record['eventKey']??logicalRecordKey(policyKey($owner)));
  foreach(['next'=>'homework','due'=>'dueHomework'] as $kind=>$field){
   $known=[];foreach($record['homeworkTaskRefs'][$kind]??[] as $ref)if(is_array($ref)&&isset($ref['id'],$ref['text']))$known[$ref['text']]=$ref;
