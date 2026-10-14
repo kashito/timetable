@@ -203,13 +203,13 @@ class LessonCreationTests(unittest.TestCase):
         g,rows=self.prepare_group(with_next=False);code,p=self.plan(g);self.assertEqual(code,200,p);self.assertEqual(p['mode'],'create')
         code,j=self.lengthen(g,p);self.assertEqual(code,200,j);self.assertEqual(len(self.read('added_lessons.json')),3)
 
-    def test_group_detail_returns_next_lesson_in_same_series_without_writes(self):
+    def test_group_detail_returns_next_lesson_with_same_name_across_teachers_without_writes(self):
         g,rows=self.prepare_group(with_next=False,deleted=False)
         other=row(6);other.update({'日付':'2026-09-26','担当講師':'別講師','_追加ID':'other','_sourceKey':'ADD:other'})
         future=row(6);future.update({'日付':'2026-10-02','_追加ID':'future','_sourceKey':'ADD:future'})
         self.write('added_lessons.json',rows+[other,future]);before=self.snapshot()
         code,j=self.request('lesson_group_api.php?action=detail&id='+g['id'])
-        self.assertEqual(code,200,j);self.assertEqual(j['nextLesson'],{'date':'2026-10-02','slot':'⑦','start':'18:30','end':'19:10'})
+        self.assertEqual(code,200,j);self.assertEqual(j['nextLesson'],{'date':'2026-09-26','slot':'⑦','start':'18:30','end':'19:10'})
         self.assertEqual(before,self.snapshot())
 
     def test_group_detail_saves_extra_invitation_to_every_linked_period(self):
