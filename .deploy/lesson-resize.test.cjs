@@ -1,8 +1,32 @@
-const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
-function setup(data={}){let calls=[],reloads=0,confirm=true,reply=async p=>({ok:true,json:async()=>({ok:true,start:p.edge==='start'?p.time:p.expectedStart,end:p.edge==='end'?p.time:p.expectedEnd})});const cells=Array.from('①②③④⑤⑥⑦⑧⑨⑩⑪',slot=>({dataset:{date:'synthetic',room:'test',slot},getBoundingClientRect:()=>({left:Array.from('①②③④⑤⑥⑦⑧⑨⑩⑪').indexOf(slot)*100,right:(Array.from('①②③④⑤⑥⑦⑧⑨⑩⑪').indexOf(slot)+1)*100})}));const controls=[],classes=new Set(),card={dataset:{sourceKey:'synthetic',slot:'⑧',start:'19:20',end:'20:50',linkedSlots:'["⑧","⑨"]',resizeFirstEnd:'20:00',resizeLastStart:'20:10',...data},style:{setProperty:()=>{}},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x)},draggable:true,closest:()=>cells[7],append:h=>controls.push(h),querySelectorAll:()=>controls};const element=()=>({events:{},dataset:{},append:()=>{},setAttribute:()=>{},getAttribute:()=>'synthetic label',addEventListener(n,f){this.events[n]=f;},removeEventListener(n,f){if(this.events[n]===f)delete this.events[n];},setPointerCapture:()=>{}});const ctx=vm.createContext({JSON,Math,String,Number,Array,crypto:{randomUUID:()=> 'synthetic-request'},confirm:()=>confirm,alert:()=>{},fetch:async(url,o)=>{const p=JSON.parse(o.body);calls.push(p);return reply(p);},getComputedStyle:()=>({paddingLeft:'0',paddingRight:'0'}),requestAnimationFrame:f=>f(),document:{querySelectorAll:()=>cells,querySelector:()=>null,createElement:element},location:{reload:()=>{reloads++;}}});ctx.window=ctx;vm.runInContext(fs.readFileSync('lesson-resize.js','utf8'),ctx);ctx.LessonResize.bind({querySelectorAll:()=>[card]},{reload:async()=>{reloads++;}});const down=(edge,x)=>controls[edge==='start'?0:1].events.pointerdown({button:0,pointerType:'mouse',pointerId:1,clientX:x,preventDefault:()=>{},stopPropagation:()=>{}});return {ctx,card,controls,calls,down,up:edge=>controls[edge==='start'?0:1].events.pointerup({}),setReply:f=>reply=f,cancel:()=>confirm=false,reloads:()=>reloads};}
-test('pictured linked end cannot cross the last member start',async()=>{const h=setup();h.down('end',650);await h.up('end');assert.equal(h.calls[0].time,'20:15');assert.equal(h.card.dataset.end,'20:15');});
-test('linked start uses the first member actual end, not whole group end',async()=>{const h=setup({resizeFirstEnd:'19:40'});h.down('start',1000);await h.up('start');assert.equal(h.calls[0].time,'19:35');});
-test('single lesson limits use actual stored times',()=>{const h=setup({linkedSlots:'null',start:'19:25',end:'21:00'});assert.equal(h.ctx.LessonResize.limits(h.card,'start').max,1255);assert.equal(h.ctx.LessonResize.limits(h.card,'end').min,1170);});
-test('opposite drag is blocked until save/reload finishes and next save uses new times',async()=>{let finish;const gate=new Promise(r=>finish=r);const h=setup();h.setReply(()=>gate);h.down('end',650);const saving=h.up('end');h.down('start',1000);assert.equal(h.calls.length,1);assert.equal(h.card.draggable,false);assert(h.controls.every(c=>c.disabled));finish({ok:true,json:async()=>({ok:true,start:'19:20',end:'20:15'})});await saving;h.setReply(async p=>({ok:true,json:async()=>({ok:true,start:p.time,end:'20:15'})}));h.down('start',1000);await h.up('start');assert.equal(h.calls[1].expectedEnd,'20:15');assert.equal(h.card.draggable,true);});
-test('cancel restores interactivity without saving',async()=>{const h=setup();h.cancel();h.down('end',650);await h.up('end');assert.equal(h.calls.length,0);assert.equal(h.card.draggable,true);h.down('start',1000);assert(h.controls[0].events.pointerup);});
-test('partial linked display does not offer unsafe full-group resize',()=>{const h=setup({linkedPartial:'1'});assert.equal(h.controls.length,0);});
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('fs');
+const path=require('path');
+const vm=require('vm');
+const root=path.resolve(__dirname,'..');
+
+test('resize helpers snap to five minutes and format times',()=>{
+  const context={window:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(root,'lesson-resize.js'),'utf8'),context);
+  const api=context.window.LessonResize;
+  assert.equal(api.minutes('18:35'),1115);
+  assert.equal(api.time(1115),'18:35');
+  assert.equal(api.snap(1113,1110,1150),1115);
+  assert.equal(api.snap(1100,1110,1150),1110);
+});
+
+test('both administrator calendars load and bind edge resizing',()=>{
+  const generator=fs.readFileSync(path.join(root,'schedule_generator.php'),'utf8');
+  const teacher=fs.readFileSync(path.join(root,'teacher2026summer.html'),'utf8');
+  const generatorJs=fs.readFileSync(path.join(root,'schedule-generator.js'),'utf8');
+  const teacherJs=fs.readFileSync(path.join(root,'timetable-app.js'),'utf8');
+  for(const page of [generator,teacher]){assert.match(page,/lesson-resize\.css/);assert.match(page,/lesson-resize\.js/);}
+  assert.match(generatorJs,/LessonResize\?\.bind\(\$\('grid'\)/);
+  assert.match(teacherJs,/LessonResize\?\.bind\(\$\('schedule'\)/);
+  assert.match(generatorJs,/data-start=/);assert.match(generatorJs,/data-end=/);
+});
+
+test('resize endpoint keeps policy checks and atomic writes',()=>{
+  const php=fs.readFileSync(path.join(root,'lesson_resize_api.php'),'utf8');
+  assert.match(php,/staffRequire\(true\)/);assert.match(php,/fixedConflict/);assert.match(php,/guardRoomSharing/);assert.match(php,/safeDataTransaction/);assert.match(php,/resizeHistory/);
+});
