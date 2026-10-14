@@ -286,8 +286,6 @@ class LessonCreationTests(unittest.TestCase):
 
     def test_existing_adjacent_period_can_be_added_to_linked_group(self):
         g,rows=self.prepare_group(deleted=False);before_rows=self.read('added_lessons.json')
-        self.write('homework_explanation_checks.php',{'hwc_'+'a'*24:{'checked':True,'scope':'explanation'}});self.write('student_homework_checks.php',{'synthetic':{'task':{'checked':True}}})
-        protected={name:(self.root/'data'/name).read_bytes() for name in ['lesson_records.json','homework_explanation_checks.php','student_homework_checks.php']}
         code,plan=self.request('lesson_group_extend_api.php?id='+g['id']);self.assertEqual(code,200,plan)
         self.assertEqual([c['row']['時間番号'] for c in plan['candidates']],['⑦'])
         payload=dict(id=g['id'],version=plan['version'],sources=[rows[2]['_sourceKey']],requestId=secrets.token_hex(16))
@@ -323,6 +321,8 @@ class LessonCreationTests(unittest.TestCase):
 
     def test_linked_lesson_resizes_only_outer_edges_and_keeps_members(self):
         g,rows=self.prepare_group(deleted=False);before_rows=self.read('added_lessons.json')
+        self.write('homework_explanation_checks.php',{'hwc_'+'a'*24:{'checked':True,'scope':'explanation'}});self.write('student_homework_checks.php',{'synthetic':{'task':{'checked':True}}})
+        protected={name:(self.root/'data'/name).read_bytes() for name in ['lesson_records.json','homework_explanation_checks.php','student_homework_checks.php']}
         code,j=self.post('lesson_resize_api.php',dict(sourceKey=rows[0]['_sourceKey'],edge='start',time='16:55',expectedStart='16:50',expectedEnd='18:20'))
         self.assertEqual(code,200,j);self.assertTrue(j['grouped']);self.assertEqual(j['group']['slots'],'⑤⑥')
         edits=self.read('edited_lessons.json');self.assertEqual(edits[rows[0]['_sourceKey']]['開始'],'16:55');self.assertNotIn(rows[1]['_sourceKey'],edits)
@@ -334,6 +334,7 @@ class LessonCreationTests(unittest.TestCase):
         before=self.snapshot();code,j=self.post('lesson_resize_api.php',extension);self.assertEqual(code,409,j);self.assertTrue(j['roomConflict']);self.assertEqual(before,self.snapshot())
         extension['overrideRoom']=True;code,j=self.post('lesson_resize_api.php',extension)
         self.assertEqual(code,200,j);self.assertEqual(self.read('edited_lessons.json')[rows[1]['_sourceKey']]['終了'],'19:10');self.assertEqual(j['group']['slots'],'⑤⑥')
+
         for name,original in protected.items():self.assertEqual((self.root/'data'/name).read_bytes(),original,name)
 
     def test_resize_rejects_stale_invalid_and_fixed_changes_without_writes(self):
