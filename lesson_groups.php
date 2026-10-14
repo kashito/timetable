@@ -49,10 +49,16 @@ function groupRowTime($row,$field){
  $times=['①'=>['13:30','14:10'],'②'=>['14:20','15:00'],'③'=>['15:10','15:50'],'④'=>['16:00','16:40'],'⑤'=>['16:50','17:30'],'⑥'=>['17:40','18:20'],'⑦'=>['18:30','19:10'],'⑧'=>['19:20','20:00'],'⑨'=>['20:10','20:50'],'⑩'=>['21:00','21:40'],'⑪'=>['21:50','22:30']];
  $pair=$times[trim((string)($row['時間番号']??''))]??['',''];return $pair[$field==='終了'?1:0];
 }
+// Homework and next-lesson continuity follow the displayed class/lesson name.
+// Physical linking still uses groupSeriesId, including teacher compatibility.
+function lessonNameSeriesId($row){
+ $name=trim((string)($row['クラス']??''));
+ return $name!==''?'NAME:'.$name:groupSeriesId($row);
+}
 function groupNextLesson($group,$rows,$allRows){
- if(!$rows)return null;$series=groupSeriesId($rows[0]);$summary=groupSummary($group,$rows);$cutoff=strtotime($summary['date'].' '.($summary['end']?:groupRowTime($rows[count($rows)-1],'終了')));if($cutoff===false)return null;$sources=array_fill_keys($group['sources']??[],true);$next=null;$nextAt=null;
+ if(!$rows)return null;$series=lessonNameSeriesId($rows[0]);$summary=groupSummary($group,$rows);$cutoff=strtotime($summary['date'].' '.($summary['end']?:groupRowTime($rows[count($rows)-1],'終了')));if($cutoff===false)return null;$sources=array_fill_keys($group['sources']??[],true);$next=null;$nextAt=null;
  foreach($allRows as $row){
-  if(!empty($row['日区分'])||isset($sources[$row['_sourceKey']??''])||groupSeriesId($row)!==$series)continue;
+  if(!empty($row['日区分'])||isset($sources[$row['_sourceKey']??''])||lessonNameSeriesId($row)!==$series)continue;
   $date=str_replace('/','-',trim((string)($row['日付']??'')));$start=groupRowTime($row,'開始');if(!preg_match('/^\d{4}-\d{1,2}-\d{1,2}$/',$date)||!preg_match('/^\d{1,2}:\d{2}$/',$start))continue;
   $at=strtotime($date.' '.$start);if($at===false||$at<=$cutoff||($nextAt!==null&&$at>=$nextAt))continue;
   $nextAt=$at;$next=['date'=>date('Y-m-d',$at),'slot'=>trim((string)($row['時間番号']??'')),'start'=>$start,'end'=>groupRowTime($row,'終了')];

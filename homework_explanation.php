@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__.'/homework_completion.php';
-function homeworkSharedSeriesId($row){if(isset($row['_homeworkSeries']))return $row['_homeworkSeries'];$id=groupSeriesId($row);return strpos($id,'ID:')===0?$id.'|CLASS:'.trim((string)($row['クラス']??'')):$id;}
+function homeworkLegacyIdentitySeriesId($row){if(isset($row['_homeworkSeries']))return $row['_homeworkSeries'];$id=groupSeriesId($row);return strpos($id,'ID:')===0?$id.'|CLASS:'.trim((string)($row['クラス']??'')):$id;}
+// Keep legacy identity seeds separate from name-based continuity.
+function homeworkSharedSeriesId($row){return lessonNameSeriesId($row);}
 function homeworkSharedRows(){
- $rows=policyRows();$series=[];foreach(lessonGroups() as $g)if(!empty($g['active'])){$members=groupRows($g,$rows);if(!$members)continue;$sid=homeworkSharedSeriesId($members[0]);foreach($g['sources'] as $source)$series[$source]=$sid;}foreach($rows as &$row)if(isset($series[$row['_sourceKey']]))$row['_homeworkSeries']=$series[$row['_sourceKey']];unset($row);return $rows;
+ $rows=policyRows();$series=[];foreach(lessonGroups() as $g)if(!empty($g['active'])){$members=groupRows($g,$rows);if(!$members)continue;$sid=homeworkLegacyIdentitySeriesId($members[0]);foreach($g['sources'] as $source)$series[$source]=$sid;}foreach($rows as &$row)if(isset($series[$row['_sourceKey']]))$row['_homeworkSeries']=$series[$row['_sourceKey']];unset($row);return $rows;
 }
 // A separate store: personal submissions and old browser completion are never
 // promoted to a teacher's shared explanation status.
@@ -18,7 +20,7 @@ function homeworkRecordOwner($key,$record,$rows=null){
 }
 function homeworkRecordRefs($record,$owner){
  if(!recordingHomeworkLines($record['homework']??'')&&!recordingHomeworkLines($record['dueHomework']??''))return ['next'=>[],'due'=>[]];
- $result=[];$sid=homeworkSharedSeriesId($owner);$date=recordingDate($owner['日付']??'');$scope=(string)($record['eventKey']??logicalRecordKey(policyKey($owner)));
+ $result=[];$sid=homeworkLegacyIdentitySeriesId($owner);$date=recordingDate($owner['日付']??'');$scope=(string)($record['eventKey']??logicalRecordKey(policyKey($owner)));
  foreach(['next'=>'homework','due'=>'dueHomework'] as $kind=>$field){
   $known=[];foreach($record['homeworkTaskRefs'][$kind]??[] as $ref)if(is_array($ref)&&isset($ref['id'],$ref['text']))$known[$ref['text']]=$ref;
   foreach(isset($record['homeworkTaskRefs'][$kind])?[]:($record['sourceRecords']??[]) as $source)foreach($source['homeworkTaskRefs'][$kind]??[] as $ref)if(is_array($ref)&&isset($ref['id'],$ref['text'])){$text=$ref['text'];if(!isset($known[$text]))$known[$text]=$ref;else $known[$text]['aliases']=array_values(array_unique(array_merge($known[$text]['aliases']??[],[$ref['id']],$ref['aliases']??[])));}
