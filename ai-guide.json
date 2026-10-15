@@ -411,7 +411,7 @@
         },
         {
           "file": "student-homework-hub.js",
-          "line": 33,
+          "line": 34,
           "code": "window.addEventListener('storage',event=>{if(event.key===key())render();});window.StudentHomeworkHub={update,refresh,mountDetail};if(window.__studentHomeworkHubData)update(window.__studentHomeworkHubData.name,window.__studentHomeworkHubData.items);document.addEventListener('lesson-recording-saved',()=>refresh().catch(e=>{error=e.message;render();}));setInterval(()=>{if(open)render();},60000);"
         },
         {
