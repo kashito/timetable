@@ -12,7 +12,7 @@ class NameHandoffTests(existing.ExplanationTests):
     def test_single_handoff_keeps_identity_due_date_and_completed_state(self):
         item=self.common_check(self.task());private=(self.root/'data/student_homework_checks.php').read_bytes()
         self.swap_teacher()
-        current=self.task();self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked']);self.assertTrue(current['dueAt'].startswith('2026-10-08T17:40'))
+        current=self.task();self.assertEqual(current['id'],item['id']);self.assertTrue(current['checked']);self.assertIsNone(current['dueAt'])
         detail=self.context();self.assertTrue(next(i for i in detail['items'] if i['id']==item['id'])['checked']);self.assertEqual(sum(i['id']==item['id'] for i in detail['items']),1)
         self.assertEqual(private,(self.root/'data/student_homework_checks.php').read_bytes())
     def test_unseeded_task_identity_is_unchanged_by_new_matching_rule(self):

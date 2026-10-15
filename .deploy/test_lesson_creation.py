@@ -17,7 +17,7 @@ import urllib.request
 
 ROOT = Path(os.environ.get('LESSON_TEST_SOURCE', Path(__file__).resolve().parents[1]))
 PHP = os.environ.get('TIMETABLE_TEST_PHP', 'php')
-FILES = ['api_response.php','homework_explanation.php', 'student_ng_rules.php', 'teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
+FILES = ['homework_materials.php','api_response.php','homework_explanation.php', 'student_ng_rules.php', 'teacher_shift.php', 'data_safety.php', 'staff_security.php', 'staff_auth_api.php', 'lesson_roster.php', 'lesson_policy.php',
          'lesson_groups.php', 'lesson_links.php', 'lesson_add_api.php', 'lesson_resize_api.php',
          'recording_context.php', 'homework_completion.php', 'student_homework_api.php', 'lesson_record_api.php', 'lesson_group_api.php',
          'lesson_group_lengthen_api.php', 'lesson_group_extend_api.php', 'lesson_group_shorten_api.php', 'lesson_create_group_api.php']

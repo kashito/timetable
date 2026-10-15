@@ -73,6 +73,7 @@ if($method==='GET'){
 if($method==='POST' && $action==='upload'){
   $key=canonicalLessonKey(trim((string)($_POST['key']??'')));
   if($key==='') sa_out(['ok'=>false,'error'=>'授業キーがありません'],400);
+  if(strpos($key,'HOMEWORK:')===0){require_once __DIR__.'/homework_materials.php';homeworkMaterialKey(substr($key,9));homeworkMaterialUploadValidate();}
   if(!isset($_FILES['file'])) sa_out(['ok'=>false,'error'=>'ファイルを選択してください'],400);
   $f=$_FILES['file'];
   if(($f['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK) sa_out(['ok'=>false,'error'=>'アップロードに失敗しました'],400);
@@ -109,6 +110,7 @@ if($method==='POST' && $action==='delete'){
   $next=[];$found=null;
   foreach($rows as $row){ if((($row['id']??'')===$id) && ($key===''||($row['key']??'')===$key)){$found=$row;continue;} $next[]=$row; }
   if(!$found) sa_out(['ok'=>false,'error'=>'添付ファイルが見つかりません'],404);
+  if(strpos((string)($found['key']??''),'HOMEWORK:')===0)staffRequire();
   if(!sa_can_delete($found))staffFail('この端末から送信した資料だけ削除できます。過去の資料は先生に依頼してください。');
   if(!safeJsonWriteAtomic($metaFile,$next)) sa_out(['ok'=>false,'error'=>'削除情報を保存できませんでした'],500);
   $path=$uploadDir.DIRECTORY_SEPARATOR.($found['stored']??''); if(is_file($path)){ $trash=$dataDir.DIRECTORY_SEPARATOR.'_backup'.DIRECTORY_SEPARATOR.'student_uploads'; if(!is_dir($trash)) @mkdir($trash,0775,true); @rename($path,$trash.DIRECTORY_SEPARATOR.date('Ymd_His').'_'.basename($path)); }

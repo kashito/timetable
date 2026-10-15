@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/homework_completion.php';
+require_once __DIR__.'/homework_materials.php';
 function homeworkLegacyIdentitySeriesId($row){if(isset($row['_homeworkSeries']))return $row['_homeworkSeries'];$id=groupSeriesId($row);return strpos($id,'ID:')===0?$id.'|CLASS:'.trim((string)($row['クラス']??'')):$id;}
 // Keep legacy identity seeds separate from name-based continuity.
 function homeworkSharedSeriesId($row){return lessonNameSeriesId($row);}
@@ -27,7 +28,14 @@ function homeworkRecordRefs($record,$owner){
   $result[$kind]=[];foreach(array_unique(recordingHomeworkLines($record[$field]??'')) as $text)$result[$kind][]=$known[$text]??['id'=>homeworkCanonicalId($sid.'|TASK:'.$scope,$date,$kind,$text),'text'=>$text];
  }return $result;
 }
-function homeworkDecorateRecord($key,$record,$rows=null){if(!$record)return $record;$record['homeworkTaskRefs']=homeworkRecordRefs($record,homeworkRecordOwner($key,$record,$rows));return $record;}
+function homeworkDecorateRecord($key,$record,$rows=null){if(!$record)return $record;$record['homeworkTaskRefs']=homeworkRecordRefs($record,homeworkRecordOwner($key,$record,$rows));$map=homeworkMaterialMap();foreach($record['homeworkTaskRefs'] as &$refs)foreach($refs as &$ref)$ref['attachments']=homeworkMaterialItems(array_merge([$ref['id']],$ref['aliases']??[]),$map);unset($ref,$refs);return $record;}
+function homeworkOptionalDueDate($value){
+ if(!is_string($value))staffFail('宿題の期限は日付で指定してください',400);
+ if($value==='')return '';
+ if(!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D',$value,$m)||!checkdate((int)$m[2],(int)$m[3],(int)$m[1]))staffFail('宿題の期限を確認してください',400);
+ return $value;
+}
+function homeworkDueAt($date){return $date!==''?$date.'T23:59:59+09:00':null;}
 function homeworkApplyRefs($key,$record,$existing,$provided=null,$owner=null){
  $owner=$owner??homeworkRecordOwner($key,$record);$old=homeworkRecordRefs($existing,$owner);$result=[];$used=[];
  foreach(homeworkHistoricalRecords(readJsonStrict(__DIR__.'/data/lesson_records.json')) as $other)foreach($other['homeworkTaskRefs']??[] as $refs)foreach($refs as $ref)if(is_array($ref)&&isset($ref['id']))$used[$ref['id']]=true;
@@ -39,7 +47,8 @@ function homeworkApplyRefs($key,$record,$existing,$provided=null,$owner=null){
    if(!is_array($provided[$kind])||count($provided[$kind])!==count($texts))staffFail('宿題の本文と項目が一致しません。入力を控えて読み込み直してください',409);
    foreach($provided[$kind] as $i=>$ref){$id=$ref['id']??null;if(!is_array($ref)||!is_string($id)||!preg_match('/^(hwc_[a-f0-9]{24}|hwx_[a-f0-9]{32})$/D',$id)||($ref['text']??null)!==$texts[$i]||isset($refs[$id]))staffFail('宿題の項目を確認してください',400);
     if(!isset($known[$id])&&(strpos($id,'hwx_')!==0||isset($used[$id])))staffFail('別の宿題の識別子は使用できません。最新の項目を確認してください',409);
-    $refs[$id]=array_replace($known[$id]??[],['id'=>$id,'text'=>$texts[$i]]);
+    $value=['id'=>$id,'text'=>$texts[$i]];if(array_key_exists('dueDate',$ref))$value['dueDate']=homeworkOptionalDueDate($ref['dueDate']);
+    $refs[$id]=array_replace($known[$id]??[],$value);
    }
   }else foreach($texts as $text){$ref=$byText[$text]??['id'=>'hwx_'.bin2hex(random_bytes(16)),'text'=>$text];$refs[$ref['id']]=$ref;}
   $result[$kind]=array_values($refs);
@@ -52,13 +61,13 @@ function homeworkSharedAssignments(){
   usort($members,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$index=array_search($date,$keys,true);$next=$keys[$index+1]??'';$nextRows=$next!==''?$dates[$next]:[];usort($nextRows,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));
   foreach($members as $r){$key=canonicalLessonKey(policyKey($r));$record=$records[$key]??[];$refs=homeworkRecordRefs($record,$r);
    foreach(['next','due'] as $kind)foreach($refs[$kind] as $ref){$canonical=$ref['id'];$targets=$kind==='due'?$members:$nextRows;$dueDate=$kind==='due'?$date:$next;
-    if(!isset($items[$canonical]))$items[$canonical]=['id'=>$ref['id'],'canonicalId'=>$canonical,'text'=>$ref['text'],'seriesId'=>$sid,'className'=>$r['クラス'],'assignedDate'=>$date,'kind'=>$kind,'dueAt'=>$dueDate!==''?$dueDate.'T'.groupRowTime($targets[0],'開始').':00+09:00':null,'targetKeys'=>array_map('policyKey',$targets),'sourceKeys'=>[],'aliases'=>[]];
+    if(!isset($items[$canonical]))$items[$canonical]=['id'=>$ref['id'],'canonicalId'=>$canonical,'text'=>$ref['text'],'seriesId'=>$sid,'className'=>$r['クラス'],'assignedDate'=>$date,'kind'=>$kind,'dueDate'=>$ref['dueDate']??'','dueAt'=>homeworkDueAt($ref['dueDate']??''),'targetDate'=>$dueDate,'targetKeys'=>array_map('policyKey',$targets),'sourceKeys'=>[],'aliases'=>[]];
     $items[$canonical]['aliases']=array_merge($items[$canonical]['aliases'],[$ref['id']],$ref['aliases']??[]);$items[$canonical]['sourceKeys'][]=policyKey($r);
    }
   }
  }}
- foreach($items as $canonical=>$due)if($due['kind']==='due'){$matching=[];foreach($items as $nextKey=>$next)if($next['kind']==='next'&&$next['seriesId']===$due['seriesId']&&$next['text']===$due['text']&&substr($next['dueAt']??'',0,10)===$due['assignedDate']&&array_intersect($next['targetKeys'],$due['targetKeys']))$matching[]=$nextKey;if(count($matching)===1){$nextKey=$matching[0];$items[$nextKey]['aliases']=array_merge($items[$nextKey]['aliases'],$due['aliases']);$items[$nextKey]['sourceKeys']=array_values(array_unique(array_merge($items[$nextKey]['sourceKeys'],$due['sourceKeys'])));unset($items[$canonical]);}}
- $states=homeworkExplanationStates();foreach($items as &$item){$item['aliases']=array_values(array_unique($item['aliases']));$item+=homeworkExplanationState($item['aliases'],$states);}unset($item);return array_values($items);
+ foreach($items as $canonical=>$due)if($due['kind']==='due'){$matching=[];foreach($items as $nextKey=>$next)if($next['kind']==='next'&&$next['seriesId']===$due['seriesId']&&$next['text']===$due['text']&&$next['targetDate']===$due['assignedDate']&&(!($next['dueDate']&&$due['dueDate'])||$next['dueDate']===$due['dueDate'])&&array_intersect($next['targetKeys'],$due['targetKeys']))$matching[]=$nextKey;if(count($matching)===1){$nextKey=$matching[0];if(!$items[$nextKey]['dueDate']&&$due['dueDate']){$items[$nextKey]['dueDate']=$due['dueDate'];$items[$nextKey]['dueAt']=$due['dueAt'];}$items[$nextKey]['aliases']=array_merge($items[$nextKey]['aliases'],$due['aliases']);$items[$nextKey]['sourceKeys']=array_values(array_unique(array_merge($items[$nextKey]['sourceKeys'],$due['sourceKeys'])));unset($items[$canonical]);}}
+ $map=homeworkMaterialMap();$states=homeworkExplanationStates();foreach($items as &$item){$item['aliases']=array_values(array_unique($item['aliases']));$item['attachments']=homeworkMaterialItems($item['aliases'],$map);$item+=homeworkExplanationState($item['aliases'],$states);}unset($item);return array_values($items);
 }
 function homeworkSharedCatalog($student){
  $dir=__DIR__.'/data';$master=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$directory=readJsonStrict($dir.'/directory_state.json');$known=false;foreach($master as $r)if(($r['生徒名']??'')===$student&&empty($directory['hiddenStudents'][$student]))$known=true;if(!$known)staffFail('生徒が見つかりません',404);
@@ -66,7 +75,7 @@ function homeworkSharedCatalog($student){
  foreach(homeworkSharedAssignments() as $item){$sources=array_values(array_filter($eligible,fn($r)=>in_array(policyKey($r),$item['sourceKeys'],true)));if(!$sources)continue;usort($sources,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$date=$item['assignedDate'];
   if($item['kind']==='next'){if(strtotime($date.'T'.groupRowTime($sources[0],'開始').':00+09:00')>time())continue;$next='';foreach(array_keys($dates[$item['seriesId']]??[]) as $candidate)if($candidate>$date){$next=$candidate;break;}$targets=$next!==''?$dates[$item['seriesId']][$next]:[];$dueDate=$next;}
   else{$targets=$sources;$dueDate=$date;}
-  usort($targets,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$item['targetKeys']=array_map('policyKey',$targets);$item['dueAt']=$dueDate!==''?$dueDate.'T'.groupRowTime($targets[0],'開始').':00+09:00':null;unset($item['sourceKeys'],$item['aliases'],$item['seriesId']);$result[$item['id']]=$item;
+  usort($targets,fn($a,$b)=>strcmp(groupRowTime($a,'開始'),groupRowTime($b,'開始')));$item['targetKeys']=array_map('policyKey',$targets);unset($item['sourceKeys'],$item['aliases'],$item['seriesId'],$item['targetDate']);$result[$item['id']]=$item;
  }return array_values($result);
 }
 function recordingSharedHomework($key){
