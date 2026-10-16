@@ -37,7 +37,7 @@ $all=readRecords($file);
 $action=trim((string)($in['action']??'save'));
 $existing=(isset($all[$key]) && is_array($all[$key]))?$all[$key]:[];
 foreach(lessonGroups() as $group)if(!empty($group['active'])&&$group['key']===$key)$existing=commonGroupRecord($group,$all);
-if(str_starts_with($key,'GROUP:')&&in_array($action,['edit','save'],true)&&(!isset($in['expectedRevision'])||!hash_equals(recordRevision($existing),(string)$in['expectedRevision'])))staffFail('共通カルテが更新されました。入力内容を残したまま再確認してください。',409);
+if(strpos($key,'GROUP:')===0&&in_array($action,['edit','save'],true)&&(!isset($in['expectedRevision'])||!hash_equals(recordRevision($existing),(string)$in['expectedRevision'])))staffFail('共通カルテが更新されました。入力内容を残したまま再確認してください。',409);
 require_once __DIR__.'/recording_context.php';foreach(['memo','homework','dueHomework'] as $field)if(array_key_exists($field,$in))recordingTbdGuard($in[$field],$existing[$field]??'');
 
 if($action==='homework_check'){

@@ -48,7 +48,7 @@ class LessonCreationTests(unittest.TestCase):
         with socket.socket() as sock: sock.bind(('127.0.0.1',0)); port=sock.getsockname()[1]
         cls.url='http://127.0.0.1:'+str(port)
         cls.log=(cls.root/'server.log').open('wb')
-        cls.server=subprocess.Popen([PHP,'-d','session.save_path='+str(cls.root/'sessions'),'-S','127.0.0.1:'+str(port),'-t',str(cls.root)],stdout=cls.log,stderr=cls.log,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        cls.server=subprocess.Popen([PHP,*getattr(cls,'php_options',[]),'-d','session.save_path='+str(cls.root/'sessions'),'-S','127.0.0.1:'+str(port),'-t',str(cls.root)],stdout=cls.log,stderr=cls.log,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         for _ in range(100):
             try:
                 with socket.create_connection(('127.0.0.1',port),timeout=.1): break
