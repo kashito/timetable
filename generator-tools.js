@@ -36,7 +36,7 @@ async function save(row=current){
  const j=await Workspace.api('lesson_record_api.php',{eventKey:key,memo,homework,dueHomework,homeworkTaskRefs:window.HomeworkItemEditor?.refs({next:$('generatorHomework'),due:$('generatorDueHomework')}),date:Workspace.iso(row['日付']),slot:row['時間番号'],className:row['クラス'],teacher:row['担当講師'],room:row['教室'],subject:row['科目']});
  if(!Generator.isCurrentSave(context))return j.record||{};
  record=j.record||{};current={...row};
- const saved={generatorRecordMemo:record.memo||'',generatorHomework:record.homework||'',generatorDueHomework:record.dueHomework||''};if(window.HomeworkItemEditor){for(const [field,kind] of [['generatorHomework','next'],['generatorDueHomework','due']])saved[field+':refs']=JSON.stringify((record.homeworkTaskRefs?.[kind]||[]).map(({id,text,dueDate=''})=>({id,text,dueDate})));}
+ const saved={generatorRecordMemo:record.memo||'',generatorHomework:record.homework||'',generatorDueHomework:record.dueHomework||''};if(window.HomeworkItemEditor){for(const [field,kind] of [['generatorHomework','next'],['generatorDueHomework','due']])saved[field+':refs']=JSON.stringify((record.homeworkTaskRefs?.[kind]||[]).map(({id,text,dueDate='',dueTime=''})=>({id,text,dueDate,dueTime})));}
  // Preserve text entered during the save, and keep it marked as unsaved.
  if($('generatorRecordMemo').value===memo)$('generatorRecordMemo').value=saved.generatorRecordMemo;
  if($('generatorHomework').value===homework){$('generatorHomework').value=saved.generatorHomework;window.HomeworkItemEditor?.bind($('generatorHomework'),record,'next');}

@@ -74,10 +74,12 @@ if($action==='edit'){
   if(!$existing){ http_response_code(404); echo json_encode(['ok'=>false,'error'=>'編集するカルテがありません'],JSON_UNESCAPED_UNICODE); exit; }
   $memo=cleanText($in['memo']??'');
   if($memo===''){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'カルテ本文を空欄にはできません'],JSON_UNESCAPED_UNICODE); exit; }
+  $before=$existing;
   $existing['memo']=$memo; $existing['editedBy']=$actor['name'];
   // カルテ一覧から宿題も同時に編集できる。空欄は『宿題なし』として保存。
   if(array_key_exists('homework',$in)) $existing['homework']=(string)$in['homework'];
   $existing['updatedAt']=nowIso();
+  $existing=homeworkApplyRefs($key,$existing,$before,$in['homeworkTaskRefs']??null);
   $all[$key]=$existing;
   if(!safeJsonWriteAtomic($file,$all)){ http_response_code(500); echo json_encode(['ok'=>false,'error'=>'カルテ編集の保存に失敗しました'],JSON_UNESCAPED_UNICODE); exit; }
   echo json_encode(['ok'=>true,'record'=>$existing+['_revision'=>recordRevision($existing)]],JSON_UNESCAPED_UNICODE); exit;
