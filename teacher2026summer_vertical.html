@@ -1092,7 +1092,7 @@ async function saveOpsAndClose(){
   function bind(){
     if(document.documentElement.dataset.teacherOpsDelegated==='1') return;
     document.documentElement.dataset.teacherOpsDelegated='1';
-    window.openTeacherOpsKey=key=>{if(!key||window.__openedKarteKey===key)return;const card=[...document.querySelectorAll('.teacher-mobile-day .event[data-key],.event[data-key]')].find(c=>c.dataset.key===key);if(!card)return;window.__openedKarteKey=key;openOps(card);};
+    window.openTeacherOpsKey=key=>{if(!key||window.__openedKarteKey===key)return;const source=new URLSearchParams(location.search).get('openSource'),group=source?window.LessonGroups?.forSource(source):null;const card=[...document.querySelectorAll('.teacher-mobile-day .event[data-key],.event[data-key]')].find(c=>{if(!source)return c.dataset.key===key;const keys=window.LinkedSchedule?.keys(c)||[c.dataset.key];return keys.includes(key)&&(c.dataset.sourceKey===source||(group&&c.dataset.linkedId===group.id));});if(source){let notice=document.getElementById('payrollLinkedLessonNotice');if(!notice){notice=document.createElement('p');notice.id='payrollLinkedLessonNotice';notice.className='ws-panel';notice.setAttribute('role','status');document.getElementById('schedule').before(notice);}notice.textContent=card?'給与のその他コマから開いています：'+key.split('|').slice(0,3).join(' ／ '):'対象のコマを確認中です。表示されない場合は削除・変更や絞り込みの可能性があります。別のコマは開きません。';}if(!card)return;if(source){card.style.outline='3px solid #2457d6';card.scrollIntoView({block:'center'});}window.__openedKarteKey=key;openOps(card);};
     setTimeout(()=>window.openTeacherOpsKey(new URLSearchParams(location.search).get('openKey')),0);
 
 

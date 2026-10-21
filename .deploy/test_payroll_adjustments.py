@@ -6,7 +6,7 @@ class PayrollAdjustmentsTests(fixture.LessonCreationTests):
     php_options=['-d','disable_functions=str_starts_with']
     def setUp(self):
         super().setUp()
-        for name in ['api_response.php','payroll_adjustments.php','payroll_adjustments_api.php','payroll_api.php']:
+        for name in ['api_response.php','payroll_adjustments.php','payroll_lesson_link.php','payroll_adjustments_api.php','payroll_api.php']:
             shutil.copyfile(fixture.ROOT/name,self.root/name)
         self.a='Synthetic teacher A';self.b='Synthetic teacher B';self.rows=[]
         values=[('2026-10-05',0,'小5','授業'),('2026-10-05',1,'小5','授業'),('2026-10-06',2,'小6','授業'),('2026-10-07',3,'中1','授業'),('2026-10-08',4,'高1','授業'),('2026-10-09',5,'演習','演習'),('2026-10-10',6,'相談','授業')]
