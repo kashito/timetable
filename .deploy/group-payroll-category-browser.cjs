@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{chromium}=require(process.env.PLAYWRIGHT_MODULE);
+const base=process.env.GROUP_PAYROLL_TEST_URL,dataDir=process.env.GROUP_PAYROLL_DATA_DIR,out=path.resolve(__dirname,'../..'),gid='a'.repeat(24);
+const digest=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+(async()=>{
+ const files=['edited_lessons.json','lesson_groups.json'],original=Object.fromEntries(files.map(n=>[n,fs.readFileSync(path.join(dataDir,n))])),protectedFiles=fs.readdirSync(dataDir).filter(n=>fs.statSync(path.join(dataDir,n)).isFile()&&!files.includes(n)&&n!=='.write.lock'),before=Object.fromEntries(protectedFiles.map(n=>[n,digest(path.join(dataDir,n))]));
+ const browser=await chromium.launch({channel:'msedge',headless:true}),results=[];
+ try{for(const mobile of [false,true]){
+  for(const n of files)fs.writeFileSync(path.join(dataDir,n),original[n]);
+  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:mobile,hasTouch:mobile}),page=await context.newPage(),errors=[],writes=[];
+  page.on('pageerror',e=>errors.push(e.message));context.on('request',r=>{if(r.method()==='POST'&&!/staff_auth_api|karte_notification_api/.test(r.url()))writes.push(r.url());});
+  let auth=await(await context.request.get(base+'/staff_auth_api.php')).json();assert.equal((await context.request.post(base+'/staff_auth_api.php',{headers:{'X-CSRF-Token':auth.csrf},data:{action:'login',id:'admin',password:process.env.GROUP_PAYROLL_PASSWORD}})).status(),200);auth=await(await context.request.get(base+'/staff_auth_api.php')).json();
+  await page.clock.setFixedTime(new Date('2026-10-21T12:00:00+09:00'));
+  const open=async()=>{await page.goto(base+'/lesson_group.html?id='+gid);await page.waitForFunction(()=>document.querySelector('#groupHeading').textContent==='小5');};
+  const edit=async()=>{await page.locator('#groupEditSchedule').click();await page.locator('#groupScheduleDialog select[name="payrollCategory"]').waitFor();return page.locator('#groupScheduleDialog');};
+  await open();assert.match(await page.locator('#groupFacts').textContent(),/給与区分.*混在/);let d=await edit();const field=()=>d.locator('select[name="payrollCategory"]');assert.equal(await field().inputValue(),'__KEEP__');assert.deepEqual(await field().locator('option').evaluateAll(es=>es.map(e=>e.value)),['__KEEP__','','演習','小学生','中学生','高校生','その他']);assert.match(await d.locator('#groupPayrollScope').textContent(),/全2コマ.*別日のコマには適用しません/);
+  await d.screenshot({path:path.join(out,'group-payroll-category-'+(mobile?'mobile':'desktop')+'.png')});
+  await field().selectOption('高校生');await d.locator('[data-cancel]').click();assert.equal(writes.length,0);for(const n of files)assert(fs.readFileSync(path.join(dataDir,n)).equals(original[n]));
+  d=await edit();await d.locator('[data-save]').click();await page.waitForURL('**/schedule_generator.php**');for(const n of files)assert(fs.readFileSync(path.join(dataDir,n)).equals(original[n]));
+  await open();assert.match(await page.locator('#groupFacts').textContent(),/混在/);d=await edit();await field().selectOption('中学生');await d.locator('[data-save]').click();await page.waitForURL('**/schedule_generator.php**');
+  await open();assert.match(await page.locator('#groupFacts').textContent(),/給与区分中学生/);assert.doesNotMatch(await page.locator('#groupFacts').textContent(),/混在/);
+  const actual=await(await context.request.get(base+'/data_api.php')).json();for(const source of ['ADD:payroll-0','ADD:payroll-1'])assert.equal(actual.schedule.find(r=>r._sourceKey===source)['給与区分'],'中学生');assert.equal(actual.schedule.find(r=>r._sourceKey==='ADD:same-name-elsewhere')['給与区分'],'');
+  await page.goto(base+'/payroll.php');await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('読込'));await page.locator('#teacher').selectOption('Synthetic teacher A');await page.waitForFunction(()=>!document.querySelector('#payrollAdjustmentSave').disabled);assert.match(await page.locator('#categorySummary').textContent(),/中学生 3コマ/);assert.match(await page.locator('#categorySummary').textContent(),/その他 1コマ/);
+  const model=await(await context.request.get(base+'/payroll_adjustments_api.php?'+new URLSearchParams({teacher:'Synthetic teacher A',from:'2026-10-01',to:'2026-10-30'}))).json();assert.equal(model.groups.find(g=>g.category==='中学生'&&g.rate===1000).plannedCount,2);assert.equal(model.groups.find(g=>g.category==='中学生'&&g.rate===2000).finalCount,3);
+  await open();d=await edit();const input={sourceKey:'ADD:payroll-0',date:'2026-10-05',slot:'①',room:'青',teacher:'Synthetic teacher A'},plan=await(await context.request.get(base+'/lesson_group_move_api.php?'+new URLSearchParams(input))).json();const concurrent=await context.request.post(base+'/lesson_group_move_api.php',{headers:{'X-CSRF-Token':auth.csrf},data:{...input,version:plan.version,requestId:crypto.randomUUID(),payrollCategory:'高校生'}});assert.equal(concurrent.status(),200);
+  await field().selectOption('演習');await d.locator('[data-save]').click();await d.locator('[data-message]').filter({hasText:'連結した予定が変更されました'}).waitFor();assert.equal(await field().inputValue(),'演習');assert(new URL(page.url()).pathname.endsWith('/lesson_group.html'));await d.locator('[data-cancel]').click();
+  for(const n of protectedFiles)assert.equal(digest(path.join(dataDir,n)),before[n],n);assert(writes.every(url=>url.includes('lesson_group_move_api.php')));assert.deepEqual(errors,[]);
+  results.push({mobile,mixedDisplayed:true,untouchedMixedSavePreserved:true,cancelPreserved:true,allLinkedPeriodsUpdated:true,otherDatesPreserved:true,reloadAndBothPayrollViewsVerified:true,staleSaveRejectedAndInputRetained:true,recordsRatesAndAdjustmentsPreserved:true,errors});await context.close();
+ }}finally{for(const n of files)fs.writeFileSync(path.join(dataDir,n),original[n]);await browser.close();}
+ fs.writeFileSync(path.join(out,'group-payroll-category-browser-results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -9,7 +9,9 @@ if($room==='__OTHER__')$room='';
 $slots=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪'];$starts=['13:30','14:20','15:10','16:00','16:50','17:40','18:30','19:20','20:10','21:00','21:50'];$ends=['14:10','15:00','15:50','16:40','17:30','18:20','19:10','20:00','20:50','21:40','22:30'];
 if(!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))||!in_array($slot,$slots,true))staffFail('移動先の日付・コマを確認してください。',400);
 $dir=__DIR__.'/data';$groups=lessonGroups();$g=groupForSource($source);if(!$g)staffFail('連結が変更・解除されました。再読み込みしてください。',409);
-$requestId=$in['requestId']??'';$hashFields=[$actor['id'],$source,$date,$slot,$room,$in['version']??''];if(array_key_exists('teacher',$in))$hashFields[]=['teacher'=>$in['teacher']];$requestHash=hash('sha256',json_encode($hashFields,JSON_UNESCAPED_UNICODE));
+$hasPayrollCategory=array_key_exists('payrollCategory',$in);$payrollCategory=$hasPayrollCategory?$in['payrollCategory']:null;
+if($hasPayrollCategory&&(!is_string($payrollCategory)||!in_array($payrollCategory,['','演習','小学生','中学生','高校生','その他'],true)))staffFail('給与区分を選び直してください。',400);
+$requestId=$in['requestId']??'';$hashFields=[$actor['id'],$source,$date,$slot,$room,$in['version']??''];if(array_key_exists('teacher',$in))$hashFields[]=['teacher'=>$in['teacher']];if($hasPayrollCategory)$hashFields[]=['payrollCategory'=>$payrollCategory];$requestHash=hash('sha256',json_encode($hashFields,JSON_UNESCAPED_UNICODE));
 if($method==='POST'){
  if(!is_string($requestId)||!preg_match('/^[a-zA-Z0-9-]{16,80}$/D',$requestId))staffFail('移動操作をやり直してください。',400);
  if(($g['lastMove']['requestId']??'')===$requestId){if(!hash_equals($g['lastMove']['hash'],$requestHash))staffFail('保存済みの操作です。再読み込みしてください。',409);echo json_encode(['ok'=>true,'group'=>groupSummary($g),'replayed'=>true],JSON_UNESCAPED_UNICODE);exit;}
@@ -30,11 +32,22 @@ $moved=[];$nextKeys=[];foreach($members as $r){
  $offset=$minute($starts[$next])-$minute($starts[$i]);$start=$minute(trim($r['開始']??'')?:$starts[$i])+$offset;$end=$minute(trim($r['終了']??'')?:$ends[$i])+$offset;
  if($start<0||$end>=1440||$end<=$start)staffFail('移動後の授業時刻が同じ日に収まりません。',400);
  $r=array_replace($r,['日付'=>$date,'時間番号'=>$slots[$next],'担当講師'=>$teacher,'教室'=>$room,'開始'=>sprintf('%02d:%02d',intdiv($start,60),$start%60),'終了'=>sprintf('%02d:%02d',intdiv($end,60),$end%60)]);
+ if($hasPayrollCategory)$r['給与区分']=$payrollCategory;
  $moved[]=$r;$nextKeys[]=policyKey($r);
 }
 $version=hash('sha256',json_encode([$g,$members],JSON_UNESCAPED_UNICODE));
 if($method==='GET'){echo json_encode(['ok'=>true,'version'=>$version,'group'=>groupSummary($g,$members),'rows'=>$moved,'teachers'=>array_keys($teachers)],JSON_UNESCAPED_UNICODE);exit;}
 if(!is_string($in['version']??null)||!hash_equals($version,$in['version']))staffFail('連結した予定が変更されました。画面を開き直して確認してください。',409);
+// Category-only edits keep all schedule fields and teaching records byte-for-byte.
+$scheduleChanged=$delta!==0||$date!==str_replace('/','-',$anchor['日付']??'')||$teacher!==trim((string)($anchor['担当講師']??''))||$room!==(string)($anchor['教室']??'');
+if(!$scheduleChanged){
+ if(!$hasPayrollCategory){echo json_encode(['ok'=>true,'group'=>groupSummary($g,$members),'unchanged'=>true],JSON_UNESCAPED_UNICODE);exit;}
+ foreach($keys as $key)guardFixedLesson($key,$in);
+ $edits=readJsonStrict($dir.'/edited_lessons.json');$updated=[];foreach($members as $old){$r=$old;$r['給与区分']=$payrollCategory;$edits[$r['_sourceKey']]=$r;$updated[]=$r;}
+ $g['moveHistory'][]=['at'=>date('c'),'by'=>$actor['name'],'kind'=>'payrollCategory','from'=>$members,'to'=>$updated];$g['lastMove']=['requestId'=>$requestId,'hash'=>$requestHash];$groups[$g['id']]=$g;
+ if(!safeDataTransaction([$dir.'/edited_lessons.json'=>$edits,$dir.'/lesson_groups.json'=>$groups]))staffFail('給与区分を保存できませんでした。元の授業を保持して停止しました。',500);
+ echo json_encode(['ok'=>true,'group'=>groupSummary($g,$updated)],JSON_UNESCAPED_UNICODE);exit;
+}
 $names=['lesson_records.json','class_state.json','room_overrides.json','lesson_fixed.json'];$maps=[];foreach($names as $n)$maps[$n]=readJsonStrict($dir.'/'.$n);
 $aliases=readJsonStrict($dir.'/lesson_key_aliases.json');$files=readJsonStrict($dir.'/student_attachments.json');$resolve=function($key)use($aliases){$seen=[];while(isset($aliases[$key])&&!isset($seen[$key])){$seen[$key]=true;$key=$aliases[$key];}return $key;};
 $mapping=array_combine($keys,$nextKeys);$ownSources=array_flip($g['sources']);$foreign=array_filter($all,fn($r)=>!isset($ownSources[$r['_sourceKey']])&&empty($r['日区分']));
