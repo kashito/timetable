@@ -250,7 +250,7 @@ body:has(#modal:not(.hidden)) .generator-today-nowline,body:has(#modal:not(.hidd
 
 <script src="teacher-ng-guard.js?v=20260910-r1"></script>
 <script src="school-holidays.js?v=20260912-r23"></script>
-<script src="generator-tools.js?v=20261019-deadline-time"></script><script src="lesson-resize.js?v=20261014-resize-boundaries"></script><script src="schedule-generator.js?v=20261013-shared-explanation"></script>
+<script src="generator-tools.js?v=20261019-deadline-time"></script><script src="lesson-resize.js?v=20261014-resize-boundaries"></script><script src="schedule-generator.js?v=20261021-generator-links"></script>
 
 
 <script id="generator-nowline-today-only-v2">

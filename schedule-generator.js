@@ -1238,12 +1238,12 @@ async function load(){
     $('excelIoStatus').textContent='最新の授業を表示しています。';
     scheduleLoaded=true;render();
     const linkedDate=new URLSearchParams(location.search).get('linkedDate');
-    if(linkedDate&&/^\d{4}-\d{2}-\d{2}$/.test(linkedDate)&&!window.__generatorLinkedDate){
+    if(linkedDate&&/^\d{4}-\d{2}-\d{2}$/.test(linkedDate)&&!new URLSearchParams(location.search).has('openSource')&&!window.__generatorLinkedDate){
       window.__generatorLinkedDate=true;
       $('status').textContent='授業を連結しました。コマを押すと共通の詳細を開けます。';
     }
     const openSource=new URLSearchParams(location.search).get('openSource');
-    if(openSource&&!window.__generatorOpenedSource){const target=allRows.find(r=>r._sourceKey===openSource);if(target){window.__generatorOpenedSource=true;openEditModal(target);}}
+    if(openSource&&!window.__generatorOpenedSource){const target=allRows.find(r=>r._sourceKey===openSource);window.__generatorOpenedSource=true;if(target){await openEditModal(target);}else{$('status').textContent='対象のコマが見つかりません。削除・変更された可能性があります。別のコマへは移動していません。';}}
   }catch(e){
     console.error(e);
     $('status').textContent='読込エラー：'+e.message;

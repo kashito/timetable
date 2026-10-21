@@ -23,7 +23,7 @@ class PayrollOtherLinksTests(base.PayrollAdjustmentsTests):
         model=self.model();items=model['otherLessons'];self.assertEqual(len(items),3);self.assertEqual(sum(g['plannedCount'] for g in model['groups'] if g['category']=='その他'),len(items));self.assertEqual(model['plannedPay'],11100);self.assertEqual(model['finalPay'],9100)
         self.assertEqual(items[0]['date'],'2026-10-10');self.assertEqual(items[0]['className'],'相談');self.assertEqual(items[0]['start'],'18:30');self.assertEqual(items[0]['slot'],'⑦')
         for item in items:
-            code,headers,body=self.raw(item['url']);self.assertEqual(code,303,body);target=urllib.parse.urlparse(headers['Location']);query=urllib.parse.parse_qs(target.query);self.assertEqual(target.path,'teacher2026summer_vertical.html');self.assertEqual(query['openSource'],[item['sourceKey']]);self.assertEqual(query['openKey'],[item['key']]);self.assertEqual(query['date'],[item['date']])
+            code,headers,body=self.raw(item['url']);self.assertEqual(code,303,body);target=urllib.parse.urlparse(headers['Location']);query=urllib.parse.parse_qs(target.query);self.assertEqual(target.path,'schedule_generator.php');self.assertEqual(query['openSource'],[item['sourceKey']]);self.assertEqual(query['linkedDate'],[item['date']])
         self.assertEqual(before,self.snapshot())
     def test_deleted_source_never_redirects_to_same_key_replacement_and_auth_is_kept(self):
         item=self.model()['otherLessons'][0];old=next(r for r in self.rows if r['_sourceKey']==item['sourceKey']);replacement=dict(old,_追加ID='replacement',_sourceKey='ADD:replacement');old['_deleted']=True;self.write('added_lessons.json',self.rows+[replacement]);before=self.snapshot()
