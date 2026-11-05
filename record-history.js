@@ -3,7 +3,7 @@
 const dayMs=86400000,today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 const shift=(date,days)=>new Date(Date.parse(date+'T00:00:00Z')+days*dayMs).toISOString().slice(0,10);
 const normal=date=>String(date||'').replaceAll('/','-');
-const className=new URL(location.href).searchParams.get('class')||'';let allRecords=[],autoBusy=false,growHistory=()=>{};
+const selectedClasses=()=>window.RecordClassSelection?window.RecordClassSelection():new URL(location.href).searchParams.getAll('class');let allRecords=[],autoBusy=false,growHistory=()=>{};
 let anchor=today(),start=shift(anchor,-6),end=anchor,future=false,timings={},order='desc';
 function timing(record){
  const saved=timings[record.eventKey];if(saved)return saved;
@@ -23,7 +23,7 @@ function newest(a,b){const x=timing(a),y=timing(b);return normal(y.date).localeC
 function sort(a,b){return (order==='asc'?-1:1)*newest(a,b);}
 function update(){
  const chosen=document.getElementById('date').value,label=document.getElementById('recordRange');
- label.textContent=chosen?chosen.replaceAll('-','/')+' の授業（開始前・授業中も含む）':start.replaceAll('-','/')+' ～ '+end.replaceAll('-','/')+(future?'（開始前・授業中も含む）':' の終了した授業');
+ const more=document.getElementById('recordsAutoMore');if(more)more.hidden=!selectedClasses().length;label.textContent=chosen?chosen.replaceAll('-','/')+' の授業（開始前・授業中も含む）':start.replaceAll('-','/')+' ～ '+end.replaceAll('-','/')+(future?'（開始前・授業中も含む）':' の終了した授業');
 }
 function install(render){
  const host=document.getElementById('recordHistory');
@@ -41,7 +41,7 @@ function install(render){
  document.getElementById('recordsEarlier').onclick=()=>change('earlier');
  document.getElementById('recordsRecent').onclick=()=>change('recent');
  document.getElementById('recordsLater').onclick=()=>change('later');
- if(className){const more=document.createElement('button');more.type='button';more.id='recordsAutoMore';more.className='ws-button';more.textContent='過去のカルテをさらに表示';document.getElementById('list').after(more);const grow=()=>{if(autoBusy||chosen().value||document.getElementById('recordsReadPanel').hidden)return;const older=allRecords.filter(r=>String(r.className||'').trim()===className&&normal(timing(r).date)<start).sort(newest);if(!older.length){more.textContent='この授業の過去のカルテはここまでです';return;}if(document.querySelector('.card.is-editing')||[...document.querySelectorAll('.replyInput')].some(e=>e.value.trim())){more.textContent='入力を保存してから、過去のカルテを表示';return;}autoBusy=true;start=normal(timing(older[Math.min(older.length,20)-1]).date);render();more.textContent='過去のカルテをさらに表示';setTimeout(()=>{autoBusy=false;},200);};growHistory=grow;more.onclick=grow;new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))grow();},{rootMargin:'250px'}).observe(more);}
+ {const more=document.createElement('button');more.type='button';more.id='recordsAutoMore';more.className='ws-button';more.textContent='過去のカルテをさらに表示';document.getElementById('list').after(more);const grow=()=>{if(!selectedClasses().length||autoBusy||chosen().value||document.getElementById('recordsReadPanel').hidden)return;const older=allRecords.filter(r=>selectedClasses().includes(String(r.className||'').trim())&&normal(timing(r).date)<start).sort(newest);if(!older.length){more.textContent='この授業の過去のカルテはここまでです';return;}if(document.querySelector('.card.is-editing')||[...document.querySelectorAll('.replyInput')].some(e=>e.value.trim())){more.textContent='入力を保存してから、過去のカルテを表示';return;}autoBusy=true;start=normal(timing(older[Math.min(older.length,20)-1]).date);render();more.textContent='過去のカルテをさらに表示';setTimeout(()=>{autoBusy=false;},200);};growHistory=grow;more.onclick=grow;new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))grow();},{rootMargin:'250px'}).observe(more);}
  update();
 }
 window.RecordHistory={includes,sort,install,update,timing,setRecords:value=>{allRecords=value||[];setTimeout(growHistory,100);},setTimings:value=>{timings=value||{};}};

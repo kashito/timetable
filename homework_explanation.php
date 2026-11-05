@@ -29,6 +29,15 @@ function homeworkRecordRefs($record,$owner){
  }return $result;
 }
 function homeworkDecorateRecord($key,$record,$rows=null){if(!$record)return $record;$record['homeworkTaskRefs']=homeworkRecordRefs($record,homeworkRecordOwner($key,$record,$rows));$map=homeworkMaterialMap();foreach($record['homeworkTaskRefs'] as &$refs)foreach($refs as &$ref)$ref['attachments']=homeworkMaterialItems(array_merge([$ref['id']],$ref['aliases']??[]),$map);unset($ref,$refs);return $record;}
+// One request-local index and attachment read for a record list. No persistent cache.
+function homeworkDecorateRecords($records,$rows=null){
+ $rows=$rows??policyRows();$owners=[];$sourceGroups=[];
+ foreach(lessonGroups() as $id=>$g)foreach($g['sources']??[] as $source)$sourceGroups[$source][]='GROUP:'.$id;
+ foreach($rows as $row){$key=canonicalLessonKey(policyKey($row));if(!isset($owners[$key]))$owners[$key]=$row;foreach($sourceGroups[$row['_sourceKey']??'']??[] as $groupKey)if(!isset($owners[$groupKey]))$owners[$groupKey]=$row;}
+ $map=homeworkMaterialMap();
+ foreach($records as $key=>&$record){if(!$record)continue;$owner=$owners[canonicalLessonKey($key)]??homeworkRecordOwner($key,$record,[]);$record['homeworkTaskRefs']=homeworkRecordRefs($record,$owner);foreach($record['homeworkTaskRefs'] as &$refs)foreach($refs as &$ref)$ref['attachments']=homeworkMaterialItems(array_merge([$ref['id']],$ref['aliases']??[]),$map);unset($ref,$refs);}unset($record);
+ return $records;
+}
 function homeworkOptionalDueDate($value){
  if(!is_string($value))staffFail('宿題の期限は日付で指定してください',400);
  if($value==='')return '';

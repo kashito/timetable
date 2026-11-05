@@ -21,11 +21,16 @@ function cleanText($v){ return trim((string)$v); }
 if($_SERVER['REQUEST_METHOD']==='GET'){
   if(($_GET['action']??'')==='previous_homework'){staffRequire();require_once __DIR__.'/recording_context.php';echo json_encode(['ok'=>true]+(!empty($_GET['student'])||($_GET['scope']??'')==='personal'?recordingPreviousHomework((string)($_GET['key']??''),null,(string)($_GET['student']??'')):recordingSharedHomework((string)($_GET['key']??''))),JSON_UNESCAPED_UNICODE);exit;}
   $all=groupRecordList(currentLessonEntries(readRecords($file)));
+  if(($_GET['action']??'')==='list_context'){
+   $keys=json_decode((string)($_GET['keys']??'[]'),true);if(!is_array($keys)||array_values($keys)!==$keys||count($keys)>100)staffFail('取得するカルテは100件以内で指定してください',400);
+   $chosen=[];foreach($keys as $key){if(!is_string($key))staffFail('カルテの指定が不正です',400);if(isset($all[$key]))$chosen[$key]=$all[$key];}
+   require_once __DIR__.'/lesson_record_context.php';echo json_encode(['ok'=>true,'attendance'=>recordAttendanceContext($chosen)],JSON_UNESCAPED_UNICODE);exit;
+  }
   foreach($all as &$item)$item['_revision']=recordRevision($item);unset($item);
   if(($_GET['action']??'')==='homework'){$all=groupRecordList($all,true);foreach($all as $k=>$r){$all[$k]=['homework'=>(string)($r['homework']??''),'dueHomework'=>(string)($r['dueHomework']??'')];} echo json_encode(['ok'=>true,'records'=>$all],JSON_UNESCAPED_UNICODE);exit;}
   $key=logicalRecordKey(trim((string)($_GET['key']??'')));if($key==='')$all=groupRecordList($all);
   if($key!==''){ echo json_encode(['ok'=>true,'record'=>homeworkDecorateRecord($key,$all[$key]??[])],JSON_UNESCAPED_UNICODE); }
-  else { $ownerRows=policyRows();foreach($all as $recordKey=>&$item)$item=homeworkDecorateRecord($recordKey,$item,$ownerRows);unset($item);$response=['ok'=>true,'records'=>$all];if(!empty($_GET['includeAttendance'])){require_once __DIR__.'/lesson_record_context.php';$response['attendance']=recordAttendanceContext($all);}if(!empty($_GET['includeTiming'])){require_once __DIR__.'/lesson_record_context.php';$response['timings']=recordLessonTimings($all);}echo json_encode($response,JSON_UNESCAPED_UNICODE); }
+  else { $all=homeworkDecorateRecords($all);$response=['ok'=>true,'records'=>$all];if(!empty($_GET['includeAttendance'])){require_once __DIR__.'/lesson_record_context.php';$response['attendance']=recordAttendanceContext($all);}if(!empty($_GET['includeTiming'])){require_once __DIR__.'/lesson_record_context.php';$response['timings']=recordLessonTimings($all);}echo json_encode($response,JSON_UNESCAPED_UNICODE); }
   exit;
 }
 if($_SERVER['REQUEST_METHOD']!=='POST'){ http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method not allowed'],JSON_UNESCAPED_UNICODE); exit; }
