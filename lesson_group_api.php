@@ -32,7 +32,7 @@ if($method==='GET'&&$action==='detail'){
  $students=readJsonStrict($dir.'/student_master.json',readJsonStrict($dir.'/schedule_data.json')['students']??[]);$date=str_replace('/','-',$rows[0]['日付']??'');$class=$rows[0]['クラス']??'';$directory=readJsonStrict($dir.'/directory_state.json');
  $members=[];foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$members[]=['row'=>$r,'key'=>$k,'state'=>$states[$k]??[],'record'=>$record,'sourceRecord'=>$record['sourceRecords'][$k]??($records[$k]??[])];}
  $regular=lessonRosterNames($students,$directory,$class,$date,[]);$names=array_fill_keys($regular,true);foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)if(empty($directory['hiddenStudents'][$name]))$names[$name]=true;$roster=array_keys($names);sort($roster,SORT_NATURAL);
- $invited=[];foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)$invited[$name]=true;$invited=array_keys($invited);sort($invited,SORT_NATURAL);
+ $invited=[];foreach($members as $member)foreach(lessonInvitedStudents($member['state']) as $name)if(empty($directory['withdrawnStudents'][$name]))$invited[$name]=true;$invited=array_keys($invited);sort($invited,SORT_NATURAL);
  echo json_encode(['ok'=>true,'group'=>groupSummary($g,$rows),'record'=>homeworkDecorateRecord($key,$record,$rows),'members'=>$members,'students'=>$roster,'regularStudents'=>$regular,'invitedStudents'=>$invited,'availableStudents'=>lessonVisibleStudentNames($students,$directory,$date),'nextLesson'=>groupNextLesson($g,$rows,$allRows),'version'=>$version],JSON_UNESCAPED_UNICODE);exit;
 }
 if($method!=='POST')staffFail('Method not allowed',405);
@@ -54,7 +54,7 @@ if(trim($memo)!==''||empty($record['memo']))$record['memo']=$memo;$record['homew
 $attendance=$in['attendance']??[];if(!is_array($attendance))staffFail('出席の形式が不正です',400);foreach($attendance as $name=>$value)if(!in_array($value,['---','出席','遅刻','欠席','早退','免除','その他','不明','未定'],true))staffFail('出席を確認してください',400);
 foreach($rows as $r){$k=canonicalLessonKey(policyKey($r));$state=$states[$k]??[];foreach($attendance as $name=>$value){if($value==='---')unset($state['attendance'][$name]);else $state['attendance'][$name]=$value;if(isset($state['exemptionOverrides'][$name])){$state['exemptionOverrides'][$name]=$value==='免除';unset($state['exemptionUndo'][$name]);}}
  if($hasNote)$state['publicNote']=$in['publicNote'];
- if($hasInvited)$state['invitedStudents']=$in['invitedStudents'];
+ if($hasInvited){$directory=readJsonStrict($dir.'/directory_state.json');$invited=$in['invitedStudents'];foreach(lessonInvitedStudents($state) as $name)if(!empty($directory['withdrawnStudents'][$name])&&!in_array($name,$invited,true))$invited[]=$name;$state['invitedStudents']=$invited;}
  if($attendance)$state['attendanceTouched']=true;if(array_key_exists('ready',$in))$state['ready']=(bool)$in['ready'];if($hasNote||$hasInvited||$attendance||array_key_exists('ready',$in)){$state['updatedAt']=date('c');$state['updatedBy']=$actor['name'];$states[$k]=$state;}
 }
 $writes=[$dir.'/lesson_records.json'=>$records,$dir.'/class_state.json'=>$states];if($hasNote)$writes[$dir.'/edited_lessons.json']=$edits;

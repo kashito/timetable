@@ -6,7 +6,29 @@ $base=readJsonStrict($dir.'/schedule_data.json');$rows=readJsonStrict($file,$bas
 if($_SERVER['REQUEST_METHOD']==='GET'){echo json_encode(['ok'=>true,'students'=>$rows,'directory'=>$directory],JSON_UNESCAPED_UNICODE);exit;}
 staffRequire(true);if($_SERVER['REQUEST_METHOD']!=='POST')staffFail('Method not allowed',405);
 $in=json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式が不正です',400);
-if(($in['action']??'')==='visibility'){
+if(($in['action']??'')==='withdrawal'){
+  $name=trim((string)($in['name']??''));
+  if($name===''||!array_filter($rows,fn($r)=>($r['生徒名']??'')===$name))staffFail('生徒が見つかりません。一覧を再読み込みしてください。',400);
+  if(!is_bool($in['withdrawn']??null)||!is_bool($in['expectedWithdrawn']??null))staffFail('退会状態を確認してください。',400);
+  $was=!empty($directory['withdrawnStudents'][$name]);$withdrawn=$in['withdrawn'];
+  if($was!==$in['expectedWithdrawn'])staffFail('在籍状態が更新されました。再読み込みしてください。',409);
+  if($was!==$withdrawn){
+    if($withdrawn){
+      $directory['beforeWithdrawal'][$name]=['hidden'=>!empty($directory['hiddenStudents'][$name]),'from'=>$directory['hiddenStudentFrom'][$name]??null];
+      $directory['withdrawnStudents'][$name]=true;
+      $directory['hiddenStudents'][$name]=true;
+      $directory['hiddenStudentFrom'][$name]='0001-01-01';
+    }else{
+      $previous=$directory['beforeWithdrawal'][$name]??[];
+      $directory['withdrawnStudents'][$name]=false;
+      $directory['hiddenStudents'][$name]=!empty($previous['hidden']);
+      if(isset($previous['from']))$directory['hiddenStudentFrom'][$name]=$previous['from'];else unset($directory['hiddenStudentFrom'][$name]);
+      unset($directory['beforeWithdrawal'][$name]);
+    }
+    if(!safeJsonWriteAtomic($directoryFile,$directory))staffFail('保存できません',500);
+  }
+}elseif(($in['action']??'')==='visibility'){
+  if(!empty($directory['withdrawnStudents'][trim((string)($in['name']??''))]))staffFail('退会中です。生徒管理で在籍に戻してください。',409);
   $name=trim((string)($in['name']??''));if($name==='')staffFail('生徒名がありません',400);
   if(!array_filter($rows,fn($r)=>($r['生徒名']??'')===$name))staffFail('生徒が見つかりません。一覧を再読み込みしてください。',400);
   $hidden=!empty($in['hidden']);

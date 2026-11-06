@@ -4,7 +4,7 @@ if(isset($_GET['lessonSource'])){require_once __DIR__.'/payroll_lesson_link.php'
 $payrollExcludedNames=staffSiteSettings(true)['payrollExcludedNames']; ?>
 <!doctype html>
 <html lang="ja">
-<head><script src="staff-auth.js?v=20261014-homework-loading" data-staff="required"></script><script src="workspace-ui.js?v=20261006-board-names"></script>
+<head><script src="staff-auth.js?v=20261014-homework-loading" data-staff="required"></script><script src="workspace-ui.js?v=20261106-withdrawal"></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>給与計算</title>
 <style>

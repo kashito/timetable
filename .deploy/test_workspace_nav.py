@@ -18,7 +18,7 @@ class WorkspaceNavigationTests(unittest.TestCase):
         for name in ("teacher2026summer.html", "schedule_generator.php"):
             with self.subTest(name=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
-                self.assertIn("workspace-ui.js?v=20261006-board-names", source)
+                self.assertIn("workspace-ui.js?v=20261106-withdrawal", source)
 
 
 if __name__ == "__main__":

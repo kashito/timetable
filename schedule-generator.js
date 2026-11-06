@@ -639,7 +639,7 @@ async function loadGeneratorOps(row){
   const st=generatorClassState[eventKey]||{};
   const regularRoster=generatorRosterForClass(cls,row['日付']);
   const availableStudents=[...new Set(studentRows.filter(r=>!window.Workspace||(!Workspace.hiddenStudent(String(r['生徒名']||'').trim())&&Workspace.enrolled(r,row['日付']))).map(r=>String(r['生徒名']||'').trim()).filter(Boolean))];
-  const invitedStudents=LessonInvitations.normalize(st.invitedStudents),roster=LessonInvitations.merge(regularRoster,invitedStudents);
+  const invitedStudents=LessonInvitations.normalize(st.invitedStudents).filter(n=>!window.Workspace||!Workspace.withdrawnStudent(n)),roster=LessonInvitations.merge(regularRoster,invitedStudents);
   $('generatorInvitationPicker').innerHTML=LessonInvitations.markup(availableStudents,regularRoster,invitedStudents);LessonInvitations.bind($('generatorInvitationPicker'));
   const rawAttendance=(st.attendance&&typeof st.attendance==='object')?st.attendance:{};
   // 旧版で詳細を保存しただけで全員『出席』が自動保存されたデータは、未選択として扱う。

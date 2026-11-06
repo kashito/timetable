@@ -44,7 +44,7 @@ function recordAttendanceContext($records){
    }
    $invited=array_fill_keys(lessonInvitedStudents($state),true);foreach(array_keys($invited) as $name)if(empty($directory['hiddenStudents'][$name]))$roster[$name]=true;
    // Actual saved attendance survives later roster edits or student hiding.
-   foreach($state['attendance']??[] as $name=>$status)if($status!==''&&$status!=='---')$roster[$name]=true;
+   foreach($state['attendance']??[] as $name=>$status)if($status!==''&&$status!=='---'&&empty($directory['withdrawnStudents'][$name]))$roster[$name]=true;
    $statuses=['出席'=>[],'欠席'=>[],'遅刻'=>[],'早退'=>[],'免除'=>[],'その他'=>[],'不明'=>[],'未定'=>[]];$missing=[];
    foreach(array_keys($roster) as $name){
     $status=$state['attendance'][$name]??'';

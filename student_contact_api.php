@@ -4,6 +4,7 @@ try{
  $in=$method==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式を確認してください。',400);$action=scText($in,'action',30,true);$data=scData();$now=date('c');
  function scRespond($value){$j=json_encode($value,JSON_UNESCAPED_UNICODE);if($j===false)throw new RuntimeException('Contact response encoding failed');echo $j;}
  if($method==='GET'){
+  $directory=readJsonStrict(__DIR__.'/data/directory_state.json');$data=array_filter($data,fn($item)=>empty($directory['withdrawnStudents'][$item['student']??'']));
   if($action==='context'){$student=scText($in,'student',300,true);$keys=json_decode(scText($in,'keys',24000,true),true);scRespond(['ok'=>true,'context'=>scContext($student,$keys)]);exit;}
   if($action==='mine'){$student=scText($in,'student',300,true);$items=[];foreach($data as $item)if(hash_equals($item['owner'],$owner)&&$item['student']===$student)$items[]=scPublic($item);}
   elseif($action==='inbox'){$actor=staffRequire();$items=[];$filterKeys=isset($in['keys'])?scKeys(json_decode(scText($in,'keys',24000,true),true),true):null;foreach($data as $item)if(scCanRead($item,$actor)){if($filterKeys){$current=scAttendanceContext($item);if(!array_intersect($filterKeys,array_keys($current))&&!array_intersect($filterKeys,array_column($item['lessons'],'key')))continue;}$items[]=scPublic($item,true);}$count=count(array_filter($items,fn($x)=>empty($x['read'])));if(($in['countOnly']??'')==='1'){scRespond(['ok'=>true,'count'=>$count]);exit;}}

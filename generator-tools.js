@@ -14,7 +14,7 @@ function refresh(){
  if(!window.Generator)return;const data=Generator.rows();
  function fill(id,values,blank){const e=$(id),v=e.value;e.innerHTML=`<option value="">${blank}</option>`+values.map(x=>`<option value="${esc(x)}">${esc(x||'未設定')}</option>`).join('');e.value=values.includes(v)?v:'';}
  fill('generatorRoomFilter',[...new Set(data.map(r=>r['教室']||'__UNSET__'))].sort(),'すべての教室');
- fill('generatorStudentFilter',[...new Set(Generator.students().map(r=>r['生徒名']).filter(n=>n&&($('generatorShowHidden').checked||!Workspace.hiddenStudent(n))))].sort((a,b)=>a.localeCompare(b,'ja')),'すべての生徒');
+ fill('generatorStudentFilter',[...new Set(Generator.students().map(r=>r['生徒名']).filter(n=>n&&!Workspace.withdrawnStudent(n)&&($('generatorShowHidden').checked||!Workspace.hiddenStudent(n))))].sort((a,b)=>a.localeCompare(b,'ja')),'すべての生徒');
 }
 function matches(r){const room=$('generatorRoomFilter').value,student=$('generatorStudentFilter').value;return (!room||(r['教室']||'__UNSET__')===room)&&(!student||Workspace.roster(r['クラス'],r['日付']).some(x=>x['生徒名']===student));}
 async function files(){if(!current)return;const key=Generator.eventKey(current);const items=await StudentAttachments.list(key,true);$('generatorFiles').innerHTML=items.map(a=>`<div class="detail-shortcuts"><a href="${StudentAttachments.rawUrl(a)}">${a.sender==='student'?'生徒から':'先生から'}：${esc(a.name)}</a>${a.canDelete?`<button type="button" data-file-remove="${esc(a.id)}">削除</button>`:''}</div>`).join('')||'<p class="ws-muted">添付はありません。</p>';}

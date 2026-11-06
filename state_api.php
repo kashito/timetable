@@ -223,6 +223,10 @@ $stateMutator=function($state) use($eventKey,$in){
         foreach($attendance as $name=>$value)if(($previousAttendance[$name]??null)!==$value&&isset($cur['exemptionOverrides'][$name])){$cur['exemptionOverrides'][$name]=$value==='免除';unset($cur['exemptionUndo'][$name]);}
         foreach($previousAttendance as $name=>$value)if(!array_key_exists($name,$attendance)&&isset($cur['exemptionOverrides'][$name])){$cur['exemptionOverrides'][$name]=false;unset($cur['exemptionUndo'][$name]);}
         $cur[$field]=$attendance;
+      }elseif($field==='invitedStudents'){
+        $directory=readJsonStrict(__DIR__.'/data/directory_state.json');$invited=$in[$field];
+        foreach(lessonInvitedStudents($cur) as $name)if(!empty($directory['withdrawnStudents'][$name])&&!in_array($name,$invited,true))$invited[]=$name;
+        $cur[$field]=$invited;
       }else $cur[$field]=$in[$field];
     }
   }

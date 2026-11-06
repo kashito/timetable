@@ -25,6 +25,7 @@ function irProjection($r,$actor,$detail=false){
  return $out;
 }
 if($_SERVER['REQUEST_METHOD']==='GET'){
+ $directory=readJsonStrict(__DIR__.'/data/directory_state.json');$reports=array_filter($reports,fn($r)=>($r['category']??'')!=='tuition'||empty($directory['withdrawnStudents'][$r['people']??'']));
  $id=(string)($_GET['id']??'');
  if($id!==''){if(!isset($reports[$id])||!irVisible($reports[$id],$actor))staffFail('報告が見つからないか、閲覧できません。',404);echo json_encode(['ok'=>true,'report'=>irProjection($reports[$id],$actor,true)],JSON_UNESCAPED_UNICODE);exit;}
  $visible=array_values(array_filter($reports,fn($r)=>irVisible($r,$actor)&&(empty($r['hidden'])||($actor['role']==='admin'&&($_GET['includeHidden']??'')==='1'))));
