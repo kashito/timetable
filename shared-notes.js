@@ -17,6 +17,8 @@ async function refresh(c){
 }
 function mount(input,cls){if(!input)return;const old=contexts.get(input);if(old){old.list.remove();old.toolbar.remove();}input.value='';input.placeholder='新しい共有メモを入力（教材URLや C:\\教材 などのPC内の場所も記載できます）';input.maxLength=10000;
  const list=document.createElement('div');list.className='shared-notes-list';input.before(list);const toolbar=document.createElement('div');toolbar.className='shared-notes-toolbar';toolbar.innerHTML='<button type="button" class="shared-notes-reload">共有メモを再読み込み</button><label><input type="checkbox" class="shared-notes-show-hidden"> 非表示も表示</label><a href="shared_todos.html">TODO一覧</a><span class="shared-notes-status" role="status"></span><div class="shared-note-compose"><label><input class="shared-note-new-todo" type="checkbox">TODOとして投稿</label><label class="shared-note-target-wrap" hidden>担当<select class="shared-note-target" aria-label="TODOの担当"><option value="auto">このクラスの担当講師（未設定は管理者）</option></select></label></div>';list.before(toolbar);
+ const detail=input.closest('.lesson-detail-teachers');if(detail){const label=detail.querySelector('label[for="'+input.id+'"]');if(label)input.before(label);input.placeholder='例：次回の教材準備、担当の先生への相談・連絡';}
+
  const c={input,list,toolbar,status:toolbar.querySelector('span'),cls:Workspace.className(cls),notes:[],showHidden:false,requestId:token(),loaded:false,loading:null,error:'',pending:null,toggling:false};contexts.set(input,c);toolbar.querySelector('button').onclick=()=>{if(!c.pending&&!c.toggling)refresh(c);};
  toolbar.addEventListener('input',e=>e.stopPropagation());toolbar.addEventListener('change',e=>e.stopPropagation());
  toolbar.querySelector('.shared-notes-show-hidden').onchange=e=>{c.showHidden=e.target.checked;draw(c);};
