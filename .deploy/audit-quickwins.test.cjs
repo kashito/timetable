@@ -40,7 +40,7 @@ test('karte URLs become safe links without rendering injected markup',()=>{
 
 test('karte list has a today shortcut wired to the date filter',()=>{
  const html=read('lesson_records.html');
- assert.match(html,/id="todayRecords"[^>]*>本日のカルテ<\/button>/);
+ assert.match(html,/id="todayRecords"[^>]*>本日のカルテ・連絡<\/button>/);
  assert.match(html,/todayRecords'\)\.onclick=.*Workspace\.today\(\)/);
  assert.match(html,/KarteUI\.linkedText\(r\.memo\)/);
 });

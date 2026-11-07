@@ -30,3 +30,10 @@
 .records-page :is(.card,.bubble,.record-attendance,.record-conversation,.memo,.homework,.record-attendance-row){min-width:0;max-width:100%;overflow-wrap:anywhere}
 .records-page .filters{grid-template-columns:minmax(0,1.2fr) repeat(2,minmax(0,1fr))}
 @media(max-width:700px){.records-page .filters{grid-template-columns:minmax(0,1fr)}}
+
+/* Class-wide teacher communications share the chronology without record-edit controls. */
+.teacher-note-controls{margin:12px 0;padding:12px;border:1px solid #99f6e4;border-radius:12px;background:#f0fdfa;color:#134e4a;line-height:1.6}
+.teacher-note-controls p{margin:0 0 8px}.teacher-note-controls label{display:flex;align-items:center;gap:8px}.teacher-note-controls input{width:20px;height:20px;flex-shrink:0}
+.records-page .card.teacher-note{min-width:0;border-left-color:#0f766e!important}.records-page .card.teacher-note .chip.teacher-note-kind{background:#ccfbf1!important;color:#115e59;font-weight:700}.records-page .card.teacher-note.is-done{border-style:dashed!important}
+.teacher-note-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;padding:12px;border-radius:10px;background:#fff;color:#134e4a}
+.teacher-note-scope,.teacher-note-to,.teacher-note-unknown{margin:5px 0 9px;font-size:13px;color:#475569;overflow-wrap:anywhere}.teacher-note .classLink,.teacher-note .chip{overflow-wrap:anywhere;max-width:100%}

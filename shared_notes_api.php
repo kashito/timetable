@@ -12,6 +12,7 @@ function snVersion($r){unset($r['reads']);return hash('sha256',json_encode($r,JS
 function snText($in,$k,$max,$required=true){$s=$in[$k]??'';if(!is_string($s)||strlen($s)>$max||($required&&trim($s)===''))staffFail('入力内容・文字数を確認してください。',400);return trim($s);}
 function snProjection($r){unset($r['requestId'],$r['requestHash']);$r['version']=snVersion($r);return snExtraProjection($r);}
 require_once __DIR__.'/shared_notes_data.php';
+if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['timeline'])){snRespond(['ok'=>true,'notes'=>snTimeline(),'classNameAliases'=>(object)($directory['classNameAliases']??[])]);exit;}
 if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['inbox'])){$items=snInbox();$unread=count(array_filter($items,fn($r)=>$r['unread']));$pending=count(array_filter($items,fn($r)=>$r['mine']&&$r['todo']&&empty($r['done'])));snRespond(['ok'=>true,'items'=>isset($_GET['countOnly'])?[]:$items,'unread'=>$unread,'pending'=>$pending,'staff'=>isset($_GET['countOnly'])?[]:snStaff()]);exit;}
 if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['summary'])){$out=[];foreach($data['notes'] as $r){if(!empty($r['done']))continue;$cls=snClass($r['className']);$out[$cls]=($out[$cls]??0)+1;}snRespond(['ok'=>true,'counts'=>(object)$out],JSON_UNESCAPED_UNICODE);exit;}
 $in=$_SERVER['REQUEST_METHOD']==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式を確認してください。',400);

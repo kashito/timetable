@@ -8,3 +8,35 @@ function snCanManage($r){global $actor;return $actor['role']==='admin'||($r['aut
 function snExtraProjection($r){global $actor;$r['todo']=!empty($r['todo']);$r['mine']=snMine($r);$r['unread']=$r['mine']&&empty($r['done'])&&empty($r['reads'][$actor['id']]);$r['canComplete']=$actor['role']==='admin'||!$r['todo']||$r['mine'];$r['canManage']=snCanManage($r);$staff=array_column(snStaff(),null,'id');$r['assignees']=array_map(fn($id)=>['id'=>$id,'name'=>$staff[$id]['name']??($r['recipientNames'][$id]??'以前の担当者')],$r['recipientIds']??[]);return $r;}
 function snInbox(){global $data;$items=[];foreach($data['notes'] as $r){$r['className']=snClass($r['className']);$items[]=snProjection($r);}return $items;}
 function snRecipientNames($ids){$names=[];foreach(snStaff() as $u)if(in_array($u['id'],$ids,true))$names[$u['id']]=$u['name'];return $names;}
+
+// Read-only history projection. Never migrate old text or invent its author/date.
+function snVirtualNotes(){
+ global $data;$legacy=[];
+ foreach(readJsonStrict(__DIR__.'/data/class_state.json') as $key=>$state){
+  if(strpos((string)$key,'__CLASS_MEMO__|')!==0)continue;
+  $class=snClass(substr($key,15));$text=trim((string)($state['teacherMemo']??''));
+  if($class!==''&&$text!=='')$legacy[$class][$text]=true;
+ }
+ foreach(readJsonStrict(__DIR__.'/data/class_memos.json') as $class=>$text){
+  $class=snClass((string)$class);
+  if($class!==''&&is_string($text)&&trim($text)!=='')$legacy[$class][trim($text)]=true;
+ }
+ $stored=[];foreach($data['notes'] as $note)if(!empty($note['legacy']))$stored[snClass($note['className'])][(string)$note['text']]=true;
+ $virtual=[];foreach($legacy as $class=>$texts)foreach(array_keys($texts) as $text){
+  $text=(string)$text;if(isset($stored[$class][$text]))continue;
+  $id='legacy_'.hash('sha256',$class.'|'.$text);
+  $virtual[$id]=['id'=>$id,'className'=>$class,'text'=>$text,'legacy'=>true,'author'=>null,'authorId'=>null,'createdAt'=>null,'done'=>false,'completionHistory'=>[]];
+ }
+ return $virtual;
+}
+function snTimeline(){
+ global $data;$out=[];$staff=array_column(snStaff(),null,'id');
+ foreach(array_merge(snVirtualNotes(),$data['notes']) as $note){
+  $names=[];foreach($note['recipientIds']??[] as $id)$names[]=$staff[$id]['name']??($note['recipientNames'][$id]??'以前の担当者');
+  $out[]=['id'=>$note['id'],'className'=>snClass($note['className']),'text'=>$note['text'],
+   'author'=>$note['author']??null,'createdAt'=>$note['createdAt']??null,'legacy'=>!empty($note['legacy']),
+   'todo'=>!empty($note['todo']),'done'=>!empty($note['done']),'doneAt'=>$note['doneAt']??null,
+   'doneBy'=>$note['doneBy']??null,'assigneeNames'=>array_values(array_unique($names))];
+ }
+ return $out;
+}
