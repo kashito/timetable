@@ -40,3 +40,27 @@ function snTimeline(){
  }
  return $out;
 }
+
+// A shared TODO belongs to a class, not an individual occurrence. Link explicitly
+// to its next/current lesson, or the most recent lesson when no future one exists.
+function snTodoLessonLinks($classes){
+ if(!$classes)return [];require_once __DIR__.'/lesson_groups.php';$rows=policyRows();$units=[];$bySource=[];$sourceRows=[];foreach($rows as $r)$sourceRows[$r['_sourceKey']]=$r;
+ foreach(lessonGroups() as $g)if(!empty($g['active']))foreach($g['sources']??[] as $source)$bySource[$source]=$g;
+ $now=time();$candidates=[];
+ foreach($rows as $row){
+  if(!empty($row['日区分']))continue;$class=snClass($row['クラス']??'');if($class===''||!isset($classes[$class]))continue;
+  $g=$bySource[$row['_sourceKey']]??null;$unit=$g?$g['key']:$row['_sourceKey'];if(isset($units[$unit]))continue;$units[$unit]=true;
+  $members=[];if($g){foreach($g['sources']??[] as $source)if(isset($sourceRows[$source]))$members[]=$sourceRows[$source];}else $members=[$row];if(!$members||($g&&count($members)!==count($g['sources'])))continue;
+  usort($members,fn($a,$b)=>strcmp(str_replace('/','-',$a['日付']).' '.groupRowTime($a,'開始'),str_replace('/','-',$b['日付']).' '.groupRowTime($b,'開始')));
+  $first=$members[0];$last=$members[count($members)-1];$date=str_replace('/','-',$first['日付']??'');$end=strtotime(str_replace('/','-',$last['日付']??'').' '.groupRowTime($last,'終了'));
+  if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)||$end===false)continue;
+  $url=$g?'lesson_group.html?'.http_build_query(['id'=>$g['id'],'fromTodo'=>'1'],'','&',PHP_QUERY_RFC3986):'teacher2026summer_vertical.html?'.http_build_query(['teacher'=>$first['担当講師']??'','date'=>$date,'openKey'=>policyKey($first),'openSource'=>$first['_sourceKey'],'fromTodo'=>'1'],'','&',PHP_QUERY_RFC3986);
+  $candidates[$class][]=['url'=>$url,'date'=>$date,'slots'=>implode('',array_column($members,'時間番号')),'subject'=>$first['科目']??'','teacher'=>$first['担当講師']??'','relation'=>$end>=$now?'upcoming':'recent','_order'=>$date.' '.groupRowTime($first,'開始').' '.$unit];
+ }
+ $links=[];foreach($candidates as $class=>$list){usort($list,function($a,$b){$aNext=$a['relation']==='upcoming';$bNext=$b['relation']==='upcoming';if($aNext!==$bNext)return $aNext?-1:1;return ($aNext?1:-1)*strcmp($a['_order'],$b['_order']);});$links[$class]=$list[0];unset($links[$class]['_order']);}return $links;
+}
+function snTodoInbox($scope='mine',$withLinks=true){
+ global $data;$items=[];$classes=[];
+ foreach($data['notes'] as $r){if(empty($r['todo'])||($scope!=='all'&&!snMine($r)))continue;$r=snProjection($r);$r['className']=snClass($r['className']);$classes[$r['className']]=true;$items[]=$r;}
+ $links=$withLinks?snTodoLessonLinks($classes):[];foreach($items as &$item)$item['lessonDetail']=$links[$item['className']]??null;unset($item);return $items;
+}

@@ -13,6 +13,16 @@ function snText($in,$k,$max,$required=true){$s=$in[$k]??'';if(!is_string($s)||st
 function snProjection($r){unset($r['requestId'],$r['requestHash']);$r['version']=snVersion($r);return snExtraProjection($r);}
 require_once __DIR__.'/shared_notes_data.php';
 if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['timeline'])){snRespond(['ok'=>true,'notes'=>snTimeline(),'classNameAliases'=>(object)($directory['classNameAliases']??[])]);exit;}
+// Dedicated assigned-ToDo projection; do not widen this using a client-supplied staff ID.
+if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['todos'])){
+ $scope=(string)($_GET['scope']??'mine');
+ if(!in_array($scope,['mine','all'],true))staffFail('表示対象を確認してください。',400);
+ if($scope==='all'&&$actor['role']!=='admin')staffFail('全担当のTODOは管理者のみ確認できます。',403);
+ $countOnly=isset($_GET['countOnly']);$items=snTodoInbox($scope,!$countOnly);
+ $pending=count(array_filter($items,fn($r)=>empty($r['done'])));
+ $staff=$actor['role']==='admin'?snStaff():array_values(array_filter(snStaff(),fn($u)=>$u['id']===$actor['id']));
+ snRespond(['ok'=>true,'scope'=>$scope,'items'=>$countOnly?[]:$items,'pending'=>$pending,'staff'=>$countOnly?[]:$staff]);exit;
+}
 if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['inbox'])){$items=snInbox();$unread=count(array_filter($items,fn($r)=>$r['unread']));$pending=count(array_filter($items,fn($r)=>$r['mine']&&$r['todo']&&empty($r['done'])));snRespond(['ok'=>true,'items'=>isset($_GET['countOnly'])?[]:$items,'unread'=>$unread,'pending'=>$pending,'staff'=>isset($_GET['countOnly'])?[]:snStaff()]);exit;}
 if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['summary'])){$out=[];foreach($data['notes'] as $r){if(!empty($r['done']))continue;$cls=snClass($r['className']);$out[$cls]=($out[$cls]??0)+1;}snRespond(['ok'=>true,'counts'=>(object)$out],JSON_UNESCAPED_UNICODE);exit;}
 $in=$_SERVER['REQUEST_METHOD']==='GET'?$_GET:json_decode(file_get_contents('php://input'),true);if(!is_array($in))staffFail('入力形式を確認してください。',400);
