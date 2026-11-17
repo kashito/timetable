@@ -42,13 +42,24 @@ $all=policyRows();$records=readJsonStrict($dir.'/lesson_records.json');$states=r
 $fixed=readJsonStrict($dir.'/lesson_fixed.json');$rooms=readJsonStrict($dir.'/room_overrides.json');$files=readJsonStrict($dir.'/student_attachments.json');$ng=readJsonStrict($dir.'/teacher_ng.json');
 $occupied=[];foreach($all as $r)if(empty($r['日区分']))$occupied[canonicalLessonKey(policyKey($r))]=true;
 foreach($files as $f)if(!empty($f['key']))$occupied[canonicalLessonKey($f['key'])]=true;
-$rows=[];$previousEnd=null;
+// Empty save placeholders are not scheduled lessons. Be conservative: any
+// attendance, readiness, note, or unknown state field must still block reuse.
+function creationStateIsEmpty($state){
+ if(!is_array($state))return false;
+ if(array_diff(array_keys($state),['publicNote','ready','attendance','updatedAt','updatedBy']))return false;
+ if(isset($state['publicNote'])&&(!is_string($state['publicNote'])||trim($state['publicNote'])!==''))return false;
+ if(isset($state['ready'])&&$state['ready']!==false)return false;
+ if(isset($state['attendance'])&&(!is_array($state['attendance'])||count($state['attendance'])!==0))return false;
+ return true;
+}
+$emptyStates=[];$rows=[];$previousEnd=null;
 foreach(array_slice(array_keys($slots),$index,$count) as $i=>$slot){
  $r=$row;$r['時間番号']=$slot;$r['開始']=$i===0?$row['開始']:$slots[$slot][0];$r['終了']=$i===$count-1?$row['終了']:$slots[$slot][1];
  foreach(['開始','終了'] as $field)if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$r[$field]))staffFail('開始・終了時刻を確認してください。',400);
  if($r['開始']>=$r['終了']||($previousEnd!==null&&$previousEnd>$r['開始']))staffFail('授業時間が重ならないように開始・終了を確認してください。',400);
  $previousEnd=$r['終了'];$key=policyKey($r);
- if(canonicalLessonKey($key)!==$key||isset($occupied[$key])||isset($records[$key])||isset($states[$key])||isset($fixed[$key])||isset($rooms[$key]))staffFail($slot.'に同じ授業または以前の記録があります。新しい授業は追加していません。配置済みのコマを連結するか、連結詳細から延長してください。',409);
+ if(canonicalLessonKey($key)!==$key||isset($occupied[$key])||isset($records[$key])||(isset($states[$key])&&!creationStateIsEmpty($states[$key]))||isset($fixed[$key])||isset($rooms[$key]))staffFail($slot.'に同じ授業または以前の記録があります。新しい授業は追加していません。配置済みのコマを連結するか、連結詳細から延長してください。',409);
+ if(isset($states[$key]))$emptyStates[$key]=$states[$key];
  guardRoomSharing($r,'',$in);
  if(empty($in['overrideNg']))foreach($ng as $n)if(($n['teacher']??'')===$r['担当講師']&&str_replace('/','-',$n['date']??'')===$date&&(!empty($n['allDay'])||in_array($slot,$n['slots']??[],true)))policyConflict('ngConflict',$r['担当講師'].'先生は '.$date.' '.$slot.' がNG登録されています。選んだ全コマを追加して連結しますか？');
  $r['_追加ID']='ADD-'.date('YmdHis').'-'.bin2hex(random_bytes(8));$r['_追加日時']=date('c');$r['_sourceKey']='ADD:'.$r['_追加ID'];
@@ -56,6 +67,8 @@ foreach(array_slice(array_keys($slots),$index,$count) as $i=>$slot){
 }
 [$group,$record]=buildLessonGroup($rows,$records,$actor,$meal);
 foreach($rows as &$r){$r['_連結追加ID']=$group['id'];$added[]=$r;$states[policyKey($r)]=['publicNote'=>$r['備考'],'ready'=>false,'attendance'=>[],'updatedAt'=>date('c'),'updatedBy'=>$actor['name']];}unset($r);
+// Retain the exact old placeholder with the new group; never discard it.
+if($emptyStates)$group['creationHistory']=['emptyStates'=>$emptyStates];
 $group['snapshot']=$rows;$groups[$group['id']]=$group;$records[$group['key']]=$record;
 if(!safeDataTransaction([$dir.'/added_lessons.json'=>$added,$dir.'/class_state.json'=>$states,$dir.'/lesson_groups.json'=>$groups,$dir.'/lesson_records.json'=>$records]))staffFail('連結した授業を保存できませんでした。入力内容を残して再度お試しください。',500);
 echo json_encode(['ok'=>true,'rows'=>$rows,'group'=>groupSummary($group,$rows)],JSON_UNESCAPED_UNICODE);

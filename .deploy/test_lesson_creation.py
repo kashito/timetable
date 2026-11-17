@@ -139,6 +139,50 @@ class LessonCreationTests(unittest.TestCase):
         self.write('class_state.json',{key(row(8)):{'attendance':{'検証生徒':'出席'}}});before=self.snapshot()
         code,j=self.create();self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
 
+    def test_empty_orphan_states_do_not_block_two_period_creation(self):
+        p=self.payload(2,8);p['row']['教室']='PC';p['row']['備考']=''
+        prior={key(row(i)):dict(publicNote='',ready=False,attendance={},updatedAt='old',updatedBy='previous') for i in [8,9]}
+        self.write('class_state.json',prior)
+        code,j=self.create(p);self.assertEqual(code,200,j)
+        self.assertEqual(j['group']['slots'],'⑨⑩')
+        g=self.read('lesson_groups.json')[j['group']['id']]
+        self.assertEqual(g['creationHistory']['emptyStates'],{k:{**v,'attendance':[]} for k,v in prior.items()})
+        before=self.snapshot();code,retry=self.create(p)
+        self.assertEqual(code,200,retry);self.assertTrue(retry['replayed']);self.assertEqual(before,self.snapshot())
+
+    def test_orphan_state_with_any_real_or_unknown_content_still_blocks(self):
+        for state in [{'publicNote':'keep'}, {'ready':True}, {'attendance':{'fixture':'present'}},
+                      {'customField':''}, {'ready':0}, {'attendance':'bad'}, {'publicNote':[]}]:
+            with self.subTest(state=state):
+                self.write('class_state.json',{key(row(8)):state});before=self.snapshot()
+                code,j=self.create();self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+
+    def test_empty_orphan_state_keeps_other_history_guards(self):
+        k=key(row(8))
+        for name,value in [('lesson_records.json',{k:{'memo':'old'}}),
+                           ('lesson_fixed.json',{k:{'fixed':False}}),
+                           ('room_overrides.json',{k:{'room':'PC'}}),
+                           ('student_attachments.json',[{'id':'fixture','key':k}]),
+                           ('lesson_key_aliases.json',{k:'old-destination'})]:
+            with self.subTest(name=name):
+                self.write('class_state.json',{k:{'publicNote':''}})
+                self.write(name,value);before=self.snapshot()
+                code,j=self.create();self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+                self.write(name,[] if name=='student_attachments.json' else {})
+
+    def test_empty_orphan_state_is_not_written_before_ng_confirmation(self):
+        self.write('class_state.json',{key(row(6)):{'publicNote':''}})
+        self.write('teacher_ng.json',[dict(teacher='検証講師',date='2026-09-25',slots=['⑧'])])
+        before=self.snapshot();code,j=self.create()
+        self.assertEqual(code,409,j);self.assertTrue(j['ngConflict']);self.assertEqual(before,self.snapshot())
+        p=self.payload();p['overrideNg']=True;code,j=self.create(p);self.assertEqual(code,200,j)
+        self.assertIn('creationHistory',self.read('lesson_groups.json')[j['group']['id']])
+
+    def test_empty_orphan_state_does_not_bypass_later_occupied_period(self):
+        self.write('class_state.json',{key(row(6)):{'publicNote':''}})
+        r=row(8);r['_追加ID']='occupied';self.write('added_lessons.json',[r]);before=self.snapshot()
+        code,j=self.create();self.assertEqual(code,409,j);self.assertEqual(before,self.snapshot())
+
     def test_invalid_period_count_dates_and_times_leave_data_unchanged(self):
         for edit in [dict(count=12),dict(count=1),dict(count='3'),dict(row={**row(),'日付':'2026-02-31'}),dict(row={**row(),'時間番号':'⑪'}),dict(row={**row(),'開始':'20:00'})]:
             with self.subTest(edit=edit):
