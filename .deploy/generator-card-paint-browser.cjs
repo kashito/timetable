@@ -1,0 +1,14 @@
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),os=require('node:os'),assert=require('node:assert/strict');
+// Synthetic only: no production HTTP, sessions, teachers, or student data.
+// Run: node .deploy/generator-card-paint-browser.cjs (set BROWSER_BIN outside Windows).
+const root=path.resolve(__dirname,'..'),out=fs.mkdtempSync(path.join(os.tmpdir(),'timetable-render-'));
+const styles=['schedule-generator.css','lesson-resize.css','quick-controls.css','day-compare.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
+const card=(id,linked=false)=>'<div id="'+id+'" class="lesson lesson-resizable room-glass '+(linked?'generator-linked-card':'')+'" style="width:436px!important" data-source-key="synthetic"><strong>Test long lesson</strong><div>Class</div><div class="lesson-meta">Teacher</div><div class="lesson-list-actions"><button>F</button><button>R</button></div></div>';
+const row=(id,linked=false)=>'<div class="cell lane-label">Test</div>'+Array.from({length:4},(_,i)=>'<div class="cell generator-slot room-glass">'+(i===0?(linked?'<div class="generator-linked-track">'+card(id,true)+'</div>':card(id)):'')+'<button class="add-cell">+</button></div>').join('');
+const html='<!doctype html><meta charset="utf-8"><style>'+styles+'</style><style>.generator-grid{grid-template-columns:90px repeat(4,150px)!important;min-width:690px!important}#gridWrap{width:700px}body{padding:10px}</style><div id="gridWrap"><div id="grid"><div class="generator-grid">'+row('plain')+row('linked',true)+'</div></div></div><pre id="result"></pre><script>window.onload=()=>{const r={}; for(const id of ["plain","linked"]){const c=document.getElementById(id),b=c.getBoundingClientRect();const hit=document.elementFromPoint(b.left+210,b.top+25);r[id]={visible:hit===c||c.contains(hit),hit:hit?.className,rect:{x:b.x,y:b.y,width:b.width,height:b.height},zIndex:getComputedStyle(c).zIndex};}document.getElementById("result").textContent=JSON.stringify(r);};</script>';
+const input=path.join(out,'fixture.html');fs.writeFileSync(input,html);
+const stdout=cp.execFileSync(process.env.BROWSER_BIN||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless','--no-first-run','--disable-gpu','--disable-extensions','--user-data-dir='+path.join(out,'profile'),'--window-size=1200,1400','--virtual-time-budget=1000','--screenshot='+path.join(out,'fixture.png'),'--dump-dom','file:///'+input.replaceAll('\\','/')],{encoding:'utf8',windowsHide:true,timeout:60000,stdio:['ignore','pipe','pipe']});
+const match=stdout.match(/<pre id="result">([^<]+)<\/pre>/);assert(match,'browser fixture finished');const result=JSON.parse(match[1]);console.log(JSON.stringify({result,screenshot:path.join(out,'fixture.png')},null,2));assert(Object.values(result).every(r=>r.visible),'all long cards stay above adjacent cell backgrounds');
+
+
+

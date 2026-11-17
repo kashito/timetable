@@ -5,3 +5,6 @@
 
 /* Absolute quick controls use the card bounds, not an internal text grid area. */
 #grid .generator-linked-card>.lesson-list-actions{grid-area:auto;top:3px!important;bottom:3px!important;justify-content:center!important}
+
+/* Long single lessons, like linked lessons, must paint above later slot cells. */
+#grid .generator-slot .lesson { z-index: 5; }
