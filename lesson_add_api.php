@@ -65,7 +65,7 @@ if($_SERVER['REQUEST_METHOD']==='GET'){
   if(isset($_GET['requestId'])){$receipt=saveRequestKey($_GET['requestId'],$saveActor);foreach(readJson($addFile,[]) as $r)if(($r['_saveRequest']??'')===$receipt){$source='ADD:'.$r['_追加ID'];break;}}
   if($source!=='')$found=lessonBySource($source);
   $state=$found?readJsonStrict($dir.'/class_state.json'):[];
-  echo json_encode(['ok'=>true,'row'=>$found,'sourceKey'=>$source,'noteSynced'=>$found&&(($state[occurrenceKeyForRow($found)]['publicNote']??null)===(string)($found['備考']??''))],JSON_UNESCAPED_UNICODE);exit;
+  echo json_encode(['ok'=>true,'row'=>$found,'sourceKey'=>$source,'sourceVersion'=>$found?hash('sha256',json_encode(array_replace($found,['_sourceKey'=>$source]),JSON_UNESCAPED_UNICODE)):null,'teachers'=>array_values(array_unique(array_merge(array_filter(array_column(policyRows(),'担当講師')),array_column(array_filter(readJsonStrict($dir.'/staff_accounts.php'),function($a){return !empty($a['active']);}),'name')))),'noteSynced'=>$found&&(($state[occurrenceKeyForRow($found)]['publicNote']??null)===(string)($found['備考']??''))],JSON_UNESCAPED_UNICODE);exit;
  }
 
   echo json_encode([
