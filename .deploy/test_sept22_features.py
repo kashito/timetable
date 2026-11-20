@@ -61,8 +61,10 @@ class September22FeatureTests(unittest.TestCase):
         self.assertIn('class="db-clock"', script)
         self.assertIn("setInterval(updateClock,1000)", script)
         self.assertIn("：", script)
-        for page in ("daily_board.html", "room_board.html"):
-            self.assertIn("20261008-board-dates", self.text(page))
+        for page, version in (("daily_board.html", "20261120-reader"), ("room_board.html", "20261008-board-dates")):
+            self.assertIn("daily-board.js?v=" + version, self.text(page))
+            self.assertIn("daily-board.css?v=" + version, self.text(page))
+        self.assertIn("readerMenu.append(node)", script)  # The reader clock is accessible in the menu.
 
     def test_both_boards_share_advance_notice_and_time_pulse_rules(self):
         script = self.text("daily-board.js")
