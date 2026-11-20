@@ -67,11 +67,25 @@ function mount(root){
   const key=JSON.stringify([board.date,board.rows,board.canEdit,publicView,states]);
   if(key!==renderKey){const copyPast=board.canEdit&&!monitor&&board.date<day();$('.db-rows').innerHTML=rows.length?rowsHtml(rows,board.canEdit,board.date,now,copyPast):'<p class="db-empty">現在表示する指示はありません。</p>';$('.db-copy-bar').hidden=!copyPast||!rows.length;$('.db-copy-all').checked=false;$('.db-copy-status').textContent='';renderKey=key;requestAnimationFrame(scrollSize);}
  }
+ const readerEligible=page&&boardId==='all'&&!monitor;
+ let readerMenu=null,readerMoved=[];
+ function readerLayout(enabled){
+  if(!readerEligible)return;
+  root.classList.toggle('db-reader',enabled);document.body.classList.toggle('board-reader-page',enabled);
+  if(!enabled){for(const [node,marker] of readerMoved){marker.replaceWith(node);}readerMoved=[];readerMenu?.remove();readerMenu=null;return;}
+  if(!readerMenu){readerMenu=document.createElement('details');readerMenu.className='db-reader-menu';const summary=document.createElement('summary');summary.textContent='日付・メニュー';readerMenu.append(summary);$('.db-head').append(readerMenu);
+   for(const node of [$('.db-tools'),$('.db-updated'),$('.db-date-scope'),$('.db-clock')])if(node){const marker=document.createComment('reader-position');node.before(marker);readerMoved.push([node,marker]);readerMenu.append(node);}
+   const foot=$('.db-foot');if(foot){const marker=document.createComment('reader-footer');foot.before(marker);readerMoved.push([foot,marker]);$('.db-head').insertBefore(foot,readerMenu);}
+  }
+  const nav=document.querySelector('body > .workspace-nav');if(nav){const marker=document.createComment('reader-nav');nav.before(marker);readerMoved.push([nav,marker]);readerMenu.append(nav);}
+ }
+ if(readerEligible)new MutationObserver(()=>{if(root.classList.contains('db-reader')&&document.querySelector('body > .workspace-nav'))readerLayout(true);}).observe(document.body,{childList:true});
  function render(b){board=b;const color=colors[b.settings.background]||colors.gray;root.style.setProperty('--db-background',color[1]);root.style.setProperty('--db-foreground',color[2]);if(monitor)document.body.style.setProperty('--db-page-background',color[1]);clockOffset=new Date(b.serverTime).getTime()-Date.now();lastOk=Date.now();problem='';
   const savedTitle=b.settings.title,shownTitle=savedTitle==='今日の動き'?'掲示板':savedTitle==='青教室の指示'?'PC':savedTitle;
   $('.db-heading').querySelector('h1,h2').textContent=shownTitle+'　'+dateLabel(b.date);
   $('.db-date-scope').textContent=(chosen?'指定日を表示中：':'今日に自動追従：')+b.date+'（日本時間）。記事はこの対象日に保存され、別の日へ自動で移動しません。';
   if(page){$('.db-date').value=b.date;const link=new URL(boardId==='blue'?'room_board.html':'daily_board.html',location.href);if(!monitor)link.searchParams.set('mode','monitor');if(chosen)link.searchParams.set('date',chosen);if(preview)link.searchParams.set('preview','student');const p=new URL(link,location.href);if(monitor)p.searchParams.set('mode','monitor');else p.searchParams.delete('mode');p.searchParams.set('preview','student');$('.db-student-preview').href=p.pathname+p.search;$('.db-student-preview').hidden=!b.canEdit;$('.db-monitor-link').href=link.pathname+link.search;}
+  readerLayout(!b.canEdit||preview);
   paintRows();root.querySelectorAll('[data-board-row]').forEach(row=>{if(directRowDrag&&b.canEdit)row.title='時刻・対象・場所・指示の部分をドラッグして並べ替え';});
   $('.db-edit').hidden=$('.db-quick').hidden=!b.canEdit;relative();if(window.BoardGuides){BoardGuides.mount(root,boardId);root._boardGuides.date(b.date);}
  }
