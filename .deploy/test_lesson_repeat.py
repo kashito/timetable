@@ -1,4 +1,5 @@
 """Selected-date placement with synthetic data only; verify all-or-nothing writes."""
+import json
 import secrets
 import shutil
 import unittest
@@ -62,8 +63,42 @@ class LessonRepeatTests(unittest.TestCase):
         self.assertTrue(all(self.read('lesson_records.json')[k]==v for k,v in before.items()))
 
     def test_last_date_conflict_prevents_partial_save(self):
-        r={**self.source,'日付':self.dates[-1],'_追加ID':'occupied'};self.write('added_lessons.json',[self.source,r]);p=self.payload();before=self.snapshot()
-        self.assertEqual(self.repeat(p)[0],409);self.assertEqual(before,self.snapshot())
+        r={**self.source,'日付':self.dates[-1],'_追加ID':'occupied'};self.write('added_lessons.json',[self.source,r])
+        self.write('class_state.json',{f.key(r):{'publicNote':'','ready':False,'attendance':[]}})
+        p=self.payload();before=self.snapshot()
+        code,j=self.repeat(p);self.assertEqual(code,409,j);self.assertIn('同じ授業がすでにあります',j['error']);self.assertEqual(before,self.snapshot())
+
+    def test_empty_state_left_by_deleted_lesson_does_not_block_placement(self):
+        self.dates=['2026-11-22','2026-11-23']
+        dest={**self.source,'日付':self.dates[-1],'_追加ID':'deleted'}
+        deleted={'ADD:deleted':{'_deleted':True}}
+        self.write('added_lessons.json',[self.source,dest]);self.write('edited_lessons.json',deleted)
+        states={f.key(dest):{'publicNote':'','ready':False,'attendance':[],'updatedAt':'old','updatedBy':'test'},
+                f.key({**self.source,'日付':'2026-11-24'}):{'publicNote':'別日の記録'}}
+        self.write('class_state.json',states)
+        code,j=self.repeat();self.assertEqual(code,200,j);self.assertEqual(j['count'],2)
+        self.assertEqual(self.read('edited_lessons.json'),deleted)
+        self.assertEqual(self.read('added_lessons.json')[:2],[self.source,dest])
+        self.assertEqual(self.read('class_state.json')[f.key(dest)]['publicNote'],self.source['備考'])
+        self.assertEqual(self.read('class_state.json')[f.key({**self.source,'日付':'2026-11-24'})],{'publicNote':'別日の記録'})
+        self.assertTrue(any(old.read_text(encoding='utf-8')==json.dumps(states,ensure_ascii=False)
+                            for old in (self.root/'data'/'_backup').glob('class_state.json.*')))
+
+    def test_empty_state_for_linked_repeat_allowed_on_every_period(self):
+        g,rows=self.prepare_group(False);self.source_key=rows[0]['_sourceKey']
+        self.dates=['2026-11-23']
+        self.write('class_state.json',{f.key({**r,'日付':self.dates[0]}):{} for r in rows})
+        code,j=self.repeat();self.assertEqual(code,200,j);self.assertEqual(j['count'],2)
+        self.assertEqual(len(self.read('lesson_groups.json')),2)
+
+    def test_meaningful_or_unknown_class_state_blocks_entire_batch(self):
+        dest=f.key({**self.source,'日付':self.dates[-1]})
+        for state in [{'publicNote':'連絡を保持'}, {'attendance':{'検証生徒':'欠席'}},
+                      {'ready':True}, {'futureData':[]}, 'unexpected']:
+            with self.subTest(state=state):
+                self.write('class_state.json',{dest:state});p=self.payload();before=self.snapshot()
+                code,j=self.repeat(p);self.assertEqual(code,409,j);self.assertIn(self.dates[-1],j['error']);self.assertIn('保存済みの記録',j['error'])
+                self.assertEqual(before,self.snapshot())
 
     def test_records_aliases_and_attachments_block_without_overwrite(self):
         dest=f.key({**self.source,'日付':self.dates[-1]})
@@ -93,6 +128,13 @@ class LessonRepeatTests(unittest.TestCase):
         self.write('teacher_ng.json',[dict(teacher=self.source['担当講師'],date=self.dates[0],allDay=True)]);p['overrideRoom']=True;before=self.snapshot()
         code,j=self.repeat(p);self.assertEqual(code,409);self.assertTrue(j['ngConflict']);self.assertEqual(before,self.snapshot())
         p['overrideNg']=True;self.assertEqual(self.repeat(p)[0],200)
+
+    def test_other_class_outside_room_and_time_does_not_block_date(self):
+        self.dates=['2026-11-23']
+        other={**f.row(5),'日付':self.dates[0],'クラス':'別クラス','_追加ID':'other'}
+        self.write('added_lessons.json',[self.source,other])
+        code,j=self.repeat();self.assertEqual(code,200,j);self.assertEqual(j['count'],1)
+        self.assertEqual(self.read('added_lessons.json')[:2],[self.source,other])
 
     def test_pc_sharing_is_allowed(self):
         self.source['教室']='PC';r={**self.source,'日付':self.dates[0],'クラス':'別クラス','_追加ID':'other'};self.write('added_lessons.json',[self.source,r]);self.assertEqual(self.repeat()[0],200)

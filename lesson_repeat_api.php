@@ -3,6 +3,17 @@
 // Validate the entire batch under the shared data lock before writing anything.
 require_once __DIR__.'/lesson_groups.php';
 require_once __DIR__.'/lesson_links.php';
+// Keep this classification aligned with creationStateIsEmpty in lesson_create_group_api.php.
+// Empty save placeholders are not scheduled lessons. Be conservative: any
+// attendance, readiness, note, or unknown state field must still block reuse.
+function repeatEmptyClassState($state){
+ if(!is_array($state))return false;
+ if(array_diff(array_keys($state),['publicNote','ready','attendance','updatedAt','updatedBy']))return false;
+ if(isset($state['publicNote'])&&(!is_string($state['publicNote'])||trim($state['publicNote'])!==''))return false;
+ if(isset($state['ready'])&&$state['ready']!==false)return false;
+ if(isset($state['attendance'])&&(!is_array($state['attendance'])||count($state['attendance'])!==0))return false;
+ return true;
+}
 $actor=staffRequire(true);
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
 $method=$_SERVER['REQUEST_METHOD']??'GET';
@@ -45,16 +56,22 @@ if($method==='GET'){
 }
 if(!hash_equals($current,$version))staffFail('元の授業が変更されました。画面を開き直してください。',409);
 if(in_array($sourceDate,$dates,true))staffFail('元の授業と同じ日は選べません。',400);
-$records=readJsonStrict($dir.'/lesson_records.json');$groups=lessonGroups();$occupied=[];
+$records=readJsonStrict($dir.'/lesson_records.json');$groups=lessonGroups();$occupied=[];$protected=[];
 foreach($all as $r)if(empty($r['日区分']))$occupied[canonicalLessonKey(policyKey($r))]=true;
-foreach(['lesson_records.json','class_state.json','lesson_fixed.json','lesson_key_aliases.json','room_overrides.json'] as $name)foreach(readJsonStrict($dir.'/'.$name) as $key=>$value){$occupied[$key]=true;$occupied[canonicalLessonKey($key)]=true;}
-foreach(readJsonStrict($dir.'/student_attachments.json') as $f)if(!empty($f['key']))$occupied[canonicalLessonKey($f['key'])]=true;
+$protect=function($key)use(&$protected){$protected[$key]=true;$protected[canonicalLessonKey($key)]=true;};
+foreach([$records,readJsonStrict($dir.'/lesson_fixed.json'),readJsonStrict($dir.'/lesson_key_aliases.json'),readJsonStrict($dir.'/room_overrides.json')] as $entries){
+ foreach($entries as $key=>$value)$protect($key);
+}
+// Reinitialize only empty placeholders. The transaction backs up class_state.json before writing.
+foreach($states as $key=>$value)if(!repeatEmptyClassState($value))$protect($key);
+foreach(readJsonStrict($dir.'/student_attachments.json') as $f)if(!empty($f['key']))$protect($f['key']);
 $ng=readJsonStrict($dir.'/teacher_ng.json');$batches=[];$total=count($dates)*count($templates);
 foreach($dates as $date){
  $batch=[];
  foreach($templates as $template){
   $r=array_replace($template,['日付'=>$date,'日区分'=>'','授業ID'=>'']);$key=policyKey($r);
-  if(isset($occupied[$key])||canonicalLessonKey($key)!==$key)staffFail($date.' '.$r['時間番号'].'には同じ授業または保存済みの記録があります。どの日にも追加していません。日付の選択を見直してください。',409);
+  if(isset($occupied[$key]))staffFail($date.' '.$r['時間番号'].'には同じ授業がすでにあります。どの日にも追加していません。日付の選択を見直してください。',409);
+  if(isset($protected[$key])||canonicalLessonKey($key)!==$key)staffFail($date.' '.$r['時間番号'].'には上書きできない保存済みの記録があります。どの日にも追加していません。',409);
   $occupied[$key]=true;guardRoomSharing($r,'',$in);
   if(empty($in['overrideNg']))foreach($ng as $n)if(($n['teacher']??'')===($r['担当講師']??'')&&str_replace('/','-',$n['date']??'')===$date&&(!empty($n['allDay'])||in_array($r['時間番号'],$n['slots']??[],true)))policyConflict('ngConflict',$date.' '.$r['時間番号'].'は担当講師のNG登録があります。選んだ日付に配置しますか？');
   $r['_追加ID']='ADD-'.date('YmdHis').'-'.bin2hex(random_bytes(8));$r['_sourceKey']='ADD:'.$r['_追加ID'];$r['_追加日時']=date('c');
