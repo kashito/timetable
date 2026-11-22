@@ -3,15 +3,16 @@
 // Validate the entire batch under the shared data lock before writing anything.
 require_once __DIR__.'/lesson_groups.php';
 require_once __DIR__.'/lesson_links.php';
-// Keep this classification aligned with creationStateIsEmpty in lesson_create_group_api.php.
+// Repeat-specific placeholder rules also allow the invitation editor's explicit empty list.
 // Empty save placeholders are not scheduled lessons. Be conservative: any
 // attendance, readiness, note, or unknown state field must still block reuse.
 function repeatEmptyClassState($state){
  if(!is_array($state))return false;
- if(array_diff(array_keys($state),['publicNote','ready','attendance','updatedAt','updatedBy']))return false;
+ if(array_diff(array_keys($state),['publicNote','ready','attendance','invitedStudents','updatedAt','updatedBy']))return false;
  if(isset($state['publicNote'])&&(!is_string($state['publicNote'])||trim($state['publicNote'])!==''))return false;
  if(isset($state['ready'])&&$state['ready']!==false)return false;
  if(isset($state['attendance'])&&(!is_array($state['attendance'])||count($state['attendance'])!==0))return false;
+ if(array_key_exists('invitedStudents',$state)&&$state['invitedStudents']!==[])return false;
  return true;
 }
 $actor=staffRequire(true);

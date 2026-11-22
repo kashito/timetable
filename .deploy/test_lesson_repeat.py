@@ -91,10 +91,34 @@ class LessonRepeatTests(unittest.TestCase):
         code,j=self.repeat();self.assertEqual(code,200,j);self.assertEqual(j['count'],2)
         self.assertEqual(len(self.read('lesson_groups.json')),2)
 
+    def test_four_period_repeat_over_empty_invitation_state(self):
+        source_date='2026-11-23'
+        self.dates=['2026-11-24','2026-11-25','2026-11-26']
+        rows=[{**f.row(i),'日付':source_date,'担当講師':'','教室':'自宅可',
+               '_追加ID':f'repeat-invites-{i}','_sourceKey':f'ADD:repeat-invites-{i}'}
+              for i in range(6,10)]
+        self.source_key=rows[0]['_sourceKey']
+        gid='b'*24
+        group={'id':gid,'key':'GROUP:'+gid,'sources':[r['_sourceKey'] for r in rows],
+               'snapshot':rows,'active':True,'mealBreak':False}
+        self.write('added_lessons.json',rows)
+        self.write('lesson_groups.json',{gid:group})
+        self.write('class_state.json',{
+            f.key({**r,'日付':self.dates[-1]}):{'publicNote':'','invitedStudents':[],
+                'updatedAt':'2026-11-20T10:00:00+09:00','updatedBy':'検証管理者'} for r in rows
+        })
+        code,j=self.repeat();self.assertEqual(code,200,j);self.assertEqual(j['count'],12)
+        self.assertEqual(self.read('added_lessons.json')[:4],rows)
+        self.assertEqual([r['日付'] for r in self.read('added_lessons.json')[4:]],
+                         [date for date in self.dates for _ in rows])
+        self.assertEqual(len(self.read('lesson_groups.json')),4)
+
+
     def test_meaningful_or_unknown_class_state_blocks_entire_batch(self):
         dest=f.key({**self.source,'日付':self.dates[-1]})
         for state in [{'publicNote':'連絡を保持'}, {'attendance':{'検証生徒':'欠席'}},
-                      {'ready':True}, {'futureData':[]}, 'unexpected']:
+                      {'ready':True}, {'futureData':[]}, {'invitedStudents':['検証追加生徒']},
+                      {'invitedStudents':None}, {'invitedStudents':'unexpected'}, 'unexpected']:
             with self.subTest(state=state):
                 self.write('class_state.json',{dest:state});p=self.payload();before=self.snapshot()
                 code,j=self.repeat(p);self.assertEqual(code,409,j);self.assertIn(self.dates[-1],j['error']);self.assertIn('保存済みの記録',j['error'])
