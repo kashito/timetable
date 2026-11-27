@@ -9,6 +9,19 @@
   "description": "講師・生徒の時間割、講師NG、掲示板・PC、授業管理を扱うシステム。",
   "pages": [
     {
+      "name": "コマ生成・授業管理",
+      "url": "https://224236.com/2026summer/schedule_generator.php",
+      "status": "production",
+      "roles": [
+        "admin"
+      ],
+      "buttons": [
+        "授業追加",
+        "時刻を変更",
+        "変更を保存"
+      ]
+    },
+    {
       "name": "2026 時間割",
       "url": "https://224236.com/2026summer/index.html",
       "source": "index.html",
@@ -130,6 +143,11 @@
     "科目・授業を横断した自分の担当TODO一覧（スマホ対応）"
   ],
   "operations": [
+    {
+      "id": "generator-mobile-vertical",
+      "question": "スマホで時間割のコマを生成・編集するには？",
+      "answer": "同じコマ生成ページを開くと、幅700px以下では日付・教室・時間枠が縦に並びます。空き教室は教室名を開き、目的の時間枠で「授業追加」を選びます。既存授業はカードをタップして編集でき、時刻だけ変える場合は「時刻を変更」を選びます。日付移動・検索・複数コマの生成は同じです。広い画面では従来の横長の表を使います。"
+    },
     {
       "id": "teacher-ng",
       "question": "時間割で講師NG日を入力するには？",

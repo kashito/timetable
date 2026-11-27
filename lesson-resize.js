@@ -1,5 +1,6 @@
 (()=>{
  let activeResize=null;
+ const verticalGenerator=card=>!!card.closest('#gridWrap')&&window.Generator?.verticalLayout?.()===true;
  const SLOT_TIMES={
   '①':['13:30','14:10'],'②':['14:20','15:00'],'③':['15:10','15:50'],'④':['16:00','16:40'],
   '⑤':['16:50','17:30'],'⑥':['17:40','18:20'],'⑦':['18:30','19:10'],'⑧':['19:20','20:00'],
@@ -41,6 +42,7 @@
   return {first,last,a,b,o,left,right};
  }
  function paint(card,start,end){
+  if(verticalGenerator(card)){card.style.removeProperty('margin-left');card.style.removeProperty('width');return;}
   const g=geometry(card,start,end);if(!g)return;
   card.style.setProperty('margin-left',(g.left-g.o.left)+'px','important');
   card.style.setProperty('width',Math.max(24,g.right-g.left)+'px','important');
@@ -61,6 +63,39 @@
  }
  function limits(card,edge){const ss=slots(card),firstEnd=minutes(card.dataset.resizeFirstEnd||SLOT_TIMES[ss[0]]?.[1]),lastStart=minutes(card.dataset.resizeLastStart||SLOT_TIMES[ss.at(-1)]?.[0]);return edge==='start'?{min:minutes(SLOT_TIMES['①'][0]),max:(ss.length>1?firstEnd:minutes(card.dataset.end))-5}:{min:(ss.length>1?lastStart:minutes(card.dataset.start))+5,max:minutes(SLOT_TIMES['⑪'][1])};}
  function unlock(card){if(activeResize===card)activeResize=null;card.classList.remove('is-resize-saving');if('_resizeDraggable' in card){card.draggable=card._resizeDraggable;delete card._resizeDraggable;}for(const control of card.querySelectorAll('.lesson-resize-handle'))control.disabled=false;}
+ function addMobileEditor(card,options){
+  if(!card.closest('#gridWrap'))return;
+  const button=document.createElement('button');button.type='button';button.className='generator-mobile-resize';button.textContent='時刻を変更';
+  button.addEventListener('click',event=>{
+   event.stopPropagation();
+   if(activeResize||!verticalGenerator(card))return;
+   const dialog=document.createElement('dialog');dialog.className='generator-time-dialog';dialog.setAttribute('aria-label','授業時刻を変更');
+   dialog.innerHTML='<form><strong>授業時刻を変更</strong><label>変更する時刻 <select><option value="start">開始</option><option value="end">終了</option></select></label><label>新しい時刻 <input type="time" required step="300"></label><span role="status"></span><button type="submit" class="primary">時刻を保存</button><button type="button">キャンセル</button></form>';
+   const form=dialog.firstElementChild,select=form.querySelector('select'),input=form.querySelector('input'),status=form.querySelector('[role=status]'),submit=form.querySelector('[type=submit]'),cancel=form.querySelector('[type=button]');
+   const sync=()=>{const {min,max}=limits(card,select.value);input.min=time(Math.ceil(min/5)*5);input.max=time(Math.floor(max/5)*5);input.value=select.value==='start'?card.dataset.start:card.dataset.end;status.textContent='';};
+   sync();select.onchange=sync;cancel.onclick=()=>dialog.close();
+   dialog.addEventListener('cancel',e=>{if(activeResize===card)e.preventDefault();});
+   dialog.addEventListener('close',()=>{dialog.remove();if(button.isConnected)button.focus();});
+   form.onsubmit=async e=>{
+    e.preventDefault();if(activeResize)return;
+    const edge=select.value,target=input.value,oldStart=card.dataset.start,oldEnd=card.dataset.end;
+    if(target===(edge==='start'?oldStart:oldEnd)){dialog.close();return;}
+    activeResize=card;for(const field of [select,input,submit,cancel])field.disabled=true;
+    status.textContent='保存中…';
+    try{
+     const saved=await post({sourceKey:card.dataset.sourceKey,edge,time:target,expectedStart:oldStart,expectedEnd:oldEnd,requestId:crypto.randomUUID?.()||String(Date.now())+'-resize'},options);
+     card.dataset.start=saved.start||oldStart;card.dataset.end=saved.end||oldEnd;
+     dialog.close();message(options,'授業の時刻を変更しました。');
+     if(typeof options.reload==='function')await options.reload();else location.reload();
+    }catch(error){
+     if(dialog.open)status.textContent=error.message||String(error);
+     else message(options,'時刻は保存されました。時間割を再読み込みしてください。',true);
+    }finally{activeResize=null;for(const field of [select,input,submit,cancel])field.disabled=false;}
+   };
+   document.body.append(dialog);dialog.showModal();
+  });
+  card.append(button);
+ }
  function addHandles(card,options){
   if(card.dataset.linkedPartial==='1'||card.dataset.resizeBound==='1'||!card.dataset.sourceKey||!card.dataset.start||!card.dataset.end)return;
   card.dataset.resizeBound='1';card.classList.add('lesson-resizable');
@@ -70,7 +105,7 @@
    const bubble=document.createElement('span');bubble.className='lesson-resize-time';handle.append(bubble);card.append(handle);
    handle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();});
    handle.addEventListener('pointerdown',event=>{
-    if(activeResize){event.preventDefault();event.stopPropagation();return;}
+    if(activeResize||verticalGenerator(card)){event.preventDefault();event.stopPropagation();return;}
     if(event.button!==0&&event.pointerType==='mouse')return;
     event.preventDefault();event.stopPropagation();
     const ss=slots(card),boundarySlot=edge==='start'?ss[0]:ss.at(-1),oldStart=card.dataset.start,oldEnd=card.dataset.end;
@@ -104,8 +139,10 @@
     handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',cancel);
    });
   }
+  addMobileEditor(card,options);
   paint(card,card.dataset.start,card.dataset.end);
  }
  function bind(root=document,options={}){requestAnimationFrame(()=>root.querySelectorAll('.lesson[data-source-key],.event[data-source-key]').forEach(card=>addHandles(card,options)));}
+ window.matchMedia?.('(max-width: 700px)').addEventListener?.('change',()=>document.querySelectorAll('#gridWrap .lesson-resizable').forEach(card=>{if(!card.classList.contains('is-resizing'))paint(card,card.dataset.start,card.dataset.end);}));
  window.LessonResize={bind,minutes,time,snap,limits};
 })();

@@ -1,0 +1,60 @@
+/* The same authenticated generator and lesson nodes, stacked for narrow screens. */
+.generator-mobile-room,.generator-mobile-slot-label,.generator-mobile-resize{display:none}
+@media (max-width:700px){
+ body #wholeTimeHeader,body .generator-today-nowline,body .generator-today-nowline-label{display:none!important}
+ body #gridWrap,html.generator-focused body #gridWrap{overflow:visible;min-width:0;border:0;background:transparent}
+ #grid .generator-grid{grid-template-columns:minmax(0,1fr)!important;min-width:0!important;width:100%;gap:0}
+ #gridWrap #grid .generator-grid>.head,#gridWrap #grid .generator-mobile-room-closed{display:none!important}
+ #gridWrap #grid .generator-grid>.cell{border-right:0;min-width:0}
+ #gridWrap #grid .generator-grid>.lane-label{position:static!important;min-height:0;height:auto!important;overflow:visible;display:block;padding:0;box-shadow:none}
+ #gridWrap #grid .generator-grid>.lane-label:not(.generator-day-label)>.room-chip{display:none}
+ #grid .generator-mobile-room{display:flex;align-items:center;gap:8px;text-align:left;width:100%;min-height:46px;padding:7px 12px;color:#173753;background:#f5f9ff;border:0;border-bottom:1px solid #d9e5f0;border-radius:0;font-size:14px}
+ #grid .generator-mobile-room[aria-expanded=true]{background:#e4effc}
+ .generator-mobile-room-state{font-size:12px;color:#4a6179;margin-left:auto}
+ .generator-mobile-room-indicator{font-size:17px;min-width:1em;text-align:center}
+ #gridWrap #grid .generator-grid>.generator-day-label{padding:8px 10px;background:#dae8f8!important;border:0;border-top:3px solid #365777;margin-top:12px;border-radius:10px 10px 0 0}
+ #gridWrap #grid .generator-grid>.generator-day-label .sticky-date-box{min-height:0!important}
+ #gridWrap #grid .generator-date-head>.sticky-date{font-size:16px;min-height:44px}
+ #gridWrap #grid .whole-day-toggle{width:auto;min-height:40px;padding:6px 12px}
+ #gridWrap #grid .generator-day-info{grid-column:1;padding:6px 10px;min-height:0;height:auto;max-height:none;overflow:visible}
+ #gridWrap #grid .generator-day-info>.whole-day-events,#gridWrap #grid .generator-day-info>.whole-day-contacts{width:100%}
+ #gridWrap #grid .generator-day-info.whole-day-collapsed .ce-day-events{height:auto;max-height:25px}
+ #gridWrap #grid .generator-grid>.generator-slot{min-height:0;height:auto;display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:7px 10px;background:#fff!important}
+ #gridWrap #grid .generator-slot:not(:has(.lesson)){grid-template-columns:minmax(0,1fr) auto;align-items:center}
+ .generator-mobile-slot-label{display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#344d66;font-size:13px}
+ .generator-mobile-slot-label strong{font-size:16px;line-height:1}
+ .generator-mobile-slot-label small{color:#415d79;background:#e9f0f8;padding:1px 5px;border-radius:4px}
+ #gridWrap #grid .generator-linked-track{height:auto;min-width:0}
+ #gridWrap #grid .generator-linked-track:empty{display:none}
+ #gridWrap #grid .generator-slot .lesson{height:auto!important;min-height:0!important;width:100%;max-width:100%;margin:0!important;padding:9px 10px!important;display:block;top:auto!important;overflow-wrap:anywhere}
+ #gridWrap #grid .generator-slot .lesson>:is(strong,div:not(.lesson-list-actions)){display:block;white-space:normal;overflow:visible;line-height:1.45}
+ #gridWrap #grid .generator-slot .lesson>strong{font-size:15px}
+ #gridWrap #grid .generator-slot .lesson .lesson-list-actions{position:static!important;margin:5px 0 0;display:flex;flex-flow:row wrap;justify-content:flex-start!important;width:auto;gap:5px}
+ #gridWrap #grid .generator-slot .lesson .lesson-list-actions button{width:44px;min-width:44px;height:44px;min-height:44px;flex:0 0 44px}
+ #gridWrap #grid .generator-slot .lesson-resize-handle{display:none}
+ #gridWrap #grid .generator-slot .generator-mobile-resize{display:inline-flex;align-items:center;min-height:44px;margin-top:5px;color:#24486b;font-size:12px}
+ #gridWrap #grid .generator-slot .add-cell{width:auto;height:auto!important;min-height:44px!important;padding:5px 10px!important;justify-self:end;border-style:solid;border-color:#b4c9e3;background:#edf5ff;color:#23456a;font-size:15px!important}
+ #gridWrap #grid .generator-slot .add-cell:not(.add-shared)::after{content:'授業追加';font-size:12px;margin-left:4px}
+ main,html.generator-focused main{padding:8px}
+ .confirmed-date-bar{flex-wrap:wrap}
+ .confirmed-date-bar label{max-width:100%}
+ .generator-tools-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:7px}
+ .generator-tools-row select{min-width:0;width:100%}
+ .generator-tools-row .ws-check{grid-column:1/-1}
+ .generator-tools-row :is(button,select),main .controls select{min-height:44px}
+ .master-tools,.master-entry-grid,.master-row,.lesson-visibility-list{grid-template-columns:minmax(0,1fr)}
+ .master-tools :is(input,select),.master-entry-grid :is(input,select){min-width:0;width:100%;font-size:16px}
+ #generatorViewBar .generator-view-actions{min-width:0;flex-wrap:wrap}
+ #generatorViewBar .history-controls{flex-wrap:wrap}
+ #generatorDateNavigation #dayCompare{border-radius:6px}
+ #modal .modal-card{width:100%}
+ #modal .form-grid{grid-template-columns:minmax(0,1fr);min-width:0}
+ #modal .form-grid :is(input,select,textarea){min-width:0;max-width:100%;font-size:16px}
+ #modal .modal-actions button{min-height:44px}
+ #modal .modal-actions #saveAdd{flex:1 0 100%}
+ .generator-time-dialog{width:min(94vw,360px);max-height:90dvh;overflow:auto;border:1px solid #dce3ee;border-radius:12px;padding:16px}
+ .generator-time-dialog::backdrop{background:#14203388}
+ .generator-time-dialog form{display:grid;gap:10px}
+ .generator-time-dialog input,.generator-time-dialog button{min-height:44px;font-size:16px}
+ .generator-time-dialog [role=status]{color:#a12222}
+}

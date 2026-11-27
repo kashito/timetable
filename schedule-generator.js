@@ -422,6 +422,23 @@ let pagingFrame=0;
 window.addEventListener('scroll',()=>{
   if(pagingFrame)return;pagingFrame=requestAnimationFrame(()=>{pagingFrame=0;const w=$('gridWrap');if(window.scrollY>0&&w.getBoundingClientRect().bottom-innerHeight<400)showMoreDays();});
 },{passive:true});
+const generatorMobileRoomStates=new Map();
+function generatorVerticalLayout(){return window.matchMedia?.('(max-width: 700px)').matches===true;}
+function bindMobileRooms(root){
+  root.querySelectorAll('.generator-mobile-room').forEach(button=>{
+    button.onclick=()=>{
+      const opening=button.getAttribute('aria-expanded')==='false';
+      generatorMobileRoomStates.set(button.dataset.lane,opening);
+      button.setAttribute('aria-expanded',String(opening));
+      button.querySelector('.generator-mobile-room-indicator').textContent=opening?'−':'＋';
+      let cell=button.closest('.lane-label').nextElementSibling;
+      while(cell?.classList.contains('generator-slot')){
+        cell.classList.toggle('generator-mobile-room-closed',!opening);
+        cell=cell.nextElementSibling;
+      }
+    };
+  });
+}
 function render(options={}){
   if(!scheduleLoaded)return;
   const append=options.append===true;
@@ -478,18 +495,26 @@ function render(options={}){
         </div>
       </div><section id="whole-day-${esc(iso)}" class="cell teacher-day-info generator-day-info date-start whole-day-collapsed" data-info-date="${esc(iso)}" aria-label="${esc(date)}の学校行事・連絡"><div class="whole-day-events"><strong class="whole-day-events-label">学校行事・お知らせ</strong><div class="ce-day-events" data-calendar-date="${esc(iso)}" data-calendar-full="1"></div></div><div class="whole-day-homework" data-homework-date="${esc(iso)}" hidden></div><div class="whole-day-contacts" data-contact-date="${esc(iso)}"></div></section>`;
     ROOMS.filter(room=>(!window.GeneratorExtras||GeneratorExtras.showRoom(room))&&(!window.DayCompare?.active||DayCompare.showRoom(room,rows))).forEach(room=>{
+      const lane=date+'|'+room;
+      const laneRows=rowsByLane.get(lane)||[];
+      // Keep every empty room reachable without printing all empty slots by default.
+      const roomOpen=generatorMobileRoomStates.get(lane)??(laneRows.length>0);
+      const roomLabel=ROOM_LABEL[room]||'教室未設定';
       h+=`<div class="cell lane-label ${roomClass(room)}">
         <span class="room-chip">${ROOM_LABEL[room]}</span>
+        <button type="button" class="generator-mobile-room" data-lane="${esc(lane)}" aria-expanded="${roomOpen}">
+          <span>${esc(roomLabel)}</span><span class="generator-mobile-room-state">${laneRows.length?'授業あり':'空き枠'}</span>
+          <span class="generator-mobile-room-indicator" aria-hidden="true">${roomOpen?'−':'＋'}</span>
+        </button>
       </div>`;
-
-      const laneRows=rowsByLane.get(date+'|'+room)||[];
       const linked=window.LinkedSchedule?.lanes(laneRows.map(r=>({date:r['日付'].replaceAll('/','-'),slot:r['時間番号'],cls:r['クラス'],teacher:r['担当講師'],type:r['種別'],subjects:String(r['科目']||'').split(/[,、，]/).filter(Boolean),room:r['教室'],start:r['開始'],end:r['終了'],sourceKey:r._sourceKey,_original:r})));
       const hasSpan=linked?.units.some(u=>u.end>u.start);
       SLOT_KEYS.forEach((slot,index)=>{
         const items=laneRows.filter(r=>r['時間番号']===slot);
 
-        h+=`<div class="cell generator-slot ${roomClass(room)}"
+        h+=`<div class="cell generator-slot ${roomClass(room)}${roomOpen?'':' generator-mobile-room-closed'}"
           data-date="${date}" data-slot="${slot}" data-room="${room}">
+          <div class="generator-mobile-slot-label"><strong>${slot}</strong> <span>${SLOTS[slot].join('〜')}</span>${hasSpan&&linked.units.some(u=>u.start<index&&u.end>=index)?'<small>連結授業の続き</small>':''}</div>
           ${hasSpan?Array.from({length:linked.count},(_,lane)=>{const u=linked.units.find(u=>u.start===index&&u.lane===lane);return '<div class="generator-linked-track">'+(u?lessonHTML({...u.row._original,_linked:u.row._linked,_roomClass:roomClass(room)}):'')+'</div>';}).join(''):items.map(r=>lessonHTML(Object.assign({},r,{_roomClass:roomClass(room)}))).join('')}
           ${items.length===0
             ? `<button class="add-cell" data-date="${date}" data-slot="${slot}" data-room="${room}" title="授業追加">＋</button>`
@@ -501,7 +526,7 @@ function render(options={}){
 
   if(!append)h+='</div>';
   const fresh=document.createElement('div');fresh.innerHTML=h;
-  bindAdd(fresh);bindEdit(fresh);bindDragAndDrop(fresh);
+  bindAdd(fresh);bindEdit(fresh);bindDragAndDrop(fresh);bindMobileRooms(fresh);
   bindGeneratorDailyNotes(fresh);bindGeneratorHolidayChecks(fresh);bindPreviousWeekCopyButtons(fresh);
   if(append)$('grid').querySelector('.generator-grid').append(...fresh.childNodes);
   else $('grid').replaceChildren(...fresh.childNodes);
@@ -1380,6 +1405,6 @@ $('excelUpload').addEventListener('change',()=>{
 loadGeneratorDailyNotes().then(n=>{generatorDailyNotes=n||{}; if(document.getElementById('grid')) render();});
 load();
 
-window.Generator={hasDraft:()=>!$('modal').classList.contains('hidden')&&generatorModalHasChanges(),saveContext:generatorSaveContext,isCurrentSave:generatorSaveIsCurrent,markSaved:markGeneratorFieldsSaved,currentRow:currentModalRow,reload:load,render,refreshChoices,rows:()=>allRows,students:()=>studentRows,eventKey:generatorEventKey,open:openEditModal};
+window.Generator={verticalLayout:generatorVerticalLayout,hasDraft:()=>!$('modal').classList.contains('hidden')&&generatorModalHasChanges(),saveContext:generatorSaveContext,isCurrentSave:generatorSaveIsCurrent,markSaved:markGeneratorFieldsSaved,currentRow:currentModalRow,reload:load,render,refreshChoices,rows:()=>allRows,students:()=>studentRows,eventKey:generatorEventKey,open:openEditModal};
 document.addEventListener('history-window-change',render);
 })();
